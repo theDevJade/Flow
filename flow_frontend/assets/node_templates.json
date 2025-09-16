@@ -1,0 +1,239 @@
+{
+  "version": "1.0",
+  "node_templates": [
+    {
+      "id": "input_material",
+      "name": "Material Input",
+      "description": "Material input node for shaders",
+      "category": "Input",
+      "color": {
+        "r": 0.2,
+        "g": 0.6,
+        "b": 0.2,
+        "a": 1.0
+      },
+      "size": {
+        "width": 150,
+        "height": 80
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "material",
+          "name": "Material",
+          "type": "material",
+          "color": {
+            "r": 1.0,
+            "g": 0.8,
+            "b": 0.0,
+            "a": 1.0
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "material_name",
+          "type": "string",
+          "label": "Material Name",
+          "default": "DefaultMaterial",
+          "description": "Name of the material to load"
+        }
+      ]
+    },
+    {
+      "id": "process_shader",
+      "name": "Shader Processor",
+      "description": "Process shader data with various operations",
+      "category": "Processing",
+      "color": {
+        "r": 0.4,
+        "g": 0.3,
+        "b": 0.8,
+        "a": 1.0
+      },
+      "size": {
+        "width": 180,
+        "height": 120
+      },
+      "inputs": [
+        {
+          "id": "input_data",
+          "name": "Data",
+          "type": "data",
+          "color": {
+            "r": 0.2,
+            "g": 0.8,
+            "b": 0.2,
+            "a": 1.0
+          }
+        },
+        {
+          "id": "control_signal",
+          "name": "Control",
+          "type": "control",
+          "color": {
+            "r": 0.2,
+            "g": 0.4,
+            "b": 0.8,
+            "a": 1.0
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "id": "processed_result",
+          "name": "Result",
+          "type": "result",
+          "color": {
+            "r": 0.8,
+            "g": 0.2,
+            "b": 0.2,
+            "a": 1.0
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "operation_type",
+          "type": "enum",
+          "label": "Operation",
+          "default": "multiply",
+          "options": ["add", "multiply", "subtract", "divide", "normalize"],
+          "description": "Type of processing operation to perform"
+        },
+        {
+          "name": "intensity",
+          "type": "float",
+          "label": "Intensity",
+          "default": 1.0,
+          "min": 0.0,
+          "max": 2.0,
+          "description": "Processing intensity multiplier"
+        },
+        {
+          "name": "enabled",
+          "type": "bool",
+          "label": "Enabled",
+          "default": true,
+          "description": "Whether this node is active"
+        }
+      ]
+    },
+    {
+      "id": "output_display",
+      "name": "Display Output",
+      "description": "Final output display node",
+      "category": "Output",
+      "color": {
+        "r": 0.8,
+        "g": 0.4,
+        "b": 0.2,
+        "a": 1.0
+      },
+      "size": {
+        "width": 150,
+        "height": 80
+      },
+      "inputs": [
+        {
+          "id": "final_input",
+          "name": "Final",
+          "type": "result",
+          "color": {
+            "r": 0.8,
+            "g": 0.2,
+            "b": 0.2,
+            "a": 1.0
+          }
+        }
+      ],
+      "outputs": [],
+      "properties": [
+        {
+          "name": "display_name",
+          "type": "string",
+          "label": "Display Name",
+          "default": "Output",
+          "description": "Name shown in the output"
+        },
+        {
+          "name": "preview_enabled",
+          "type": "bool",
+          "label": "Show Preview",
+          "default": true,
+          "description": "Enable preview rendering"
+        }
+      ]
+    },
+    {
+      "id": "math_operation",
+      "name": "Math Operation",
+      "description": "Perform mathematical operations on inputs",
+      "category": "Math",
+      "color": {
+        "r": 0.6,
+        "g": 0.6,
+        "b": 0.2,
+        "a": 1.0
+      },
+      "size": {
+        "width": 160,
+        "height": 100
+      },
+      "inputs": [
+        {
+          "id": "value_a",
+          "name": "A",
+          "type": "float",
+          "color": {
+            "r": 0.4,
+            "g": 0.4,
+            "b": 0.8,
+            "a": 1.0
+          }
+        },
+        {
+          "id": "value_b",
+          "name": "B",
+          "type": "float",
+          "color": {
+            "r": 0.4,
+            "g": 0.4,
+            "b": 0.8,
+            "a": 1.0
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "name": "Result",
+          "type": "float",
+          "color": {
+            "r": 0.8,
+            "g": 0.6,
+            "b": 0.2,
+            "a": 1.0
+          }
+        }
+      ],
+      "properties": [
+        {
+          "name": "operation",
+          "type": "enum",
+          "label": "Operation",
+          "default": "add",
+          "options": ["add", "subtract", "multiply", "divide", "power", "modulo"],
+          "description": "Mathematical operation to perform"
+        },
+        {
+          "name": "clamp_output",
+          "type": "bool",
+          "label": "Clamp Result",
+          "default": false,
+          "description": "Clamp result between 0 and 1"
+        }
+      ]
+    }
+  ]
+}
