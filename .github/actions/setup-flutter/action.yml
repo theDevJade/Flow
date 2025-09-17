@@ -5,7 +5,7 @@ inputs:
   flutter-version:
     description: 'Flutter version to setup'
     required: false
-    default: '3.24.5'
+    default: '3.35.3'
   enable-desktop:
     description: 'Desktop platform to enable (macos, windows, linux, or none)'
     required: false
