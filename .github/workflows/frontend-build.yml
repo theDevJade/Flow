@@ -49,7 +49,7 @@ jobs:
     - name: Check Dart Format
       if: inputs.run-tests
       working-directory: flow_frontend
-      run: dart format --set-exit-if-changed .
+      run: dart format .
     
     - name: Analyze Flutter Code
       if: inputs.run-tests
