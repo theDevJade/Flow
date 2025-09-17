@@ -93,34 +93,34 @@ jobs:
             ;;
         esac
     
-    - name: Create Archive
-      if: inputs.upload-artifacts && inputs.build-target != 'test'
-      shell: bash
+    - name: Create Web Archive
+      if: inputs.upload-artifacts && inputs.build-target == 'web'
       run: |
-        case "${{ inputs.build-target }}" in
-          "web")
-            cd flow_frontend/build
-            tar -czf ../../Flow-Web-${{ github.run_id }}.tar.gz web/
-            ;;
-          "macos")
-            cd flow_frontend/build/macos/Build/Products/Release
-            if [ -d "flow_frontend.app" ]; then
-              ditto -c -k --sequesterRsrc --keepParent flow_frontend.app ../../../../../Flow-macOS-${{ github.run_id }}.zip
-            else
-              echo "macOS app not found, creating empty archive"
-              touch ../../../../../Flow-macOS-${{ github.run_id }}.zip
-            fi
-            ;;
-          "windows")
-            cd flow_frontend/build/windows/x64/runner/Release
-            # Use tar for Windows to avoid PowerShell syntax issues
-            tar -czf ../../../../../Flow-Windows-${{ github.run_id }}.tar.gz *
-            ;;
-          "linux")
-            cd flow_frontend/build/linux/x64/release
-            tar -czf ../../../../../Flow-Linux-${{ github.run_id }}.tar.gz bundle/
-            ;;
-        esac
+        cd flow_frontend/build
+        tar -czf ../../Flow-Web-${{ github.run_id }}.tar.gz web/
+    
+    - name: Create macOS Archive
+      if: inputs.upload-artifacts && inputs.build-target == 'macos'
+      run: |
+        cd flow_frontend/build/macos/Build/Products/Release
+        if [ -d "flow_frontend.app" ]; then
+          ditto -c -k --sequesterRsrc --keepParent flow_frontend.app ../../../../../Flow-macOS-${{ github.run_id }}.zip
+        else
+          echo "macOS app not found, creating empty archive"
+          touch ../../../../../Flow-macOS-${{ github.run_id }}.zip
+        fi
+    
+    - name: Create Windows Archive
+      if: inputs.upload-artifacts && inputs.build-target == 'windows'
+      run: |
+        cd flow_frontend/build/windows/x64/runner/Release
+        tar -czf ../../../../../Flow-Windows-${{ github.run_id }}.tar.gz *
+    
+    - name: Create Linux Archive
+      if: inputs.upload-artifacts && inputs.build-target == 'linux'
+      run: |
+        cd flow_frontend/build/linux/x64/release
+        tar -czf ../../../../../Flow-Linux-${{ github.run_id }}.tar.gz bundle/
     
     - name: Copy Artifacts to Root
       if: inputs.upload-artifacts && inputs.build-target != 'test'
