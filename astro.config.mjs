@@ -12,7 +12,7 @@ export default defineConfig({
       social: [
         {
           label: 'GitHub',
-          href: 'https://github.com/your-username/FlowDocumentation',
+          href: 'https://github.com/theDevJade/Flow',
           icon: 'github',
         },
       ],
