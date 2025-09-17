@@ -121,6 +121,13 @@ jobs:
             ;;
         esac
     
+    - name: Copy Artifacts to Root
+      if: inputs.upload-artifacts && inputs.build-target != 'test'
+      run: |
+        # Copy all Flow-* files to root directory for upload
+        find . -name "Flow-*-${{ github.run_id }}.*" -exec cp {} . \;
+        ls -la Flow-*-${{ github.run_id }}.* || echo "No artifacts found"
+    
     - name: Upload Build Artifacts
       if: inputs.upload-artifacts && inputs.build-target != 'test'
       uses: actions/upload-artifact@v4
