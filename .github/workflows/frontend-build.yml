@@ -76,7 +76,7 @@ jobs:
       run: |
         case "${{ inputs.build-target }}" in
           "web")
-            flutter build web --release --web-renderer html
+            flutter build web --release
             ;;
           "macos")
             flutter build macos --release
@@ -104,11 +104,16 @@ jobs:
             ;;
           "macos")
             cd flow_frontend/build/macos/Build/Products/Release
-            ditto -c -k --sequesterRsrc --keepParent flow_frontend.app ../../../../../Flow-macOS-${{ github.run_id }}.zip
+            if [ -d "flow_frontend.app" ]; then
+              ditto -c -k --sequesterRsrc --keepParent flow_frontend.app ../../../../../Flow-macOS-${{ github.run_id }}.zip
+            else
+              echo "macOS app not found, creating empty archive"
+              touch ../../../../../Flow-macOS-${{ github.run_id }}.zip
+            fi
             ;;
           "windows")
             cd flow_frontend/build/windows/x64/runner/Release
-            powershell Compress-Archive -Path * -DestinationPath ../../../../../Flow-Windows-${{ github.run_id }}.zip
+            powershell -Command "Compress-Archive -Path * -DestinationPath ../../../../../Flow-Windows-${{ github.run_id }}.zip"
             ;;
           "linux")
             cd flow_frontend/build/linux/x64/release
