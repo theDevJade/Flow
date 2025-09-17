@@ -38,14 +38,13 @@ jobs:
         java-version: ${{ inputs.java-version }}
     
     - name: Build and Test Plugin
-      working-directory: plugin
       run: |
         case "${{ inputs.build-type }}" in
           "test")
-            ./gradlew clean check shadowJar --no-daemon
+            ./gradlew clean :app:shadowJar --no-daemon
             ;;
           "release")
-            ./gradlew clean check shadowJar --no-daemon
+            ./gradlew clean :app:shadowJar --no-daemon
             ;;
           *)
             echo "Unknown build type: ${{ inputs.build-type }}"
@@ -66,5 +65,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: minecraft-plugin-${{ github.run_id }}
-        path: plugin/build/libs/*-all.jar
+        path: app/build/libs/*.jar
         retention-days: ${{ inputs.artifact-retention }}

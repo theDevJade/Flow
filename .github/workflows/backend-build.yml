@@ -55,11 +55,11 @@ jobs:
             ./gradlew testBuild --no-daemon
             ;;
           "shadow")
-            ./gradlew :webserver:shadowJar :flow:shadowJar --no-daemon
+            ./gradlew :app:shadowJar --no-daemon
             ;;
           "release")
             ./gradlew clean testBuild --no-daemon
-            ./gradlew :webserver:shadowJar :flow:shadowJar --no-daemon
+            ./gradlew :app:shadowJar --no-daemon
             ;;
           *)
             echo "Unknown build type: ${{ inputs.build-type }}"
@@ -82,8 +82,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: backend-jars-${{ github.run_id }}
-        path: |
-          webserver/build/libs/*-all.jar
-          flow/build/libs/*-all.jar
-          app/build/libs/*.jar
+        path: app/build/libs/*.jar
         retention-days: ${{ inputs.artifact-retention }}
