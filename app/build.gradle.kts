@@ -16,6 +16,7 @@ dependencies {
     implementation(project(":flow"))
     implementation(project(":common"))
     implementation(project(":plugin"))
+    implementation(project(":lang"))
 
     // Shadowed libraries for Bukkit runtime
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")

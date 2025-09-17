@@ -27,4 +27,6 @@ include(":common")
 include(":flow")
 
 rootProject.name = "Flow"
-
+include("app:lang")
+findProject(":app:lang")?.name = "lang"
+include("lang")
