@@ -113,7 +113,8 @@ jobs:
             ;;
           "windows")
             cd flow_frontend/build/windows/x64/runner/Release
-            powershell -Command "Compress-Archive -Path * -DestinationPath ../../../../../Flow-Windows-${{ github.run_id }}.zip"
+            # Use tar for Windows to avoid PowerShell syntax issues
+            tar -czf ../../../../../Flow-Windows-${{ github.run_id }}.tar.gz *
             ;;
           "linux")
             cd flow_frontend/build/linux/x64/release
