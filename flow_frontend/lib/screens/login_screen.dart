@@ -21,9 +21,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // @REMOVE
-    _usernameController.text = 'admin';
-    _passwordController.text = 'admin123';
+    _usernameController.text = '';
+    _passwordController.text = '';
   }
 
   @override
@@ -246,36 +245,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Demo Credentials
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF45475A).withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Demo Credentials:',
-                            style: TextStyle(
-                              color: Color(0xFF9399B2),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'admin / admin123\nuser / password\ndemo / demo\ntest / test123',
-                            style: TextStyle(
-                              color: Color(0xFF9399B2),
-                              fontFamily: 'monospace',
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ],
