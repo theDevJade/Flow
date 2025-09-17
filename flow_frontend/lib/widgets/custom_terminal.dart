@@ -31,16 +31,13 @@ class _CustomTerminalState extends State<CustomTerminal> {
   @override
   void initState() {
     super.initState();
-    _terminalState =
-        PageStateManager.instance.getOrCreatePageState(
-              widget.pageId,
-              'terminal',
-            )
-            as TerminalPageState;
+    _terminalState = PageStateManager.instance.getOrCreatePageState(
+      widget.pageId,
+      'terminal',
+    ) as TerminalPageState;
 
     _initializeTerminal();
     _loadAvailableCommands();
-
   }
 
   @override
@@ -100,7 +97,6 @@ class _CustomTerminalState extends State<CustomTerminal> {
   }
 
   void _initializeTerminal() {
-
     if (_terminalState.history.isEmpty) {
       final welcomeMessages = [
         'Flow Terminal v1.0.0',
@@ -156,7 +152,6 @@ class _CustomTerminalState extends State<CustomTerminal> {
       color: const Color(0xFF1E1E1E),
       child: Column(
         children: [
-
           Container(
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -176,32 +171,28 @@ class _CustomTerminalState extends State<CustomTerminal> {
                 Text(
                   'Terminal',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w500,
-                  ),
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w500,
+                      ),
                 ),
                 const Spacer(),
                 Text(
                   _terminalState.currentDirectory,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.green,
-                    fontFamily: 'monospace',
-                  ),
+                        color: Colors.green,
+                        fontFamily: 'monospace',
+                      ),
                 ),
               ],
             ),
           ),
-
           Expanded(
             child: Stack(
               children: [
-
                 ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(8),
-                  itemCount:
-                      _terminalState.history.length +
-                      1,
+                  itemCount: _terminalState.history.length + 1,
                   itemBuilder: (context, index) {
                     if (index < _terminalState.history.length) {
                       return _buildHistoryLine(_terminalState.history[index]);
@@ -645,9 +636,8 @@ class _CustomTerminalState extends State<CustomTerminal> {
                               Icon(
                                 Icons.terminal,
                                 size: 14,
-                                color: isSelected
-                                    ? Colors.blue
-                                    : Colors.white38,
+                                color:
+                                    isSelected ? Colors.blue : Colors.white38,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -760,9 +750,8 @@ class _CustomTerminalState extends State<CustomTerminal> {
   void _handleTabCompletion() {
     if (_showSuggestions && _currentSuggestions.isNotEmpty) {
       _applySuggestion(
-        _currentSuggestions[_selectedSuggestionIndex >= 0
-            ? _selectedSuggestionIndex
-            : 0],
+        _currentSuggestions[
+            _selectedSuggestionIndex >= 0 ? _selectedSuggestionIndex : 0],
       );
     }
   }

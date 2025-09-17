@@ -109,9 +109,8 @@ class NodeProperty {
       label: json['label'] ?? '',
       defaultValue: json['default'],
       description: json['description'] ?? '',
-      options: json['options'] != null
-          ? List<String>.from(json['options'])
-          : null,
+      options:
+          json['options'] != null ? List<String>.from(json['options']) : null,
       min: json['min']?.toDouble(),
       max: json['max']?.toDouble(),
     );
@@ -171,18 +170,15 @@ class NodeTemplate {
       category: json['category'] ?? 'General',
       color: NodeColor.fromJson(json['color'] ?? {}),
       size: NodeSize.fromJson(json['size'] ?? {}),
-      inputs:
-          (json['inputs'] as List<dynamic>?)
+      inputs: (json['inputs'] as List<dynamic>?)
               ?.map((e) => NodePort.fromJson(e))
               .toList() ??
           [],
-      outputs:
-          (json['outputs'] as List<dynamic>?)
+      outputs: (json['outputs'] as List<dynamic>?)
               ?.map((e) => NodePort.fromJson(e))
               .toList() ??
           [],
-      properties:
-          (json['properties'] as List<dynamic>?)
+      properties: (json['properties'] as List<dynamic>?)
               ?.map((e) => NodeProperty.fromJson(e))
               .toList() ??
           [],
@@ -216,8 +212,7 @@ class NodeTemplateLibrary {
   factory NodeTemplateLibrary.fromJson(Map<String, dynamic> json) {
     return NodeTemplateLibrary(
       version: json['version'] ?? '1.0',
-      nodeTemplates:
-          (json['node_templates'] as List<dynamic>?)
+      nodeTemplates: (json['node_templates'] as List<dynamic>?)
               ?.map((e) => NodeTemplate.fromJson(e))
               .toList() ??
           [],

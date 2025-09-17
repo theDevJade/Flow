@@ -34,7 +34,6 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
       vsync: this,
     );
 
-
     _hostController = TextEditingController(text: 'localhost');
     _portController = TextEditingController(text: '9090');
 
@@ -53,7 +52,6 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
     if (value == null || value.isEmpty) {
       return 'Please enter a host';
     }
-
 
     final hostRegex = RegExp(r'^[a-zA-Z0-9.-]+$');
     if (!hostRegex.hasMatch(value)) {
@@ -90,7 +88,6 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
       final host = _hostController.text.trim();
       final port = int.parse(_portController.text.trim());
 
-
       widget.onConfigureConnection(host, port);
     } catch (e) {
       setState(() {
@@ -109,37 +106,26 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
           child: Container(
             constraints: const BoxConstraints(maxWidth: 480),
             padding: const EdgeInsets.all(32.0),
-            child:
-                Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-
-                        _buildHeader(),
-
-                        const SizedBox(height: 48),
-
-
-                        _buildConnectionForm(),
-
-                        const SizedBox(height: 32),
-
-
-                        _buildActionButtons(),
-
-                        const SizedBox(height: 24),
-
-
-                        _buildSkipOption(),
-                      ],
-                    )
-                    .animate(controller: _animationController)
-                    .fadeIn(duration: const Duration(milliseconds: 600))
-                    .slideY(
-                      begin: 0.1,
-                      end: 0,
-                      duration: const Duration(milliseconds: 800),
-                      curve: Curves.easeOutCubic,
-                    ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 48),
+                _buildConnectionForm(),
+                const SizedBox(height: 32),
+                _buildActionButtons(),
+                const SizedBox(height: 24),
+                _buildSkipOption(),
+              ],
+            )
+                .animate(controller: _animationController)
+                .fadeIn(duration: const Duration(milliseconds: 600))
+                .slideY(
+                  begin: 0.1,
+                  end: 0,
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.easeOutCubic,
+                ),
           ),
         ),
       ),
@@ -149,58 +135,53 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
   Widget _buildHeader() {
     return Column(
       children: [
-
         Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6C63FF), Color(0xFF9C27B0)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF6C63FF).withOpacity(0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF6C63FF), Color(0xFF9C27B0)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF6C63FF).withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
-              child: const Icon(
-                Icons.hub_outlined,
-                color: Colors.white,
-                size: 40,
-              ),
-            )
+            ],
+          ),
+          child: const Icon(
+            Icons.hub_outlined,
+            color: Colors.white,
+            size: 40,
+          ),
+        )
             .animate(delay: const Duration(milliseconds: 200))
             .scale(duration: const Duration(milliseconds: 600))
             .then()
             .shimmer(duration: const Duration(milliseconds: 1000)),
-
         const SizedBox(height: 24),
-
         Text(
-              'Flow',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+          'Flow',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
-            )
+        )
             .animate(delay: const Duration(milliseconds: 400))
             .fadeIn()
             .slideY(begin: 0.3, end: 0),
-
         const SizedBox(height: 8),
-
         Text(
-              'Configure WebSocket Connection',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: Colors.grey[400]),
-              textAlign: TextAlign.center,
-            )
+          'Configure WebSocket Connection',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(color: Colors.grey[400]),
+          textAlign: TextAlign.center,
+        )
             .animate(delay: const Duration(milliseconds: 600))
             .fadeIn()
             .slideY(begin: 0.3, end: 0),
@@ -210,94 +191,87 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
 
   Widget _buildConnectionForm() {
     return Card(
-          color: const Color(0xFF1A1A1A),
-          elevation: 8,
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'WebSocket Server Configuration',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+      color: const Color(0xFF1A1A1A),
+      elevation: 8,
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'WebSocket Server Configuration',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-
-                  TextFormField(
-                    controller: _hostController,
-                    enabled: !_isValidating,
-                    decoration: InputDecoration(
-                      labelText: 'Host',
-                      hintText: 'localhost or IP address',
-                      prefixIcon: const Icon(Icons.dns_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF2A2A2A),
-                    ),
-                    validator: _validateHost,
-                  ),
-
-                  const SizedBox(height: 16),
-
-
-                  TextFormField(
-                    controller: _portController,
-                    enabled: !_isValidating,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Port',
-                      hintText: '9090',
-                      prefixIcon: const Icon(Icons.settings_ethernet_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF2A2A2A),
-                    ),
-                    validator: _validatePort,
-                  ),
-
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        border: Border.all(color: Colors.red.withOpacity(0.3)),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            color: Colors.red[400],
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: TextStyle(color: Colors.red[400]),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
               ),
-            ),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _hostController,
+                enabled: !_isValidating,
+                decoration: InputDecoration(
+                  labelText: 'Host',
+                  hintText: 'localhost or IP address',
+                  prefixIcon: const Icon(Icons.dns_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF2A2A2A),
+                ),
+                validator: _validateHost,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _portController,
+                enabled: !_isValidating,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Port',
+                  hintText: '9090',
+                  prefixIcon: const Icon(Icons.settings_ethernet_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF2A2A2A),
+                ),
+                validator: _validatePort,
+              ),
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: Colors.red[400],
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyle(color: Colors.red[400]),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
-        )
+        ),
+      ),
+    )
         .animate(delay: const Duration(milliseconds: 800))
         .fadeIn()
         .slideY(begin: 0.2, end: 0);
@@ -305,33 +279,33 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
 
   Widget _buildActionButtons() {
     return SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _isValidating ? null : _handleConnect,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6C63FF),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 8,
-            ),
-            child: _isValidating
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Text(
-                    'Connect',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _isValidating ? null : _handleConnect,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF6C63FF),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-        )
+          elevation: 8,
+        ),
+        child: _isValidating
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Text(
+                'Connect',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+      ),
+    )
         .animate(delay: const Duration(milliseconds: 1000))
         .fadeIn()
         .slideY(begin: 0.2, end: 0);

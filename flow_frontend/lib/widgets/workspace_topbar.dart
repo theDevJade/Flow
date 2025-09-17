@@ -33,9 +33,9 @@ class WorkspaceTopBar extends StatelessWidget {
                 Text(
                   'Flow',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                 ),
 
                 const SizedBox(width: 24),
@@ -74,10 +74,8 @@ class WorkspaceTopBar extends StatelessWidget {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-
             _buildWorkspaceDropdown(context, manager),
             const SizedBox(width: 8),
-
             _buildCreateWorkspaceButton(context, manager),
           ],
         );
@@ -85,7 +83,8 @@ class WorkspaceTopBar extends StatelessWidget {
     );
   }
 
-  Widget _buildWorkspaceDropdown(BuildContext context, WorkspaceManager manager) {
+  Widget _buildWorkspaceDropdown(
+      BuildContext context, WorkspaceManager manager) {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceVariant,
@@ -126,7 +125,8 @@ class WorkspaceTopBar extends StatelessWidget {
     );
   }
 
-  Widget _buildCreateWorkspaceButton(BuildContext context, WorkspaceManager manager) {
+  Widget _buildCreateWorkspaceButton(
+      BuildContext context, WorkspaceManager manager) {
     return IconButton(
       onPressed: () => _showCreateWorkspaceDialog(context, manager),
       icon: const Icon(Icons.add),
@@ -140,7 +140,6 @@ class WorkspaceTopBar extends StatelessWidget {
       ),
     );
   }
-
 
   Widget _buildConnectionStatus(
     BuildContext context,
@@ -201,9 +200,9 @@ class WorkspaceTopBar extends StatelessWidget {
                 Text(
                   statusText,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: statusColor,
-                    fontWeight: FontWeight.w500,
-                  ),
+                        color: statusColor,
+                        fontWeight: FontWeight.w500,
+                      ),
                 ),
               ],
             ),
@@ -272,9 +271,9 @@ class WorkspaceTopBar extends StatelessWidget {
             child: Text(
               user.username.isNotEmpty ? user.username[0].toUpperCase() : 'U',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
             ),
           ),
           itemBuilder: (context) => <PopupMenuEntry<String>>[
@@ -308,7 +307,8 @@ class WorkspaceTopBar extends StatelessWidget {
     );
   }
 
-  void _showCreateWorkspaceDialog(BuildContext context, WorkspaceManager manager) {
+  void _showCreateWorkspaceDialog(
+      BuildContext context, WorkspaceManager manager) {
     final nameController = TextEditingController();
 
     showDialog(
@@ -349,12 +349,14 @@ class WorkspaceTopBar extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: manager.isLoading ? null : () {
-              if (nameController.text.trim().isNotEmpty) {
-                manager.createWorkspace(nameController.text.trim());
-                Navigator.of(context).pop();
-              }
-            },
+            onPressed: manager.isLoading
+                ? null
+                : () {
+                    if (nameController.text.trim().isNotEmpty) {
+                      manager.createWorkspace(nameController.text.trim());
+                      Navigator.of(context).pop();
+                    }
+                  },
             child: manager.isLoading
                 ? const SizedBox(
                     width: 16,
@@ -415,8 +417,9 @@ class _LoginDialogState extends State<LoginDialog> {
             'dev456 (Developer)\\n'
             'user789 (User)',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            ),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
           ),
         ],
       ),

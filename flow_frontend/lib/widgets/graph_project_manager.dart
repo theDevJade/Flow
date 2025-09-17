@@ -57,9 +57,8 @@ class _GraphProjectManagerState extends State<GraphProjectManager> {
     var filtered = _projects;
 
     if (_selectedCategory != 'All') {
-      filtered = filtered
-          .where((p) => p.category == _selectedCategory)
-          .toList();
+      filtered =
+          filtered.where((p) => p.category == _selectedCategory).toList();
     }
 
     if (_searchQuery.isNotEmpty) {
@@ -93,7 +92,6 @@ class _GraphProjectManagerState extends State<GraphProjectManager> {
       ),
       body: Column(
         children: [
-
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
@@ -126,7 +124,6 @@ class _GraphProjectManagerState extends State<GraphProjectManager> {
               ],
             ),
           ),
-
           Expanded(
             child: filteredProjects.isEmpty
                 ? _buildEmptyState()
@@ -159,8 +156,9 @@ class _GraphProjectManagerState extends State<GraphProjectManager> {
                 ? 'No projects found'
                 : 'No projects yet',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            ),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -168,8 +166,9 @@ class _GraphProjectManagerState extends State<GraphProjectManager> {
                 ? 'Try adjusting your search or filter'
                 : 'Create your first graph project',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
-            ),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                ),
           ),
           if (_searchQuery.isEmpty && _selectedCategory == 'All') ...[
             const SizedBox(height: 24),
@@ -231,10 +230,10 @@ class _GraphProjectManagerState extends State<GraphProjectManager> {
                 Text(
                   'Modified ${_formatDate(project.modifiedAt)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.6),
-                  ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.6),
+                      ),
                 ),
               ],
             ),
@@ -369,22 +368,21 @@ class _GraphProjectManagerState extends State<GraphProjectManager> {
                   labelText: 'Category',
                   border: OutlineInputBorder(),
                 ),
-                items:
-                    [
-                      'Workflow',
-                      'Algorithm',
-                      'Data Processing',
-                      'Automation',
-                      'Machine Learning',
-                      'System Design',
-                      'Game Logic',
-                      'Other',
-                    ].map((category) {
-                      return DropdownMenuItem(
-                        value: category,
-                        child: Text(category),
-                      );
-                    }).toList(),
+                items: [
+                  'Workflow',
+                  'Algorithm',
+                  'Data Processing',
+                  'Automation',
+                  'Machine Learning',
+                  'System Design',
+                  'Game Logic',
+                  'Other',
+                ].map((category) {
+                  return DropdownMenuItem(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
                 onChanged: (value) {
                   setDialogState(() {
                     selectedCategory = value!;

@@ -23,16 +23,11 @@ class _WebSocketTestState extends State<WebSocketTest> {
   }
 
   void _initializeWebSocket() {
-
-
-
-
     _webSocketService.status.listen((status) {
       setState(() {
         _connectionStatus = status.toString().split('.').last;
       });
     });
-
 
     _webSocketService.messages.listen((message) {
       setState(() {
@@ -42,7 +37,6 @@ class _WebSocketTestState extends State<WebSocketTest> {
         }
       });
     });
-
 
     _connectToServer();
   }
@@ -66,7 +60,6 @@ class _WebSocketTestState extends State<WebSocketTest> {
         _lastJsonExport = jsonString;
       });
 
-
       _webSocketService.send(
         WebSocketMessage(
           type: 'graph_save',
@@ -89,17 +82,6 @@ class _WebSocketTestState extends State<WebSocketTest> {
   }
 
   void _toggleMode() {
-
-
-
-
-
-
-
-
-
-
-
     _connectToServer();
   }
 
@@ -130,8 +112,7 @@ class _WebSocketTestState extends State<WebSocketTest> {
                   ? Icons.stop
                   : Icons.play_arrow,
             ),
-            tooltip:
-                _webSocketService.currentStatus ==
+            tooltip: _webSocketService.currentStatus ==
                     WebSocketConnectionStatus.connected
                 ? 'Disconnect'
                 : 'Connect',

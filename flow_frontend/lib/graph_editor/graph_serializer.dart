@@ -13,9 +13,8 @@ class GraphSerializer {
       'version': '1.0',
       'metadata': metadata ?? {},
       'nodes': nodes.map((node) => node.toJson()).toList(),
-      'connections': connections
-          .map((connection) => connection.toJson())
-          .toList(),
+      'connections':
+          connections.map((connection) => connection.toJson()).toList(),
     };
 
     return jsonEncode(graphData);
@@ -66,9 +65,8 @@ class GraphSerializer {
       'version': '1.0',
       'metadata': metadata ?? {},
       'nodes': nodes.map((node) => node.toJson()).toList(),
-      'connections': connections
-          .map((connection) => connection.toJson())
-          .toList(),
+      'connections':
+          connections.map((connection) => connection.toJson()).toList(),
     };
 
     const encoder = JsonEncoder.withIndent('  ');

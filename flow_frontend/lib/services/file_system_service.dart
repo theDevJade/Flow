@@ -22,9 +22,8 @@ class FileNode {
 
   factory FileNode.fromJson(Map<String, dynamic> json) {
     var childrenList = json['children'] as List? ?? [];
-    List<FileNode> children = childrenList
-        .map((i) => FileNode.fromJson(i))
-        .toList();
+    List<FileNode> children =
+        childrenList.map((i) => FileNode.fromJson(i)).toList();
 
     // Handle lastModified - it might be null, empty string, or a valid date
     DateTime lastModified;

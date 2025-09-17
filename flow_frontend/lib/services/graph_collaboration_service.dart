@@ -183,16 +183,15 @@ class GraphCollaborationService {
   void _handleUserSelection(WebSocketMessage message) {
     final userId = message.userId;
     if (userId != null) {
-      final selectedNodes =
-          (message.data['selectedNodes'] as List<dynamic>?)
+      final selectedNodes = (message.data['selectedNodes'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [];
       final selectedConnections =
           (message.data['selectedConnections'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [];
+                  ?.map((e) => e.toString())
+                  .toList() ??
+              [];
 
       _eventController.add(
         CollaborationEvent.userSelection(
@@ -233,7 +232,7 @@ class GraphCollaborationService {
       WebSocketMessage(
         type: 'node_add',
         data: {
-          'graphId': _currentGraphId ?? 'default', 
+          'graphId': _currentGraphId ?? 'default',
           'nodeId': node.id,
           'nodeData': node.toJson(),
         },
@@ -246,7 +245,7 @@ class GraphCollaborationService {
       WebSocketMessage(
         type: 'node_update',
         data: {
-          'graphId': _currentGraphId ?? 'default', 
+          'graphId': _currentGraphId ?? 'default',
           'nodeId': node.id,
           'nodeData': node.toJson(),
         },

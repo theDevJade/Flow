@@ -64,7 +64,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               Text(
                 'WebSocket Configuration',
                 style: Theme.of(
@@ -72,7 +71,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-
 
               TextFormField(
                 controller: _hostController,
@@ -90,7 +88,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 },
               ),
               const SizedBox(height: 16),
-
 
               TextFormField(
                 controller: _portController,

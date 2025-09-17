@@ -28,7 +28,6 @@ class _AnimatedLoadingScreenState extends State<AnimatedLoadingScreen>
   double _progress = 0.0;
   String _currentStep = 'Initializing...';
 
-
   ProjectStats? _projectStats;
   UpdateInfo? _updateInfo;
   String _greeting = '';
@@ -66,7 +65,6 @@ class _AnimatedLoadingScreenState extends State<AnimatedLoadingScreen>
   }
 
   void _startLoadingSequence() {
-
     _logoController.forward();
 
     // Schedule progress updates
@@ -163,8 +161,8 @@ class _AnimatedLoadingScreenState extends State<AnimatedLoadingScreen>
     final timeGreeting = hour < 12
         ? 'Good morning'
         : hour < 17
-        ? 'Good afternoon'
-        : 'Good evening';
+            ? 'Good afternoon'
+            : 'Good evening';
 
     final projectName =
         _projectStats?.projectPath.split('/').last ?? 'Flow Project';
@@ -220,32 +218,32 @@ class _AnimatedLoadingScreenState extends State<AnimatedLoadingScreen>
           children: [
             // Animated logo
             Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.blue.withOpacity(0.8),
-                        Colors.purple.withOpacity(0.8),
-                        Colors.pink.withOpacity(0.8),
-                      ],
-                      stops: [0.0, 0.5, 1.0],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withOpacity(0.3),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.blue.withOpacity(0.8),
+                    Colors.purple.withOpacity(0.8),
+                    Colors.pink.withOpacity(0.8),
+                  ],
+                  stops: [0.0, 0.5, 1.0],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.3),
+                    blurRadius: 20,
+                    spreadRadius: 5,
                   ),
-                  child: Icon(
-                    Icons.dynamic_form,
-                    size: 60,
-                    color: Colors.white,
-                  ),
-                )
+                ],
+              ),
+              child: Icon(
+                Icons.dynamic_form,
+                size: 60,
+                color: Colors.white,
+              ),
+            )
                 .animate(controller: _logoController)
                 .scale(
                   begin: const Offset(0.0, 0.0),
@@ -258,19 +256,18 @@ class _AnimatedLoadingScreenState extends State<AnimatedLoadingScreen>
 
             // App title
             Text(
-                  'Flow',
-                  style: TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    foreground: Paint()
-                      ..shader =
-                          LinearGradient(
-                            colors: [Colors.blue, Colors.purple, Colors.pink],
-                          ).createShader(
-                            const Rect.fromLTWH(0.0, 0.0, 200.0, 70.0),
-                          ),
+              'Flow',
+              style: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                foreground: Paint()
+                  ..shader = LinearGradient(
+                    colors: [Colors.blue, Colors.purple, Colors.pink],
+                  ).createShader(
+                    const Rect.fromLTWH(0.0, 0.0, 200.0, 70.0),
                   ),
-                )
+              ),
+            )
                 .animate(controller: _logoController)
                 .slideY(
                   begin: 50,
@@ -289,13 +286,13 @@ class _AnimatedLoadingScreenState extends State<AnimatedLoadingScreen>
 
             // Subtitle
             Text(
-                  'Visual Workflow Editor',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white.withOpacity(0.7),
-                    letterSpacing: 2.0,
-                  ),
-                )
+              'Visual Workflow Editor',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white.withOpacity(0.7),
+                letterSpacing: 2.0,
+              ),
+            )
                 .animate(controller: _logoController)
                 .slideY(
                   begin: 30,

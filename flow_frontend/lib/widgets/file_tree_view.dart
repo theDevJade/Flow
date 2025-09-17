@@ -14,8 +14,7 @@ class FileTreeView extends StatefulWidget {
 
 class _FileTreeViewState extends State<FileTreeView> {
   final Set<String> _expandedNodes = {};
-  final Set<String> _loadingFiles =
-      {};
+  final Set<String> _loadingFiles = {};
 
   @override
   void initState() {
@@ -55,87 +54,78 @@ class _FileTreeViewState extends State<FileTreeView> {
 
     final appState = context.read<AppState>();
 
+    appState.fileSystemService.readFile(filePath).then((content) {
+      if (!mounted) return;
 
-    appState.fileSystemService
-        .readFile(filePath)
-        .then((content) {
-          if (!mounted) return;
+      setState(() {
+        _loadingFiles.remove(filePath);
+      });
 
-          setState(() {
-            _loadingFiles.remove(filePath);
-          });
-
-          if (content != null) {
-            debugPrint('✅ FileTreeView: File loaded successfully: $filePath');
-            appState.fileSystemState.openFile(filePath, content);
-          } else {
-            debugPrint('❌ FileTreeView: File content was null: $filePath');
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Failed to load file: ${filePath.split('/').last}',
-                ),
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-            );
-          }
-        })
-        .catchError((error) {
-          if (!mounted) return;
-
-          debugPrint('❌ FileTreeView: Error reading file: $error');
-          setState(() {
-            _loadingFiles.remove(filePath);
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error loading file: ${filePath.split('/').last}'),
-              backgroundColor: Theme.of(context).colorScheme.error,
+      if (content != null) {
+        debugPrint('✅ FileTreeView: File loaded successfully: $filePath');
+        appState.fileSystemState.openFile(filePath, content);
+      } else {
+        debugPrint('❌ FileTreeView: File content was null: $filePath');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to load file: ${filePath.split('/').last}',
             ),
-          );
-        })
-        .timeout(
-          const Duration(seconds: 10),
-          onTimeout: () {
-            if (!mounted) return null;
-
-            setState(() {
-              _loadingFiles.remove(filePath);
-            });
-            debugPrint('⏰ FileTreeView: Timeout loading file: $filePath');
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Timeout loading file: ${filePath.split('/').last}',
-                ),
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-            );
-            return null;
-          },
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
         );
+      }
+    }).catchError((error) {
+      if (!mounted) return;
+
+      debugPrint('❌ FileTreeView: Error reading file: $error');
+      setState(() {
+        _loadingFiles.remove(filePath);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading file: ${filePath.split('/').last}'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        if (!mounted) return null;
+
+        setState(() {
+          _loadingFiles.remove(filePath);
+        });
+        debugPrint('⏰ FileTreeView: Timeout loading file: $filePath');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Timeout loading file: ${filePath.split('/').last}',
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+        return null;
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-
         if (!appState.authService.isAuthenticated) {
           return _buildNotAuthenticatedState();
         }
-
 
         if (appState.webSocketService.currentStatus !=
             WebSocketConnectionStatus.connected) {
           return _buildConnectingState(appState.webSocketService.currentStatus);
         }
 
-
         if (appState.fileSystemState.fileTree == null) {
           return _buildLoadingState();
         }
-
 
         return _buildFileTreeView(appState.fileSystemState.fileTree!);
       },
@@ -163,8 +153,11 @@ class _FileTreeViewState extends State<FileTreeView> {
             Text(
               'Please login to view files',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-              ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.7),
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -213,8 +206,11 @@ class _FileTreeViewState extends State<FileTreeView> {
             Text(
               message,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-              ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.7),
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -396,10 +392,10 @@ class _FileTreeViewState extends State<FileTreeView> {
                 child: Text(
                   name,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.9),
-                  ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.9),
+                      ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),

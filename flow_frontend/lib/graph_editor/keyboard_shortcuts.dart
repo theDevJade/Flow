@@ -40,23 +40,23 @@ class KeyboardShortcuts {
   }
 
   static Map<String, List<LogicalKeyboardKey>> get shortcuts => {
-    'delete': [LogicalKeyboardKey.delete, LogicalKeyboardKey.keyX],
-    'deselect': [LogicalKeyboardKey.escape],
-    'selectAll': [primaryModifier, LogicalKeyboardKey.keyA],
-    'copy': [primaryModifier, LogicalKeyboardKey.keyC],
-    'paste': [primaryModifier, LogicalKeyboardKey.keyV],
-    'undo': [primaryModifier, LogicalKeyboardKey.keyZ],
-    'redo': [primaryModifier, LogicalKeyboardKey.keyY],
-    'save': [primaryModifier, LogicalKeyboardKey.keyS],
-    'open': [primaryModifier, LogicalKeyboardKey.keyO],
-    'duplicate': [LogicalKeyboardKey.shift, LogicalKeyboardKey.keyD],
-    'addNode': [LogicalKeyboardKey.shift, LogicalKeyboardKey.keyA],
-    'zoomIn': [LogicalKeyboardKey.equal], // Plus key
-    'zoomOut': [LogicalKeyboardKey.minus],
-    'resetZoom': [LogicalKeyboardKey.keyR],
-    'home': [LogicalKeyboardKey.keyH],
-    'commandPalette': [primaryModifier, LogicalKeyboardKey.space],
-  };
+        'delete': [LogicalKeyboardKey.delete, LogicalKeyboardKey.keyX],
+        'deselect': [LogicalKeyboardKey.escape],
+        'selectAll': [primaryModifier, LogicalKeyboardKey.keyA],
+        'copy': [primaryModifier, LogicalKeyboardKey.keyC],
+        'paste': [primaryModifier, LogicalKeyboardKey.keyV],
+        'undo': [primaryModifier, LogicalKeyboardKey.keyZ],
+        'redo': [primaryModifier, LogicalKeyboardKey.keyY],
+        'save': [primaryModifier, LogicalKeyboardKey.keyS],
+        'open': [primaryModifier, LogicalKeyboardKey.keyO],
+        'duplicate': [LogicalKeyboardKey.shift, LogicalKeyboardKey.keyD],
+        'addNode': [LogicalKeyboardKey.shift, LogicalKeyboardKey.keyA],
+        'zoomIn': [LogicalKeyboardKey.equal], // Plus key
+        'zoomOut': [LogicalKeyboardKey.minus],
+        'resetZoom': [LogicalKeyboardKey.keyR],
+        'home': [LogicalKeyboardKey.keyH],
+        'commandPalette': [primaryModifier, LogicalKeyboardKey.space],
+      };
 
   static bool isPressed(String shortcut, Set<LogicalKeyboardKey> pressed) {
     final keys = shortcuts[shortcut];
@@ -70,23 +70,21 @@ class KeyboardShortcuts {
     final keys = shortcuts[shortcut];
     if (keys == null || keys.isEmpty) return '';
 
-    return keys
-        .map((key) {
-          if (key == LogicalKeyboardKey.control) return 'Ctrl';
-          if (key == LogicalKeyboardKey.shift) return shiftIcon;
-          if (key == LogicalKeyboardKey.alt) return altIcon;
-          if (key == LogicalKeyboardKey.meta) return '⌘';
-          if (key == LogicalKeyboardKey.escape) return 'Esc';
-          if (key == LogicalKeyboardKey.space) return 'Space';
-          if (key == LogicalKeyboardKey.delete) return 'Del';
-          if (key == LogicalKeyboardKey.equal) return '+';
-          if (key == LogicalKeyboardKey.minus) return '-';
-          if (key == primaryModifier) {
-            return modifierIcon;
-          }
-          return key.keyLabel.toUpperCase();
-        })
-        .join(' + ');
+    return keys.map((key) {
+      if (key == LogicalKeyboardKey.control) return 'Ctrl';
+      if (key == LogicalKeyboardKey.shift) return shiftIcon;
+      if (key == LogicalKeyboardKey.alt) return altIcon;
+      if (key == LogicalKeyboardKey.meta) return '⌘';
+      if (key == LogicalKeyboardKey.escape) return 'Esc';
+      if (key == LogicalKeyboardKey.space) return 'Space';
+      if (key == LogicalKeyboardKey.delete) return 'Del';
+      if (key == LogicalKeyboardKey.equal) return '+';
+      if (key == LogicalKeyboardKey.minus) return '-';
+      if (key == primaryModifier) {
+        return modifierIcon;
+      }
+      return key.keyLabel.toUpperCase();
+    }).join(' + ');
   }
 
   // Get a formatted tooltip with all main shortcuts

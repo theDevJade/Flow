@@ -91,8 +91,7 @@ class _PropertyInspectorState extends State<PropertyInspector>
       if (property.type == 'string' ||
           property.type == 'float' ||
           property.type == 'int') {
-        final currentValue =
-            widget.selectedNode!.properties[property.name] ??
+        final currentValue = widget.selectedNode!.properties[property.name] ??
             property.defaultValue;
         _textControllers[property.name] = TextEditingController(
           text: currentValue.toString(),
@@ -337,8 +336,7 @@ class _PropertyInspectorState extends State<PropertyInspector>
               ),
             ),
             Switch.adaptive(
-              value:
-                  currentValue as bool? ??
+              value: currentValue as bool? ??
                   property.defaultValue as bool? ??
                   false,
               onChanged: (value) {

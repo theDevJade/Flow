@@ -67,8 +67,8 @@ class SwitchWorkspaceAction extends Action<SwitchWorkspaceIntent> {
     final context = primaryFocus?.context;
     if (context != null) {
       context.read<AppState>().workspaceState.switchToWorkspace(
-        intent.workspaceType,
-      );
+            intent.workspaceType,
+          );
     }
     return null;
   }
@@ -85,10 +85,10 @@ class SaveFileAction extends Action<SaveFileIntent> {
         appState.fileSystemService
             .writeFile(activeFile.path, activeFile.content)
             .then((success) {
-              if (success) {
-                appState.fileSystemState.markFileSaved(activeFile.path);
-              }
-            });
+          if (success) {
+            appState.fileSystemState.markFileSaved(activeFile.path);
+          }
+        });
       }
     }
     return null;

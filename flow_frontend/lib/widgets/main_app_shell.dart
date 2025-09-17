@@ -43,18 +43,6 @@ class _MainAppShellState extends State<MainAppShell>
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-
-
-
-
-
-
-
-
-
-
-
-
         if (!appState.isInitialized) {
           return _buildLoadingScreen();
         }
@@ -71,9 +59,7 @@ class _MainAppShellState extends State<MainAppShell>
                 Expanded(
                   child: Row(
                     children: [
-
                       const WorkspaceSidebar(),
-
                       Expanded(
                         child: Consumer<WorkspaceState>(
                           builder: (context, workspaceState, child) {
@@ -147,10 +133,10 @@ class _MainAppShellState extends State<MainAppShell>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.error,
-                  )
+                Icons.error_outline,
+                size: 64,
+                color: Theme.of(context).colorScheme.error,
+              )
                   .animate()
                   .scale(duration: 300.ms)
                   .shake(hz: 2, curve: Curves.easeInOut),
@@ -158,31 +144,31 @@ class _MainAppShellState extends State<MainAppShell>
               Text(
                 'Initialization Error',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
-                  fontWeight: FontWeight.bold,
-                ),
+                      color: Theme.of(context).colorScheme.error,
+                      fontWeight: FontWeight.bold,
+                    ),
               ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
               const SizedBox(height: 16),
               Text(
                 error,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.8),
-                ),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.8),
+                    ),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
               const SizedBox(height: 32),
               ElevatedButton.icon(
-                    onPressed: () {
-                      Provider.of<AppState>(
-                        context,
-                        listen: false,
-                      ).initialize();
-                    },
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
-                  )
+                onPressed: () {
+                  Provider.of<AppState>(
+                    context,
+                    listen: false,
+                  ).initialize();
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              )
                   .animate()
                   .fadeIn(duration: 400.ms, delay: 300.ms)
                   .slideY(begin: 0.2, end: 0),

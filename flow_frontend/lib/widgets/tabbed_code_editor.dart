@@ -66,8 +66,9 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
           Text(
             file.fileName,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            ),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
           ),
           const Spacer(),
           IconButton(
@@ -150,13 +151,14 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
                 child: Text(
                   file.fileName,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: isActive
-                        ? Theme.of(context).colorScheme.onBackground
-                        : Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withOpacity(0.8),
-                    fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
-                  ),
+                        color: isActive
+                            ? Theme.of(context).colorScheme.onBackground
+                            : Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.8),
+                        fontWeight:
+                            isActive ? FontWeight.w500 : FontWeight.normal,
+                      ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -226,9 +228,9 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
             SchedulerBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                 context.read<AppState>().fileSystemState.updateFileContent(
-                  file.path,
-                  text,
-                );
+                      file.path,
+                      text,
+                    );
               }
             });
           },
@@ -265,15 +267,17 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
           Text(
             'No files open',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            ),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Open a file from the explorer to start editing',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-            ),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                ),
           ),
         ],
       ),

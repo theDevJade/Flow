@@ -647,8 +647,8 @@ class _GraphEditorState extends State<GraphEditor>
                   child: PropertyInspector(
                     selectedNode: selectedNodeId != null
                         ? nodes
-                              .where((node) => node.id == selectedNodeId)
-                              .firstOrNull
+                            .where((node) => node.id == selectedNodeId)
+                            .firstOrNull
                         : null,
                     onNodeUpdated: _updateNode,
                   ),
@@ -1104,9 +1104,8 @@ class _GraphEditorState extends State<GraphEditor>
       return;
     }
 
-    final fromNode = nodes
-        .where((n) => n.id == connectingFromNodeId)
-        .firstOrNull;
+    final fromNode =
+        nodes.where((n) => n.id == connectingFromNodeId).firstOrNull;
     final toNode = nodes.where((n) => n.id == toNodeId).firstOrNull;
 
     if (fromNode == null || toNode == null) return;
@@ -1614,21 +1613,18 @@ class _GraphEditorState extends State<GraphEditor>
 
     for (final connection in connections) {
       // Get the positions of the connected ports
-      final fromNode = nodes
-          .where((n) => n.id == connection.fromNodeId)
-          .firstOrNull;
-      final toNode = nodes
-          .where((n) => n.id == connection.toNodeId)
-          .firstOrNull;
+      final fromNode =
+          nodes.where((n) => n.id == connection.fromNodeId).firstOrNull;
+      final toNode =
+          nodes.where((n) => n.id == connection.toNodeId).firstOrNull;
 
       if (fromNode == null || toNode == null) continue;
 
       final fromPort = fromNode.outputs
           .where((p) => p.id == connection.fromPortId)
           .firstOrNull;
-      final toPort = toNode.inputs
-          .where((p) => p.id == connection.toPortId)
-          .firstOrNull;
+      final toPort =
+          toNode.inputs.where((p) => p.id == connection.toPortId).firstOrNull;
 
       if (fromPort == null || toPort == null) continue;
 
@@ -1723,7 +1719,8 @@ class _GraphEditorState extends State<GraphEditor>
       );
 
       final newPanOffset = zoomCenter - (graphPoint * clampedScale);
-      _panAnimation = Tween<Offset>(begin: panOffset, end: newPanOffset).animate(
+      _panAnimation =
+          Tween<Offset>(begin: panOffset, end: newPanOffset).animate(
         CurvedAnimation(
           parent: _panAnimationController!,
           curve: Curves

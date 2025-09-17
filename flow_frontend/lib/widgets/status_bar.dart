@@ -29,22 +29,12 @@ class StatusBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             child: Row(
               children: [
-
                 _buildConnectionStatus(context, appState.webSocketService),
-
                 const SizedBox(width: 16),
-
-
                 _buildWorkspaceIndicator(context, appState.workspaceState),
-
                 const SizedBox(width: 16),
-
-
                 _buildWebSocketMessage(context, appState.webSocketService),
-
                 const Spacer(),
-
-
                 _buildFileInfo(context, appState.fileSystemState),
               ],
             ),
@@ -82,9 +72,8 @@ class StatusBar extends StatelessWidget {
             statusText = 'Reconnecting';
             // Show reconnection attempt count
             final logs = webSocketService.logs;
-            final reconnectLogs = logs
-                .where((log) => log.type == 'RECONNECT')
-                .length;
+            final reconnectLogs =
+                logs.where((log) => log.type == 'RECONNECT').length;
             if (reconnectLogs > 0) {
               statusDetail =
                   'Attempt $reconnectLogs/${WebSocketService.maxReconnectAttempts}';
@@ -124,22 +113,22 @@ class StatusBar extends StatelessWidget {
                     Text(
                       statusText,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.7),
-                      ),
+                            fontSize: 11,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withOpacity(0.7),
+                          ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (statusDetail != null)
                       Text(
                         statusDetail,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontSize: 9,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withOpacity(0.5),
-                        ),
+                              fontSize: 9,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.5),
+                            ),
                         overflow: TextOverflow.ellipsis,
                       ),
                   ],
@@ -160,16 +149,16 @@ class StatusBar extends StatelessWidget {
       builder: (context, state, child) {
         final workspaceName =
             state.currentWorkspace == WorkspaceType.graphEditor
-            ? 'Graph Editor'
-            : 'Code Editor';
+                ? 'Graph Editor'
+                : 'Code Editor';
 
         return Text(
           workspaceName,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontSize: 11,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            fontWeight: FontWeight.w500,
-          ),
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                fontWeight: FontWeight.w500,
+              ),
         );
       },
     );
@@ -188,9 +177,10 @@ class StatusBar extends StatelessWidget {
           return Text(
             openFilesCount == 0 ? 'No files' : '$openFilesCount files',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontSize: 11,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            ),
+                  fontSize: 11,
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ),
           );
         }
 
@@ -200,10 +190,13 @@ class StatusBar extends StatelessWidget {
             Text(
               activeFile.path.split('/').last,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontSize: 11,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                fontWeight: FontWeight.w500,
-              ),
+                    fontSize: 11,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.7),
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
             if (activeFile.isModified) ...[
               const SizedBox(width: 4),
@@ -220,9 +213,12 @@ class StatusBar extends StatelessWidget {
             Text(
               '$openFilesCount files',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontSize: 11,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-              ),
+                    fontSize: 11,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.5),
+                  ),
             ),
           ],
         );
@@ -242,9 +238,8 @@ class StatusBar extends StatelessWidget {
         }
 
         final message = snapshot.data!;
-        final timestamp = DateTime.now()
-            .difference(message.timestamp)
-            .inSeconds;
+        final timestamp =
+            DateTime.now().difference(message.timestamp).inSeconds;
 
         String timeText;
         if (timestamp < 60) {
@@ -268,11 +263,11 @@ class StatusBar extends StatelessWidget {
                 child: Text(
                   '${message.type}: ${_getMessageSummary(message)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontSize: 10,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.7),
-                  ),
+                        fontSize: 10,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.7),
+                      ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -280,11 +275,11 @@ class StatusBar extends StatelessWidget {
               Text(
                 timeText,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontSize: 9,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.4),
-                ),
+                      fontSize: 9,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.4),
+                    ),
               ),
             ],
           ),
@@ -366,20 +361,19 @@ class StatusBar extends StatelessWidget {
         width: 8,
         height: 8,
         decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        child:
-            Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.3),
-                    shape: BoxShape.circle,
-                  ),
-                )
-                .animate(
-                  onPlay: (controller) => controller.repeat(reverse: true),
-                )
-                .fadeIn(duration: 500.milliseconds)
-                .fadeOut(duration: 500.milliseconds),
+        child: Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.3),
+            shape: BoxShape.circle,
+          ),
+        )
+            .animate(
+              onPlay: (controller) => controller.repeat(reverse: true),
+            )
+            .fadeIn(duration: 500.milliseconds)
+            .fadeOut(duration: 500.milliseconds),
       );
     }
 
@@ -578,9 +572,9 @@ class StatusBar extends StatelessWidget {
         content: Text(
           webSocketService.hasExhaustedReconnectAttempts
               ? 'Maximum reconnection attempts reached. This may be due to authentication issues. '
-                    'Would you like to reauthenticate?'
+                  'Would you like to reauthenticate?'
               : 'WebSocket connection failed. This may be due to authentication issues. '
-                    'Would you like to reauthenticate?',
+                  'Would you like to reauthenticate?',
         ),
         actions: [
           TextButton(

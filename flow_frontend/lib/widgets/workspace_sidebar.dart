@@ -104,9 +104,9 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                   child: Text(
                     'Workspace',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                   ),
                 ),
                 IconButton(
@@ -166,13 +166,13 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                   child: Text(
                     page.name,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: page.isActive
-                          ? Theme.of(context).colorScheme.onPrimaryContainer
-                          : Theme.of(context).colorScheme.onSurface,
-                      fontWeight: page.isActive
-                          ? FontWeight.w500
-                          : FontWeight.normal,
-                    ),
+                          color: page.isActive
+                              ? Theme.of(context).colorScheme.onPrimaryContainer
+                              : Theme.of(context).colorScheme.onSurface,
+                          fontWeight: page.isActive
+                              ? FontWeight.w500
+                              : FontWeight.normal,
+                        ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

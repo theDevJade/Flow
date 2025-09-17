@@ -41,8 +41,8 @@ class _CommandPaletteState extends State<CommandPalette>
     );
     _slideAnimation =
         Tween<Offset>(begin: const Offset(0, -0.1), end: Offset.zero).animate(
-          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-        );
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
 
     _loadTemplatesAndFilter();
     _animationController.forward();
@@ -209,7 +209,9 @@ class _CommandPaletteState extends State<CommandPalette>
                               children: [
                                 Text(
                                   'Add Node',
-                                  style: Theme.of(context).textTheme.titleLarge
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleLarge
                                       ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                                 const SizedBox(height: 8),
@@ -300,8 +302,8 @@ class _CommandPaletteState extends State<CommandPalette>
                                                       ?.copyWith(
                                                         color:
                                                             _getCategoryColor(
-                                                              category,
-                                                            ),
+                                                          category,
+                                                        ),
                                                         fontWeight:
                                                             FontWeight.bold,
                                                         letterSpacing: 0.5,
@@ -312,29 +314,32 @@ class _CommandPaletteState extends State<CommandPalette>
                                           ),
 
                                           // Category templates
-                                          ...categoryTemplates.asMap().entries.map((
+                                          ...categoryTemplates
+                                              .asMap()
+                                              .entries
+                                              .map((
                                             entry,
                                           ) {
                                             final template = entry.value;
                                             final globalIndex =
                                                 filteredTemplates.indexOf(
-                                                  template,
-                                                );
+                                              template,
+                                            );
                                             final isSelected =
                                                 globalIndex == selectedIndex;
 
                                             return Container(
                                               margin:
                                                   const EdgeInsets.symmetric(
-                                                    horizontal: 4,
-                                                    vertical: 1,
-                                                  ),
+                                                horizontal: 4,
+                                                vertical: 1,
+                                              ),
                                               decoration: BoxDecoration(
                                                 color: isSelected
                                                     ? Theme.of(context)
-                                                          .colorScheme
-                                                          .primary
-                                                          .withAlpha(26)
+                                                        .colorScheme
+                                                        .primary
+                                                        .withAlpha(26)
                                                     : Colors.transparent,
                                                 borderRadius:
                                                     BorderRadius.circular(6),
@@ -359,8 +364,8 @@ class _CommandPaletteState extends State<CommandPalette>
                                                         .withAlpha(51),
                                                     borderRadius:
                                                         BorderRadius.circular(
-                                                          6,
-                                                        ),
+                                                      6,
+                                                    ),
                                                   ),
                                                   child: Icon(
                                                     _getCategoryIcon(
@@ -388,8 +393,7 @@ class _CommandPaletteState extends State<CommandPalette>
                                                       .bodySmall
                                                       ?.copyWith(
                                                         color: Colors
-                                                            .grey
-                                                            .shade600,
+                                                            .grey.shade600,
                                                       ),
                                                 ),
                                                 trailing: Row(
@@ -397,8 +401,7 @@ class _CommandPaletteState extends State<CommandPalette>
                                                       MainAxisSize.min,
                                                   children: [
                                                     if (template
-                                                        .inputs
-                                                        .isNotEmpty)
+                                                        .inputs.isNotEmpty)
                                                       Row(
                                                         mainAxisSize:
                                                             MainAxisSize.min,
@@ -407,30 +410,25 @@ class _CommandPaletteState extends State<CommandPalette>
                                                             Icons.input,
                                                             size: 12,
                                                             color: Colors
-                                                                .grey
-                                                                .shade500,
+                                                                .grey.shade500,
                                                           ),
                                                           Text(
                                                             '${template.inputs.length}',
                                                             style: TextStyle(
                                                               fontSize: 10,
-                                                              color: Colors
-                                                                  .grey
+                                                              color: Colors.grey
                                                                   .shade500,
                                                             ),
                                                           ),
                                                         ],
                                                       ),
-                                                    if (template
-                                                            .inputs
+                                                    if (template.inputs
                                                             .isNotEmpty &&
                                                         template
-                                                            .outputs
-                                                            .isNotEmpty)
+                                                            .outputs.isNotEmpty)
                                                       const SizedBox(width: 8),
                                                     if (template
-                                                        .outputs
-                                                        .isNotEmpty)
+                                                        .outputs.isNotEmpty)
                                                       Row(
                                                         mainAxisSize:
                                                             MainAxisSize.min,
@@ -439,15 +437,13 @@ class _CommandPaletteState extends State<CommandPalette>
                                                             Icons.output,
                                                             size: 12,
                                                             color: Colors
-                                                                .grey
-                                                                .shade500,
+                                                                .grey.shade500,
                                                           ),
                                                           Text(
                                                             '${template.outputs.length}',
                                                             style: TextStyle(
                                                               fontSize: 10,
-                                                              color: Colors
-                                                                  .grey
+                                                              color: Colors.grey
                                                                   .shade500,
                                                             ),
                                                           ),

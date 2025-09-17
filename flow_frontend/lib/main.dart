@@ -13,7 +13,6 @@ import 'screens/login_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-
   await PersistenceService.instance.initialize();
   await FileSystemService.instance.initialize();
 
@@ -27,12 +26,10 @@ class FlowApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-
         Provider<PersistenceService>(
           create: (_) => PersistenceService.instance,
         ),
         Provider<FileSystemService>(create: (_) => FileSystemService.instance),
-
         ChangeNotifierProvider<WebSocketService>(
           create: (_) => WebSocketService.instance,
         ),
@@ -68,15 +65,14 @@ class FlowApp extends StatelessWidget {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      colorScheme:
-          ColorScheme.fromSeed(
-            seedColor: const Color(0xFF6C63FF),
-            brightness: Brightness.dark,
-          ).copyWith(
-            surface: const Color(0xFF1A1A1A),
-            background: const Color(0xFF0F0F0F),
-            surfaceVariant: const Color(0xFF2A2A2A),
-          ),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF6C63FF),
+        brightness: Brightness.dark,
+      ).copyWith(
+        surface: const Color(0xFF1A1A1A),
+        background: const Color(0xFF0F0F0F),
+        surfaceVariant: const Color(0xFF2A2A2A),
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Color(0xFF1A1A1A),
         elevation: 0,

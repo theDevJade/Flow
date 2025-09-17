@@ -102,9 +102,8 @@ class GraphProjectService {
 
     try {
       final List<dynamic> projectsList = json.decode(projectsJson);
-      _projects = projectsList
-          .map((json) => GraphProject.fromJson(json))
-          .toList();
+      _projects =
+          projectsList.map((json) => GraphProject.fromJson(json)).toList();
 
       // Sort by modified date (newest first)
       _projects.sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));

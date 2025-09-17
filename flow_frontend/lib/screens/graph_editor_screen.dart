@@ -90,7 +90,6 @@ class _GraphEditorScreenState extends State<GraphEditorScreen> {
   void initState() {
     super.initState();
 
-
     sampleConnections = [
       GraphConnection(
         id: 'conn1',
@@ -189,7 +188,6 @@ class _GraphEditorScreenState extends State<GraphEditorScreen> {
     setState(() {
       currentProject = project;
       // @TODO: Load nodes and connections from project.graphData
-
     });
     Navigator.of(context).pop();
   }

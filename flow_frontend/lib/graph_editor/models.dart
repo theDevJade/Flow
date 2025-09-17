@@ -87,9 +87,8 @@ class GraphNode {
       'outputs': outputs.map((port) => port.toJson()).toList(),
       'color': color.value,
       'position': {'dx': position.dx, 'dy': position.dy},
-      'size': size != null
-          ? {'width': size!.width, 'height': size!.height}
-          : null,
+      'size':
+          size != null ? {'width': size!.width, 'height': size!.height} : null,
       'templateId': templateId,
       'properties': properties,
     };
@@ -111,10 +110,12 @@ class GraphNode {
           .toList(),
       color: Color(json['color'] as int? ?? Colors.blue.value),
       position: Offset(
-        (json['position']?['dx'] as double?) ?? 
-        (json['position']?['x'] as double?) ?? 0.0,
-        (json['position']?['dy'] as double?) ?? 
-        (json['position']?['y'] as double?) ?? 0.0,
+        (json['position']?['dx'] as double?) ??
+            (json['position']?['x'] as double?) ??
+            0.0,
+        (json['position']?['dy'] as double?) ??
+            (json['position']?['y'] as double?) ??
+            0.0,
       ),
       size: json['size'] != null
           ? Size(

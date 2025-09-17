@@ -24,14 +24,14 @@ class ContextMenuItem {
   });
 
   const ContextMenuItem.divider()
-    : label = '',
-      icon = null,
-      shortcut = null,
-      onTap = null,
-      submenu = null,
-      enabled = true,
-      isDivider = true,
-      color = null;
+      : label = '',
+        icon = null,
+        shortcut = null,
+        onTap = null,
+        submenu = null,
+        enabled = true,
+        isDivider = true,
+        color = null;
 }
 
 class ContextMenu extends StatefulWidget {
@@ -165,7 +165,6 @@ class _ContextMenuState extends State<ContextMenu>
               ),
               const SizedBox(width: 8),
             ],
-
             Expanded(
               child: Text(
                 item.label,
@@ -177,7 +176,6 @@ class _ContextMenuState extends State<ContextMenu>
                 ),
               ),
             ),
-
             if (item.shortcut != null) ...[
               const SizedBox(width: 8),
               Text(
@@ -185,7 +183,6 @@ class _ContextMenuState extends State<ContextMenu>
                 style: TextStyle(color: Colors.grey[500], fontSize: 11),
               ),
             ],
-
             if (item.submenu != null) ...[
               const SizedBox(width: 4),
               Icon(

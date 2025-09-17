@@ -229,9 +229,8 @@ class WorkspaceManager with ChangeNotifier {
       if (workspaceId != null) {
         _workspaces.removeWhere((w) => w.id == workspaceId);
         if (_currentWorkspaceId == workspaceId) {
-          _currentWorkspaceId = _workspaces.isNotEmpty
-              ? _workspaces.first.id
-              : null;
+          _currentWorkspaceId =
+              _workspaces.isNotEmpty ? _workspaces.first.id : null;
         }
         notifyListeners();
       }

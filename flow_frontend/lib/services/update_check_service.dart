@@ -13,18 +13,16 @@ class UpdateCheckService {
   Future<UpdateInfo> checkForUpdates() async {
     try {
       // Add timeout to prevent hanging
-      final response = await http
-          .get(
-            Uri.parse(_updateCheckUrl),
-            headers: {'Accept': 'application/vnd.github.v3+json'},
-          )
-          .timeout(const Duration(seconds: 5));
+      final response = await http.get(
+        Uri.parse(_updateCheckUrl),
+        headers: {'Accept': 'application/vnd.github.v3+json'},
+      ).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final latestVersion =
             data['tag_name']?.toString().replaceFirst('v', '') ??
-            _currentVersion;
+                _currentVersion;
         final releaseNotes = data['body']?.toString() ?? '';
         final publishedAt = data['published_at']?.toString() ?? '';
         final downloadUrl = data['html_url']?.toString() ?? '';
@@ -52,14 +50,10 @@ class UpdateCheckService {
   }
 
   bool _isNewerVersion(String latest, String current) {
-    final latestParts = latest
-        .split('.')
-        .map((e) => int.tryParse(e) ?? 0)
-        .toList();
-    final currentParts = current
-        .split('.')
-        .map((e) => int.tryParse(e) ?? 0)
-        .toList();
+    final latestParts =
+        latest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    final currentParts =
+        current.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
     // Normalize lengths
     while (latestParts.length < 3) latestParts.add(0);
@@ -85,9 +79,8 @@ class UpdateCheckService {
         hasUpdate: true,
         releaseNotes:
             '• Bug fixes and performance improvements\n• Enhanced graph editor\n• New WebSocket stability improvements',
-        publishedAt: DateTime.now()
-            .subtract(const Duration(days: 2))
-            .toIso8601String(),
+        publishedAt:
+            DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
         downloadUrl: 'https://github.com/flow-project/flow/releases/latest',
         error: null,
       ),

@@ -415,8 +415,8 @@ class WebSocketService with ChangeNotifier {
 
     final baseDelay = Duration(seconds: (2 * _reconnectAttempts).clamp(2, 30));
     final jitter = Duration(
-      milliseconds: (1000 * (0.5 + 0.5 * DateTime.now().millisecond / 1000))
-          .round(),
+      milliseconds:
+          (1000 * (0.5 + 0.5 * DateTime.now().millisecond / 1000)).round(),
     );
     final delay = baseDelay + jitter;
 
