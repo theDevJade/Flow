@@ -61,7 +61,7 @@ jobs:
   test-backend:
     needs: detect-changes
     if: needs.detect-changes.outputs.backend == 'true'
-    uses: ./.github/workflows/reusable/backend-build.yml
+    uses: ./.github/workflows/backend-build.yml
     with:
       build-type: 'release'
       upload-artifacts: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
@@ -71,7 +71,7 @@ jobs:
   test-plugin:
     needs: detect-changes
     if: needs.detect-changes.outputs.plugin == 'true'
-    uses: ./.github/workflows/reusable/plugin-build.yml
+    uses: ./.github/workflows/plugin-build.yml
     with:
       build-type: 'release'
       upload-artifacts: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
@@ -81,7 +81,7 @@ jobs:
   test-frontend:
     needs: detect-changes
     if: needs.detect-changes.outputs.frontend == 'true'
-    uses: ./.github/workflows/reusable/frontend-build.yml
+    uses: ./.github/workflows/frontend-build.yml
     with:
       build-target: 'web'
       run-tests: true
@@ -96,7 +96,7 @@ jobs:
       fail-fast: false
       matrix:
         platform: [macos, windows, linux]
-    uses: ./.github/workflows/reusable/frontend-build.yml
+    uses: ./.github/workflows/frontend-build.yml
     with:
       build-target: ${{ matrix.platform }}
       upload-artifacts: true

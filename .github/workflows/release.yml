@@ -86,7 +86,7 @@ jobs:
   # Build Backend for Release
   build-backend-release:
     needs: create-release
-    uses: ./.github/workflows/reusable/backend-build.yml
+    uses: ./.github/workflows/backend-build.yml
     with:
       build-type: 'release'
       upload-artifacts: false
@@ -130,7 +130,7 @@ jobs:
   # Build Plugin for Release
   build-plugin-release:
     needs: create-release
-    uses: ./.github/workflows/reusable/plugin-build.yml
+    uses: ./.github/workflows/plugin-build.yml
     with:
       build-type: 'release'
       upload-artifacts: false
@@ -171,7 +171,7 @@ jobs:
   # Build Web for Release  
   build-web-release:
     needs: create-release
-    uses: ./.github/workflows/reusable/frontend-build.yml
+    uses: ./.github/workflows/frontend-build.yml
     with:
       build-target: 'web'
       upload-artifacts: false
@@ -213,7 +213,7 @@ jobs:
     strategy:
       matrix:
         platform: [macos, windows, linux]
-    uses: ./.github/workflows/reusable/frontend-build.yml
+    uses: ./.github/workflows/frontend-build.yml
     with:
       build-target: ${{ matrix.platform }}
       upload-artifacts: false

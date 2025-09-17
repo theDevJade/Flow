@@ -43,7 +43,7 @@ jobs:
   # Backend Build Job
   build-backend:
     if: ${{ inputs.build_backend == true }}
-    uses: ./.github/workflows/reusable/backend-build.yml
+    uses: ./.github/workflows/backend-build.yml
     with:
       build-type: 'release'
       upload-artifacts: true
@@ -52,7 +52,7 @@ jobs:
   # Minecraft Plugin Build Job
   build-plugin:
     if: ${{ inputs.build_plugin == true }}
-    uses: ./.github/workflows/reusable/plugin-build.yml
+    uses: ./.github/workflows/plugin-build.yml
     with:
       build-type: 'release'
       upload-artifacts: true
@@ -61,7 +61,7 @@ jobs:
   # Web Build Job
   build-web:
     if: ${{ inputs.build_web == true }}
-    uses: ./.github/workflows/reusable/frontend-build.yml
+    uses: ./.github/workflows/frontend-build.yml
     with:
       build-target: 'web'
       upload-artifacts: true
@@ -70,7 +70,7 @@ jobs:
   # macOS Build Job
   build-macos:
     if: ${{ inputs.build_macos == true }}
-    uses: ./.github/workflows/reusable/frontend-build.yml
+    uses: ./.github/workflows/frontend-build.yml
     with:
       build-target: 'macos'
       upload-artifacts: true
@@ -79,7 +79,7 @@ jobs:
   # Windows Build Job  
   build-windows:
     if: ${{ inputs.build_windows == true }}
-    uses: ./.github/workflows/reusable/frontend-build.yml
+    uses: ./.github/workflows/frontend-build.yml
     with:
       build-target: 'windows'
       upload-artifacts: true
@@ -88,7 +88,7 @@ jobs:
   # Linux Build Job
   build-linux:
     if: ${{ inputs.build_linux == true }}
-    uses: ./.github/workflows/reusable/frontend-build.yml
+    uses: ./.github/workflows/frontend-build.yml
     with:
       build-target: 'linux'
       upload-artifacts: true
