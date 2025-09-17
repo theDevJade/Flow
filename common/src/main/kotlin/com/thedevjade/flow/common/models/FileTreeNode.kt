@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class FileTreeNode(
     val name: String,
-    val type: String, // "file" or "directory"
+    val type: String,
     val path: String,
     val children: List<FileTreeNode> = emptyList(),
     val size: Long? = null,

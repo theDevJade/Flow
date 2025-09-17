@@ -1,0 +1,154 @@
+name: Automated Build & Test
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'flow_frontend/**'
+      - 'webserver/**'
+      - 'flow/**'
+      - 'common/**'
+      - 'plugin/**'
+      - 'app/**'
+      - '*.gradle*'
+      - 'gradle/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'flow_frontend/**'
+      - 'webserver/**'
+      - 'flow/**'
+      - 'common/**'
+      - 'plugin/**'
+      - 'app/**'
+      - '*.gradle*'
+      - 'gradle/**'
+
+env:
+  FLUTTER_VERSION: '3.24.0'
+  JAVA_VERSION: '23'
+
+jobs:
+  # Detect what needs to be built based on changed files
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+      plugin: ${{ steps.changes.outputs.plugin }}
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Detect Changes
+      uses: dorny/paths-filter@v3
+      id: changes
+      with:
+        filters: |
+          backend:
+            - 'webserver/**'
+            - 'flow/**'
+            - 'common/**'
+            - 'app/**'
+            - '*.gradle*'
+            - 'gradle/**'
+          frontend:
+            - 'flow_frontend/**'
+          plugin:
+            - 'plugin/**'
+
+  # Backend Test and Build
+  test-backend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
+    uses: ./.github/workflows/reusable/backend-build.yml
+    with:
+      build-type: 'release'
+      upload-artifacts: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      artifact-retention: 30
+
+  # Plugin Build and Test
+  test-plugin:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.plugin == 'true'
+    uses: ./.github/workflows/reusable/plugin-build.yml
+    with:
+      build-type: 'release'
+      upload-artifacts: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      artifact-retention: 30
+
+  # Frontend Test and Build
+  test-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    uses: ./.github/workflows/reusable/frontend-build.yml
+    with:
+      build-target: 'web'
+      run-tests: true
+      upload-artifacts: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      artifact-retention: 30
+
+  # Full Platform Builds (only on main branch pushes)
+  build-all-platforms:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [detect-changes, test-backend, test-frontend, test-plugin]
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos, windows, linux]
+    uses: ./.github/workflows/reusable/frontend-build.yml
+    with:
+      build-target: ${{ matrix.platform }}
+      upload-artifacts: true
+      artifact-retention: 30
+
+  # Security and Quality Checks
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy Vulnerability Scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy Scan Results
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Deployment Summary
+  deployment-summary:
+    if: always()
+    needs: [detect-changes, test-backend, test-frontend, test-plugin, build-all-platforms, security-scan]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Create Deployment Summary
+      run: |
+        echo "# 🚀 Automated Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📋 Build Results" >> $GITHUB_STEP_SUMMARY
+        echo "| Component | Changes Detected | Build Status |" >> $GITHUB_STEP_SUMMARY  
+        echo "|-----------|------------------|--------------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend | ${{ needs.detect-changes.outputs.backend }} | ${{ needs.test-backend.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend | ${{ needs.detect-changes.outputs.frontend }} | ${{ needs.test-frontend.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Plugin | ${{ needs.detect-changes.outputs.plugin }} | ${{ needs.test-plugin.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Platform Builds | ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }} | ${{ needs.build-all-platforms.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Security Scan | Always | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          echo "✅ **Production artifacts generated and available for download**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "ℹ️ **Test build only - no production artifacts generated**" >> $GITHUB_STEP_SUMMARY
+        fi

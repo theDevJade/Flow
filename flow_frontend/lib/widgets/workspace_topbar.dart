@@ -74,10 +74,10 @@ class WorkspaceTopBar extends StatelessWidget {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Workspace dropdown
+
             _buildWorkspaceDropdown(context, manager),
             const SizedBox(width: 8),
-            // Create workspace button
+
             _buildCreateWorkspaceButton(context, manager),
           ],
         );
@@ -310,7 +310,7 @@ class WorkspaceTopBar extends StatelessWidget {
 
   void _showCreateWorkspaceDialog(BuildContext context, WorkspaceManager manager) {
     final nameController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -355,7 +355,7 @@ class WorkspaceTopBar extends StatelessWidget {
                 Navigator.of(context).pop();
               }
             },
-            child: manager.isLoading 
+            child: manager.isLoading
                 ? const SizedBox(
                     width: 16,
                     height: 16,

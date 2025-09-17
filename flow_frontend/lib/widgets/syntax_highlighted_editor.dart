@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_highlight/flutter_highlight.dart';
-import 'package:flutter_highlight/themes/monokai-sublime.dart';
 
 class SyntaxHighlightedEditor extends StatefulWidget {
   final String content;
@@ -24,27 +22,37 @@ class _SyntaxHighlightedEditorState extends State<SyntaxHighlightedEditor> {
   late TextEditingController _controller;
   final ScrollController _scrollController = ScrollController();
   final ScrollController _lineNumberScrollController = ScrollController();
-  final ScrollController _backgroundScrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
   // Consistent styling constants
   static const double fontSize = 14.0;
   static const double lineHeight = 1.4;
   static const double actualLineHeight = fontSize * lineHeight;
-  static const EdgeInsets editorPadding = EdgeInsets.all(16);
+  static const EdgeInsets editorPadding = EdgeInsets.symmetric(
+    horizontal: 16,
+    vertical: 8,
+  );
 
   @override
   void initState() {
     super.initState();
+    debugPrint(
+      '📝 SyntaxHighlightedEditor: Init with content length: ${widget.content.length}',
+    );
+    debugPrint('📝 SyntaxHighlightedEditor: Language: "${widget.language}"');
+
     _controller = TextEditingController(text: widget.content);
 
-    // Sync all scroll controllers
+    _controller.addListener(() {
+      if (mounted) {
+        widget.onChanged(_controller.text);
+      }
+    });
+
+    // Sync scroll controllers
     _scrollController.addListener(() {
       if (_lineNumberScrollController.hasClients) {
         _lineNumberScrollController.jumpTo(_scrollController.offset);
-      }
-      if (_backgroundScrollController.hasClients) {
-        _backgroundScrollController.jumpTo(_scrollController.offset);
       }
     });
   }
@@ -52,8 +60,15 @@ class _SyntaxHighlightedEditorState extends State<SyntaxHighlightedEditor> {
   @override
   void didUpdateWidget(SyntaxHighlightedEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
+    debugPrint(
+      '📝 SyntaxHighlightedEditor: didUpdateWidget - new content length: ${widget.content.length}',
+    );
+
     if (widget.content != oldWidget.content &&
         _controller.text != widget.content) {
+      debugPrint(
+        '📝 SyntaxHighlightedEditor: Content changed externally, updating text',
+      );
       _controller.text = widget.content;
     }
   }
@@ -63,7 +78,6 @@ class _SyntaxHighlightedEditorState extends State<SyntaxHighlightedEditor> {
     _controller.dispose();
     _scrollController.dispose();
     _lineNumberScrollController.dispose();
-    _backgroundScrollController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -89,61 +103,29 @@ class _SyntaxHighlightedEditorState extends State<SyntaxHighlightedEditor> {
             ),
             child: _buildLineNumbers(),
           ),
-          // Editor area
+          // Editor area - Simple stable TextField
           Expanded(
-            child: Stack(
-              children: [
-                // Syntax highlighted text (background)
-                Positioned.fill(
-                  child: Container(
-                    padding: editorPadding,
-                    child: SingleChildScrollView(
-                      controller: _backgroundScrollController,
-                      child: Container(
-                        padding: const EdgeInsets.only(
-                          bottom: 50,
-                        ), // Extra bottom padding
-                        child: HighlightView(
-                          _controller.text,
-                          language: widget.language,
-                          theme: monokaiSublimeTheme,
-                          padding: EdgeInsets.zero,
-                          textStyle: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: fontSize,
-                            height: lineHeight,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+            child: Container(
+              padding: editorPadding,
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                maxLines: null,
+                scrollController: _scrollController,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: fontSize,
+                  height: lineHeight,
+                  color: Colors.white,
                 ),
-                // Transparent text field (foreground) for input
-                Container(
-                  padding: editorPadding,
-                  child: TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    maxLines: null,
-                    scrollController: _scrollController,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: fontSize,
-                      height: lineHeight,
-                      color: Colors.transparent,
-                    ),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                      isDense: true,
-                    ),
-                    onChanged: widget.onChanged,
-                    cursorColor: Colors.white,
-                    cursorWidth: 2,
-                    cursorHeight: fontSize + 2, // Set explicit cursor height
-                  ),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  isDense: true,
                 ),
-              ],
+                cursorColor: Colors.white,
+                cursorWidth: 2,
+              ),
             ),
           ),
         ],
@@ -153,32 +135,42 @@ class _SyntaxHighlightedEditorState extends State<SyntaxHighlightedEditor> {
 
   Widget _buildLineNumbers() {
     final lines = _controller.text.split('\n');
-    return SingleChildScrollView(
-      controller: _lineNumberScrollController,
-      child: Container(
-        padding: EdgeInsets.only(
-          top: editorPadding.top,
-          left: 8,
-          right: 8,
-          bottom: editorPadding.bottom + 50, // Match the extra bottom padding
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: List.generate(lines.length, (index) {
-            return Container(
-              height: actualLineHeight,
-              alignment: Alignment.centerRight,
-              child: Text(
-                '${index + 1}',
-                style: const TextStyle(
-                  color: Color(0xFF75715E),
-                  fontSize: fontSize,
-                  height: lineHeight,
-                  fontFamily: 'monospace',
+    final lineCount = lines.length;
+
+    return Container(
+      height: double.infinity,
+      child: SingleChildScrollView(
+        controller: _lineNumberScrollController,
+        physics:
+            const NeverScrollableScrollPhysics(), // Only scroll via main editor
+        child: Container(
+          padding: EdgeInsets.only(
+            top: editorPadding.top,
+            left: 8,
+            right: 8,
+            bottom: editorPadding.bottom,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(lineCount, (index) {
+              return SizedBox(
+                height: actualLineHeight,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '${index + 1}',
+                    style: const TextStyle(
+                      color: Color(0xFF75715E),
+                      fontSize: fontSize,
+                      height: lineHeight,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
+          ),
         ),
       ),
     );

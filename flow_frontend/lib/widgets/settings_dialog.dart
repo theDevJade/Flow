@@ -64,7 +64,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // WebSocket Configuration Section
+
               Text(
                 'WebSocket Configuration',
                 style: Theme.of(
@@ -73,7 +73,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
               ),
               const SizedBox(height: 16),
 
-              // Host field
+
               TextFormField(
                 controller: _hostController,
                 decoration: const InputDecoration(
@@ -91,7 +91,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
               ),
               const SizedBox(height: 16),
 
-              // Port field
+
               TextFormField(
                 controller: _portController,
                 decoration: const InputDecoration(

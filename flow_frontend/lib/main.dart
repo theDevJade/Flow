@@ -13,7 +13,7 @@ import 'screens/login_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize persistence service first
+
   await PersistenceService.instance.initialize();
   await FileSystemService.instance.initialize();
 
@@ -27,12 +27,12 @@ class FlowApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Add PersistenceService provider
+
         Provider<PersistenceService>(
           create: (_) => PersistenceService.instance,
         ),
         Provider<FileSystemService>(create: (_) => FileSystemService.instance),
-        // Add WebSocketService provider
+
         ChangeNotifierProvider<WebSocketService>(
           create: (_) => WebSocketService.instance,
         ),

@@ -1,0 +1,70 @@
+name: 'Reusable Plugin Build'
+
+on:
+  workflow_call:
+    inputs:
+      build-type:
+        description: 'Build type: test or release'
+        required: false
+        default: 'test'
+        type: string
+      upload-artifacts:
+        description: 'Whether to upload build artifacts'
+        required: false
+        default: false
+        type: boolean
+      artifact-retention:
+        description: 'Artifact retention days'
+        required: false
+        default: 30
+        type: number
+      java-version:
+        description: 'Java version to use'
+        required: false
+        default: '23'
+        type: string
+
+jobs:
+  build-plugin:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Java Environment
+      uses: ./.github/actions/setup-java
+      with:
+        java-version: ${{ inputs.java-version }}
+    
+    - name: Build and Test Plugin
+      working-directory: plugin
+      run: |
+        case "${{ inputs.build-type }}" in
+          "test")
+            ./gradlew clean check shadowJar --no-daemon
+            ;;
+          "release")
+            ./gradlew clean check shadowJar --no-daemon
+            ;;
+          *)
+            echo "Unknown build type: ${{ inputs.build-type }}"
+            exit 1
+            ;;
+        esac
+    
+    - name: Upload Plugin Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: plugin-test-results-${{ github.run_id }}
+        path: plugin/build/test-results/**/*.xml
+        retention-days: 7
+    
+    - name: Upload Plugin JAR
+      if: inputs.upload-artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: minecraft-plugin-${{ github.run_id }}
+        path: plugin/build/libs/*-all.jar
+        retention-days: ${{ inputs.artifact-retention }}

@@ -33,11 +33,36 @@ class FileSystemState with ChangeNotifier {
   }
 
   void openFile(String path, String content) {
-    if (!_openFiles.any((file) => file.path == path)) {
+    debugPrint(
+      '📂 FileSystemState: Opening file: $path (content length: ${content.length})',
+    );
+
+    final existingFileIndex = _openFiles.indexWhere(
+      (file) => file.path == path,
+    );
+    if (existingFileIndex == -1) {
       _openFiles.add(OpenFile(path: path, content: content));
+      debugPrint(
+        '📂 FileSystemState: Added new file to openFiles, now have ${_openFiles.length} files',
+      );
+    } else {
+      // Update content of existing file
+      final existingFile = _openFiles[existingFileIndex];
+      _openFiles[existingFileIndex] = OpenFile(
+        path: existingFile.path,
+        content: content,
+        isModified: existingFile.isModified,
+      );
+      debugPrint(
+        '📂 FileSystemState: Updated content of existing file (was ${existingFile.content.length}, now ${content.length} chars)',
+      );
     }
+
     _activeFile = _openFiles.firstWhere((file) => file.path == path);
+    debugPrint('📂 FileSystemState: Set active file: ${_activeFile?.path}');
+
     notifyListeners();
+    debugPrint('📂 FileSystemState: notifyListeners() called');
   }
 
   void closeFile(String path) {

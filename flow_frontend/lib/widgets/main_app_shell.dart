@@ -43,17 +43,17 @@ class _MainAppShellState extends State<MainAppShell>
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        // Show connection configuration screen if needed
-        // if (appState.needsConnectionConfig) {
-        //   return ConnectionConfigScreen(
-        //     onConfigureConnection: (host, port) {
-        //       appState.configureWebSocketConnection(host, port);
-        //     },
-        //     onSkip: () {
-        //       appState.skipConnectionConfig();
-        //     },
-        //   );
-        // }
+
+
+
+
+
+
+
+
+
+
+
 
         if (!appState.isInitialized) {
           return _buildLoadingScreen();
@@ -71,9 +71,9 @@ class _MainAppShellState extends State<MainAppShell>
                 Expanded(
                   child: Row(
                     children: [
-                      // Workspace sidebar - fixed width
+
                       const WorkspaceSidebar(),
-                      // Main content area - takes remaining space
+
                       Expanded(
                         child: Consumer<WorkspaceState>(
                           builder: (context, workspaceState, child) {

@@ -1,0 +1,39 @@
+name: 'Setup Flutter Environment'
+description: 'Sets up Flutter with caching and dependencies for Flow project'
+
+inputs:
+  flutter-version:
+    description: 'Flutter version to setup'
+    required: false
+    default: '3.24.0'
+  enable-desktop:
+    description: 'Desktop platform to enable (macos, windows, linux, or none)'
+    required: false
+    default: 'none'
+  working-directory:
+    description: 'Working directory for Flutter commands'
+    required: false
+    default: 'flow_frontend'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ inputs.flutter-version }}
+        cache: true
+    
+    - name: Enable Desktop Platform
+      if: inputs.enable-desktop != 'none'
+      shell: bash
+      run: flutter config --enable-${{ inputs.enable-desktop }}-desktop
+    
+    - name: Flutter Doctor
+      shell: bash
+      run: flutter doctor -v
+    
+    - name: Get Flutter Dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: flutter pub get

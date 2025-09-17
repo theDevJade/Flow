@@ -15,12 +15,12 @@ class FileTreeView extends StatefulWidget {
 class _FileTreeViewState extends State<FileTreeView> {
   final Set<String> _expandedNodes = {};
   final Set<String> _loadingFiles =
-      {}; // Track which files are currently loading
+      {};
 
   @override
   void initState() {
     super.initState();
-    // Load file tree on initialization, but only if authenticated and connected
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _tryLoadFileTree();
     });
@@ -29,7 +29,7 @@ class _FileTreeViewState extends State<FileTreeView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Auto-expand root directory when file tree is loaded
+
     final appState = context.read<AppState>();
     if (appState.fileSystemState.fileTree != null && _expandedNodes.isEmpty) {
       setState(() {
@@ -55,97 +55,88 @@ class _FileTreeViewState extends State<FileTreeView> {
 
     final appState = context.read<AppState>();
 
-    // Listen to WebSocket messages to detect when file loading completes
-    late StreamSubscription subscription;
-    subscription = appState.webSocketService.messages.listen((message) {
-      if (!mounted) {
-        subscription.cancel();
-        return;
-      }
 
-      if (message.type == 'file_content' && message.data['path'] == filePath) {
-        debugPrint(
-          '✅ FileTreeView: File load response received for: $filePath',
-        );
-        setState(() {
-          _loadingFiles.remove(filePath);
-        });
-        subscription.cancel();
+    appState.fileSystemService
+        .readFile(filePath)
+        .then((content) {
+          if (!mounted) return;
 
-        appState.fileSystemState.openFile(filePath, message.data['content']);
-      } else if (message.type == 'error' &&
-          message.data['request_id'] == 'read_file_$filePath') {
-        debugPrint('❌ FileTreeView: Failed to load: $filePath');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load file: ${filePath.split('/').last}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-        setState(() {
-          _loadingFiles.remove(filePath);
-        });
-        subscription.cancel();
-      }
-    });
+          setState(() {
+            _loadingFiles.remove(filePath);
+          });
 
-    // Send the read file request
-    appState.fileSystemService.readFile(filePath).catchError((error) {
-      debugPrint('❌ FileTreeView: Error reading file: $error');
-      if (mounted) {
-        setState(() {
-          _loadingFiles.remove(filePath);
-        });
-        subscription.cancel();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading file: ${filePath.split('/').last}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-      return null; // Return null on error
-    });
+          if (content != null) {
+            debugPrint('✅ FileTreeView: File loaded successfully: $filePath');
+            appState.fileSystemState.openFile(filePath, content);
+          } else {
+            debugPrint('❌ FileTreeView: File content was null: $filePath');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Failed to load file: ${filePath.split('/').last}',
+                ),
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+            );
+          }
+        })
+        .catchError((error) {
+          if (!mounted) return;
 
-    // Set a timeout to remove loading state if no response comes
-    Timer(const Duration(seconds: 5), () {
-      if (mounted && _loadingFiles.contains(filePath)) {
-        setState(() {
-          _loadingFiles.remove(filePath);
-        });
-        subscription.cancel();
-        debugPrint('⏰ FileTreeView: Timeout loading file: $filePath');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Timeout loading file: ${filePath.split('/').last}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
+          debugPrint('❌ FileTreeView: Error reading file: $error');
+          setState(() {
+            _loadingFiles.remove(filePath);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error loading file: ${filePath.split('/').last}'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        })
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            if (!mounted) return null;
+
+            setState(() {
+              _loadingFiles.remove(filePath);
+            });
+            debugPrint('⏰ FileTreeView: Timeout loading file: $filePath');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Timeout loading file: ${filePath.split('/').last}',
+                ),
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+            );
+            return null;
+          },
         );
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, child) {
-        // Check if user is authenticated
+
         if (!appState.authService.isAuthenticated) {
           return _buildNotAuthenticatedState();
         }
 
-        // Check WebSocket connection status
+
         if (appState.webSocketService.currentStatus !=
             WebSocketConnectionStatus.connected) {
           return _buildConnectingState(appState.webSocketService.currentStatus);
         }
 
-        // Auto-load file tree if not loaded yet
+
         if (appState.fileSystemState.fileTree == null) {
           return _buildLoadingState();
         }
 
-        // Show file tree if loaded
+
         return _buildFileTreeView(appState.fileSystemState.fileTree!);
       },
     );

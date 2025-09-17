@@ -11,7 +11,7 @@ class CodeEditorScreen extends StatelessWidget {
       color: Theme.of(context).colorScheme.background,
       child: Row(
         children: [
-          // File explorer sidebar
+
           Container(
             width: 250,
             decoration: BoxDecoration(
@@ -25,7 +25,7 @@ class CodeEditorScreen extends StatelessWidget {
             ),
             child: const FileTreeView(),
           ),
-          // Main editor area
+
           const Expanded(child: TabbedCodeEditor()),
         ],
       ),

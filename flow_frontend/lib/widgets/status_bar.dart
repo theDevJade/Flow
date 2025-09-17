@@ -29,22 +29,22 @@ class StatusBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             child: Row(
               children: [
-                // Connection status
+
                 _buildConnectionStatus(context, appState.webSocketService),
 
                 const SizedBox(width: 16),
 
-                // Current workspace indicator
+
                 _buildWorkspaceIndicator(context, appState.workspaceState),
 
                 const SizedBox(width: 16),
 
-                // Latest WebSocket message
+
                 _buildWebSocketMessage(context, appState.webSocketService),
 
                 const Spacer(),
 
-                // File info
+
                 _buildFileInfo(context, appState.fileSystemState),
               ],
             ),

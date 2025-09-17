@@ -1,0 +1,89 @@
+name: 'Reusable Backend Build'
+
+on:
+  workflow_call:
+    inputs:
+      build-type:
+        description: 'Build type: test, shadow, or release'
+        required: false
+        default: 'test'
+        type: string
+      upload-artifacts:
+        description: 'Whether to upload build artifacts'
+        required: false
+        default: false
+        type: boolean
+      artifact-retention:
+        description: 'Artifact retention days'
+        required: false
+        default: 30
+        type: number
+      java-version:
+        description: 'Java version to use'
+        required: false
+        default: '23'
+        type: string
+    outputs:
+      build-success:
+        description: 'Whether the build was successful'
+        value: ${{ jobs.build-backend.outputs.success }}
+
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+    outputs:
+      success: ${{ steps.build.outcome == 'success' }}
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Java Environment
+      uses: ./.github/actions/setup-java
+      with:
+        java-version: ${{ inputs.java-version }}
+    
+    - name: Run Tests and Analysis
+      if: inputs.build-type == 'test' || inputs.build-type == 'release'
+      run: ./gradlew clean check --no-daemon --continue
+    
+    - name: Build Backend Modules
+      id: build
+      run: |
+        case "${{ inputs.build-type }}" in
+          "test")
+            ./gradlew testBuild --no-daemon
+            ;;
+          "shadow")
+            ./gradlew :webserver:shadowJar :flow:shadowJar --no-daemon
+            ;;
+          "release")
+            ./gradlew clean testBuild --no-daemon
+            ./gradlew :webserver:shadowJar :flow:shadowJar --no-daemon
+            ;;
+          *)
+            echo "Unknown build type: ${{ inputs.build-type }}"
+            exit 1
+            ;;
+        esac
+    
+    - name: Upload Test Results
+      if: always() && (inputs.build-type == 'test' || inputs.build-type == 'release')
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-test-results-${{ github.run_id }}
+        path: |
+          **/build/test-results/**/*.xml
+          **/build/reports/tests/**
+        retention-days: 7
+    
+    - name: Upload Backend JARs
+      if: inputs.upload-artifacts && (inputs.build-type == 'shadow' || inputs.build-type == 'release')
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-jars-${{ github.run_id }}
+        path: |
+          webserver/build/libs/*-all.jar
+          flow/build/libs/*-all.jar
+          app/build/libs/*.jar
+        retention-days: ${{ inputs.artifact-retention }}

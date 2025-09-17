@@ -14,10 +14,10 @@ import kotlin.io.path.*
 class FileSystemAccessImpl : FileSystemAccess {
     private var rootDirectory: Path? = null
     private val allowedDirectories = mutableSetOf<Path>()
-    
+
     companion object {
-        private const val MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB limit
-        private const val MAX_DEPTH = 10 // Maximum directory traversal depth
+        private const val MAX_FILE_SIZE = 10 * 1024 * 1024
+        private const val MAX_DEPTH = 10
     }
 
     override fun setRootDirectory(path: Path): Boolean {
@@ -25,7 +25,7 @@ class FileSystemAccessImpl : FileSystemAccess {
             val absolutePath = path.toAbsolutePath().normalize()
             if (Files.exists(absolutePath) && Files.isDirectory(absolutePath)) {
                 rootDirectory = absolutePath
-                // Clear existing allowed directories when setting new root
+
                 allowedDirectories.clear()
                 allowedDirectories.add(absolutePath)
                 true
@@ -42,7 +42,7 @@ class FileSystemAccessImpl : FileSystemAccess {
         return try {
             val absolutePath = path.toAbsolutePath().normalize()
             if (Files.exists(absolutePath) && Files.isDirectory(absolutePath)) {
-                // Ensure directory is within root if root is set
+
                 if (rootDirectory != null && !absolutePath.startsWith(rootDirectory!!)) {
                     println("FileSystemAccessImpl: Directory $path is outside root directory")
                     return false
@@ -66,16 +66,26 @@ class FileSystemAccessImpl : FileSystemAccess {
     override fun isPathAllowed(path: Path): Boolean {
         return try {
             val absolutePath = path.toAbsolutePath().normalize()
-            
-            // Check against root directory if set
-            if (rootDirectory != null && !absolutePath.startsWith(rootDirectory!!)) {
-                return false
+
+
+            if (rootDirectory != null) {
+                val isAllowed = absolutePath.startsWith(rootDirectory!!)
+                if (isAllowed) {
+                    return true
+                } else {
+                    println("FileSystemAccessImpl: Access denied to file: $absolutePath")
+                    return false
+                }
             }
-            
-            // Check against allowed directories
-            allowedDirectories.any { allowedDir ->
+
+
+            val isAllowedFallback = allowedDirectories.any { allowedDir ->
                 absolutePath.startsWith(allowedDir)
             }
+            if (!isAllowedFallback) {
+                println("FileSystemAccessImpl: Access denied to file: $absolutePath")
+            }
+            isAllowedFallback
         } catch (e: Exception) {
             println("FileSystemAccessImpl: Error checking path allowed: ${e.message}")
             false
@@ -90,12 +100,12 @@ class FileSystemAccessImpl : FileSystemAccess {
         return withContext(Dispatchers.IO) {
             try {
                 val startPath = rootPath ?: rootDirectory ?: return@withContext null
-                
+
                 if (!isPathAllowed(startPath)) {
                     println("FileSystemAccessImpl: Access denied to path: $startPath")
                     return@withContext null
                 }
-                
+
                 buildFileTree(startPath, 0)
             } catch (e: Exception) {
                 println("FileSystemAccessImpl: Error building file tree: ${e.message}")
@@ -106,13 +116,13 @@ class FileSystemAccessImpl : FileSystemAccess {
 
     private fun buildFileTree(path: Path, depth: Int): FileTreeNode? {
         if (depth > MAX_DEPTH) return null
-        
+
         return try {
             val fileName = path.fileName?.toString() ?: path.toString()
             val isDirectory = Files.isDirectory(path)
             val size = if (isDirectory) null else Files.size(path)
             val lastModified = Files.getLastModifiedTime(path).toMillis()
-            
+
             val children = if (isDirectory && depth < MAX_DEPTH) {
                 try {
                     Files.list(path).use { stream ->
@@ -125,7 +135,7 @@ class FileSystemAccessImpl : FileSystemAccess {
                             }
                         }
                         childNodes.sortedWith { a: FileTreeNode, b: FileTreeNode ->
-                            // Directories first, then files, both sorted alphabetically
+
                             when {
                                 a.type == "directory" && b.type != "directory" -> -1
                                 a.type != "directory" && b.type == "directory" -> 1
@@ -162,17 +172,17 @@ class FileSystemAccessImpl : FileSystemAccess {
                     println("FileSystemAccessImpl: Access denied to read file: $filePath")
                     return@withContext null
                 }
-                
+
                 if (!Files.exists(filePath) || Files.isDirectory(filePath)) {
                     return@withContext null
                 }
-                
+
                 val fileSize = Files.size(filePath)
                 if (fileSize > MAX_FILE_SIZE) {
                     println("FileSystemAccessImpl: File too large to read: $filePath (${fileSize} bytes)")
                     return@withContext null
                 }
-                
+
                 Files.readString(filePath)
             } catch (e: Exception) {
                 println("FileSystemAccessImpl: Error reading file $filePath: ${e.message}")
@@ -188,19 +198,19 @@ class FileSystemAccessImpl : FileSystemAccess {
                     println("FileSystemAccessImpl: Access denied to write file: $filePath")
                     return@withContext false
                 }
-                
+
                 if (content.length > MAX_FILE_SIZE) {
                     println("FileSystemAccessImpl: Content too large to write: ${content.length} bytes")
                     return@withContext false
                 }
-                
-                // Create parent directories if they don't exist
+
+
                 filePath.parent?.let { parentDir ->
                     if (!Files.exists(parentDir)) {
                         Files.createDirectories(parentDir)
                     }
                 }
-                
+
                 Files.writeString(filePath, content)
                 true
             } catch (e: Exception) {
@@ -217,18 +227,18 @@ class FileSystemAccessImpl : FileSystemAccess {
                     println("FileSystemAccessImpl: Access denied to create file: $filePath")
                     return@withContext false
                 }
-                
+
                 if (Files.exists(filePath)) {
                     return@withContext false
                 }
-                
+
                 // Create parent directories if they don't exist
                 filePath.parent?.let { parentDir ->
                     if (!Files.exists(parentDir)) {
                         Files.createDirectories(parentDir)
                     }
                 }
-                
+
                 Files.createFile(filePath)
                 true
             } catch (e: Exception) {
@@ -245,11 +255,11 @@ class FileSystemAccessImpl : FileSystemAccess {
                     println("FileSystemAccessImpl: Access denied to create directory: $dirPath")
                     return@withContext false
                 }
-                
+
                 if (Files.exists(dirPath)) {
                     return@withContext false
                 }
-                
+
                 Files.createDirectories(dirPath)
                 true
             } catch (e: Exception) {
@@ -266,11 +276,11 @@ class FileSystemAccessImpl : FileSystemAccess {
                     println("FileSystemAccessImpl: Access denied to delete file: $filePath")
                     return@withContext false
                 }
-                
+
                 if (!Files.exists(filePath) || Files.isDirectory(filePath)) {
                     return@withContext false
                 }
-                
+
                 Files.delete(filePath)
                 true
             } catch (e: Exception) {
@@ -287,18 +297,18 @@ class FileSystemAccessImpl : FileSystemAccess {
                     println("FileSystemAccessImpl: Access denied to delete directory: $dirPath")
                     return@withContext false
                 }
-                
+
                 if (!Files.exists(dirPath) || !Files.isDirectory(dirPath)) {
                     return@withContext false
                 }
-                
+
                 if (recursive) {
                     Files.walkFileTree(dirPath, object : SimpleFileVisitor<Path>() {
                         override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
                             Files.delete(file)
                             return FileVisitResult.CONTINUE
                         }
-                        
+
                         override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult {
                             Files.delete(dir)
                             return FileVisitResult.CONTINUE
@@ -369,13 +379,13 @@ class FileSystemAccessImpl : FileSystemAccess {
                 if (!isPathAllowed(dirPath) || !Files.exists(dirPath) || !Files.isDirectory(dirPath)) {
                     return@withContext emptyList()
                 }
-                
+
                 Files.list(dirPath).use { stream ->
                     val childNodes = mutableListOf<FileTreeNode>()
                     stream.filter { childPath: Path ->
                         isPathAllowed(childPath) && !childPath.fileName.toString().startsWith(".")
                     }.forEach { childPath: Path ->
-                        runBlocking { 
+                        runBlocking {
                             getFileInfo(childPath)?.let { node ->
                                 childNodes.add(node)
                             }
@@ -402,12 +412,12 @@ class FileSystemAccessImpl : FileSystemAccess {
                 if (!isPathAllowed(path) || !Files.exists(path)) {
                     return@withContext null
                 }
-                
+
                 val fileName = path.fileName?.toString() ?: path.toString()
                 val isDirectory = Files.isDirectory(path)
                 val size = if (isDirectory) null else Files.size(path)
                 val lastModified = Files.getLastModifiedTime(path).toMillis()
-                
+
                 FileTreeNode(
                     name = fileName,
                     type = if (isDirectory) "directory" else "file",

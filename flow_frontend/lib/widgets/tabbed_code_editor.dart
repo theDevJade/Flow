@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import '../models/open_file.dart';
 import '../state/app_state.dart';
@@ -21,7 +22,14 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
         final openFiles = fileSystemState.openFiles;
         final activeFile = fileSystemState.activeFile;
 
+        debugPrint(
+          '🗂️ TabbedCodeEditor: Building with ${openFiles.length} open files, active: ${activeFile?.path}',
+        );
+
         if (openFiles.isEmpty) {
+          debugPrint(
+            '🗂️ TabbedCodeEditor: No open files, showing empty state',
+          );
           return _buildEmptyState();
         }
 
@@ -62,13 +70,18 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
             ),
           ),
           const Spacer(),
-          if (file.isModified)
-            IconButton(
-              icon: const Icon(Icons.save, size: 16),
-              tooltip: 'Save (Ctrl+S)',
-              onPressed: () => _saveFile(file),
-              iconSize: 16,
+          IconButton(
+            icon: Icon(
+              Icons.save,
+              size: 16,
+              color: file.isModified
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
             ),
+            tooltip: 'Save (Cmd+S)',
+            onPressed: () => _saveFile(file),
+            iconSize: 16,
+          ),
           const SizedBox(width: 4),
         ],
       ),
@@ -177,6 +190,18 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
   }
 
   Widget _buildCodeEditor(OpenFile file) {
+    debugPrint(
+      '📄 TabbedCodeEditor: Building editor for ${file.path} with content length: ${file.content.length}',
+    );
+    debugPrint(
+      '📄 TabbedCodeEditor: Content preview: "${file.content.length > 50 ? file.content.substring(0, 50) + "..." : file.content}"',
+    );
+
+    final language = _getLanguageNameFromExtension(file.fileExtension);
+    debugPrint(
+      '📄 TabbedCodeEditor: Using language "$language" for extension "${file.fileExtension}"',
+    );
+
     return RawKeyboardListener(
       focusNode: FocusNode(),
       onKey: (RawKeyEvent event) {
@@ -192,12 +217,20 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
         color: Theme.of(context).colorScheme.background,
         child: SyntaxHighlightedEditor(
           content: file.content,
-          language: _getLanguageNameFromExtension(file.fileExtension),
+          language: language,
           onChanged: (text) {
-            context.read<AppState>().fileSystemState.updateFileContent(
-              file.path,
-              text,
+            debugPrint(
+              '📝 TabbedCodeEditor: Content changed for ${file.path}, new length: ${text.length}',
             );
+            // Defer state update to avoid setState during build
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                context.read<AppState>().fileSystemState.updateFileContent(
+                  file.path,
+                  text,
+                );
+              }
+            });
           },
         ),
       ),
@@ -205,7 +238,17 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
   }
 
   void _saveFile(OpenFile file) {
-    // context.read<AppState>().saveFile(file.path, file.content);
+    debugPrint('💾 Saving file: ${file.path}');
+
+    // Send save request via WebSocket
+    final webSocketService = context.read<AppState>().webSocketService;
+    webSocketService.sendMessage('write_file', {
+      'path': file.path,
+      'content': file.content,
+    });
+
+    // Mark as saved locally (the server response will confirm)
+    context.read<AppState>().fileSystemState.markFileSaved(file.path);
   }
 
   Widget _buildEmptyState() {
@@ -267,6 +310,11 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
     switch (extension.toLowerCase()) {
       case 'dart':
         return 'dart';
+      case 'kt':
+      case 'kts':
+        return 'kotlin';
+      case 'java':
+        return 'java';
       case 'json':
         return 'json';
       case 'yaml':
@@ -285,6 +333,11 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
       case 'ts':
       case 'typescript':
         return 'javascript'; // TypeScript uses JS highlighting as fallback
+      case 'py':
+        return 'python';
+      case 'sh':
+      case 'bash':
+        return 'bash';
       default:
         return 'plaintext'; // Default fallback
     }

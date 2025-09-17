@@ -23,17 +23,17 @@ class _WebSocketTestState extends State<WebSocketTest> {
   }
 
   void _initializeWebSocket() {
-    // Set to production mode with local server
-    // _webSocketService.setDefaultProductionServer();
 
-    // Listen to connection status
+
+
+
     _webSocketService.status.listen((status) {
       setState(() {
         _connectionStatus = status.toString().split('.').last;
       });
     });
 
-    // Listen to messages
+
     _webSocketService.messages.listen((message) {
       setState(() {
         _messages.insert(0, '${message.type}: ${jsonEncode(message.data)}');
@@ -43,7 +43,7 @@ class _WebSocketTestState extends State<WebSocketTest> {
       });
     });
 
-    // Connect to server
+
     _connectToServer();
   }
 
@@ -66,7 +66,7 @@ class _WebSocketTestState extends State<WebSocketTest> {
         _lastJsonExport = jsonString;
       });
 
-      // Send to real WebSocket server
+
       _webSocketService.send(
         WebSocketMessage(
           type: 'graph_save',
@@ -89,17 +89,17 @@ class _WebSocketTestState extends State<WebSocketTest> {
   }
 
   void _toggleMode() {
-    // if (_webSocketService.isInMockMode) {
-    //   _webSocketService.setDefaultProductionServer();
-    //   setState(() {
-    //     _messages.insert(0, 'Switched to Production mode');
-    //   });
-    // } else {
-    //   _webSocketService.enableMockMode();
-    //   setState(() {
-    //     _messages.insert(0, 'Switched to Mock mode');
-    //   });
-    // }
+
+
+
+
+
+
+
+
+
+
+
     _connectToServer();
   }
 

@@ -7,39 +7,33 @@ import kotlinx.coroutines.flow.asSharedFlow
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 
-/**
- * Comprehensive event management system for the Flow application.
- * Provides type-safe event emission and subscription with support for
- * filtering, error handling, and async processing.
- */
+
 class EventManager(private val scope: CoroutineScope) {
 
-    // Event flows for different event types
+
     val eventFlows = ConcurrentHashMap<KClass<*>, MutableSharedFlow<Any>>()
 
-    // Event listeners with priority support
+
     val eventListeners = ConcurrentHashMap<KClass<*>, MutableList<EventListener<*>>>()
 
-    // Metrics
+
     private var totalEventsEmitted = 0L
     private var totalEventsProcessed = 0L
 
-    /**
-     * Emit an event of the specified type
-     */
+
     suspend fun <T : Any> emit(event: T) {
         val eventType = event::class
         totalEventsEmitted++
 
-        // Get or create flow for this event type
+
         val flow = eventFlows.getOrPut(eventType) {
             MutableSharedFlow<Any>(replay = 0, extraBufferCapacity = 1000)
         }
 
-        // Emit the event
+
         flow.tryEmit(event)
 
-        // Process listeners synchronously for high-priority listeners
+
         eventListeners[eventType]?.forEach { listener ->
             if (listener.priority == EventPriority.HIGH) {
                 try {
@@ -47,13 +41,13 @@ class EventManager(private val scope: CoroutineScope) {
                     (listener as EventListener<T>).onEvent(event)
                     totalEventsProcessed++
                 } catch (e: Exception) {
-                    // Log error but don't fail the entire event chain
+
                     System.err.println("Error processing high-priority event listener: ${e.message}")
                 }
             }
         }
 
-        // Process normal and low priority listeners asynchronously
+
         scope.launch {
             eventListeners[eventType]?.forEach { listener ->
                 if (listener.priority != EventPriority.HIGH) {
@@ -69,9 +63,7 @@ class EventManager(private val scope: CoroutineScope) {
         }
     }
 
-    /**
-     * Subscribe to events of a specific type
-     */
+
     inline fun <reified T : Any> subscribe(): SharedFlow<T> {
         val eventType = T::class
         val flow = eventFlows.getOrPut(eventType) {
@@ -82,16 +74,14 @@ class EventManager(private val scope: CoroutineScope) {
         return flow.asSharedFlow() as SharedFlow<T>
     }
 
-    /**
-     * Register an event listener
-     */
+
     inline fun <reified T : Any> addEventListener(
         listener: EventListener<T>
     ): EventSubscription {
         val eventType = T::class
         val listeners = eventListeners.getOrPut(eventType) { mutableListOf() }
 
-        // Insert listener based on priority (high priority first)
+
         val insertIndex = listeners.indexOfFirst { it.priority.ordinal > listener.priority.ordinal }
         if (insertIndex >= 0) {
             listeners.add(insertIndex, listener)
@@ -104,17 +94,13 @@ class EventManager(private val scope: CoroutineScope) {
         }
     }
 
-    /**
-     * Remove an event listener
-     */
+
     inline fun <reified T : Any> removeEventListener(listener: EventListener<T>) {
         val eventType = T::class
         eventListeners[eventType]?.remove(listener)
     }
 
-    /**
-     * Get event metrics
-     */
+
     fun getMetrics(): EventMetrics {
         return EventMetrics(
             totalEventsEmitted = totalEventsEmitted,
@@ -124,30 +110,24 @@ class EventManager(private val scope: CoroutineScope) {
         )
     }
 
-    /**
-     * Dispose the event manager
-     */
+
     fun dispose() {
         eventFlows.clear()
         eventListeners.clear()
     }
 }
 
-/**
- * Event listener interface with priority support
- */
+
 interface EventListener<T : Any> {
     val priority: EventPriority get() = EventPriority.NORMAL
 
     suspend fun onEvent(event: T)
 }
 
-/**
- * Event priority levels
- */
+
 enum class EventPriority {
-    HIGH,    // Processed synchronously
-    NORMAL,  // Processed asynchronously
+    HIGH,
+    NORMAL,
     LOW      // Processed asynchronously with lower priority
 }
 

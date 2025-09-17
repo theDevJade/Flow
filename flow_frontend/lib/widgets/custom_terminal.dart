@@ -22,7 +22,7 @@ class _CustomTerminalState extends State<CustomTerminal> {
 
   late TerminalPageState _terminalState;
   List<String> _availableCommands = [];
-  // Tab completion state
+
   List<String> _currentSuggestions = [];
   bool _showSuggestions = false;
   int _selectedSuggestionIndex = -1;
@@ -40,13 +40,13 @@ class _CustomTerminalState extends State<CustomTerminal> {
 
     _initializeTerminal();
     _loadAvailableCommands();
-    // Don't setup WebSocket listener here - context isn't ready
+
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Set up WebSocket listener when context is ready
+
     if (_webSocketListener == null && mounted) {
       _setupWebSocketListener();
     }
@@ -56,14 +56,14 @@ class _CustomTerminalState extends State<CustomTerminal> {
 
   void _setupWebSocketListener() {
     if (!mounted) return;
-    
+
     final appState = context.read<AppState>();
     _webSocketListener = appState.webSocketService.messages.listen((message) {
       if (!mounted) {
         _webSocketListener?.cancel();
         return;
       }
-      
+
       if (message.type == 'terminal_response' &&
           message.data['pageId'] == widget.pageId) {
         _handleTerminalResponse(message);
@@ -73,7 +73,7 @@ class _CustomTerminalState extends State<CustomTerminal> {
 
   void _handleTerminalResponse(WebSocketMessage message) {
     if (!mounted) return;
-    
+
     if (message.data['success'] == true) {
       final output = message.data['output'] as List<dynamic>;
       final outputLines = output.map((e) => e.toString()).toList();
@@ -100,7 +100,7 @@ class _CustomTerminalState extends State<CustomTerminal> {
   }
 
   void _initializeTerminal() {
-    // Initialize with welcome message if history is empty
+
     if (_terminalState.history.isEmpty) {
       final welcomeMessages = [
         'Flow Terminal v1.0.0',
@@ -113,7 +113,7 @@ class _CustomTerminalState extends State<CustomTerminal> {
   }
 
   void _loadAvailableCommands() {
-    // Mock available commands - in real implementation, these would come from WebSocket
+    // Mock available commands @TODO
     _availableCommands = [
       'help',
       'ls',
@@ -153,10 +153,10 @@ class _CustomTerminalState extends State<CustomTerminal> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF1E1E1E), // Dark terminal background
+      color: const Color(0xFF1E1E1E),
       child: Column(
         children: [
-          // Terminal header
+
           Container(
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -191,17 +191,17 @@ class _CustomTerminalState extends State<CustomTerminal> {
               ],
             ),
           ),
-          // Terminal content
+
           Expanded(
             child: Stack(
               children: [
-                // Terminal output
+
                 ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(8),
                   itemCount:
                       _terminalState.history.length +
-                      1, // +1 for current input line
+                      1,
                   itemBuilder: (context, index) {
                     if (index < _terminalState.history.length) {
                       return _buildHistoryLine(_terminalState.history[index]);

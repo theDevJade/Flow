@@ -34,7 +34,7 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
       vsync: this,
     );
 
-    // Default values
+
     _hostController = TextEditingController(text: 'localhost');
     _portController = TextEditingController(text: '9090');
 
@@ -54,7 +54,7 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
       return 'Please enter a host';
     }
 
-    // Basic validation for hostname/IP
+
     final hostRegex = RegExp(r'^[a-zA-Z0-9.-]+$');
     if (!hostRegex.hasMatch(value)) {
       return 'Invalid host format';
@@ -90,7 +90,7 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
       final host = _hostController.text.trim();
       final port = int.parse(_portController.text.trim());
 
-      // Call the callback with the configuration
+
       widget.onConfigureConnection(host, port);
     } catch (e) {
       setState(() {
@@ -113,22 +113,22 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
                 Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Logo and title
+
                         _buildHeader(),
 
                         const SizedBox(height: 48),
 
-                        // Connection form
+
                         _buildConnectionForm(),
 
                         const SizedBox(height: 32),
 
-                        // Action buttons
+
                         _buildActionButtons(),
 
                         const SizedBox(height: 24),
 
-                        // Skip option
+
                         _buildSkipOption(),
                       ],
                     )
@@ -149,7 +149,7 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
   Widget _buildHeader() {
     return Column(
       children: [
-        // Flow logo
+
         Container(
               width: 80,
               height: 80,
@@ -229,7 +229,7 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
 
                   const SizedBox(height: 24),
 
-                  // Host input
+
                   TextFormField(
                     controller: _hostController,
                     enabled: !_isValidating,
@@ -248,7 +248,7 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
 
                   const SizedBox(height: 16),
 
-                  // Port input
+
                   TextFormField(
                     controller: _portController,
                     enabled: !_isValidating,

@@ -93,7 +93,7 @@ class _GraphProjectManagerState extends State<GraphProjectManager> {
       ),
       body: Column(
         children: [
-          // Search and filter bar
+
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
@@ -126,7 +126,7 @@ class _GraphProjectManagerState extends State<GraphProjectManager> {
               ],
             ),
           ),
-          // Projects list
+
           Expanded(
             child: filteredProjects.isEmpty
                 ? _buildEmptyState()

@@ -109,6 +109,7 @@ class AppState with ChangeNotifier {
 
       _workspaceState.addListener(_saveWorkspaceState);
       _fileSystemState.addListener(_saveFileSystemState);
+      _fileSystemState.addListener(_onFileSystemStateChanged);
 
       debugPrint('AppState: Initialization completed successfully!');
       _isInitialized = true;
@@ -198,6 +199,9 @@ class AppState with ChangeNotifier {
           _error = message.data['message'] ?? 'WebSocket error';
           notifyListeners();
           break;
+        case 'file_saved':
+          // File save responses are handled by FileSystemService
+          break;
         default:
           debugPrint('AppState: Unhandled message type: ${message.type}');
           break;
@@ -246,6 +250,7 @@ class AppState with ChangeNotifier {
   void dispose() {
     _workspaceState.removeListener(_saveWorkspaceState);
     _fileSystemState.removeListener(_saveFileSystemState);
+    _fileSystemState.removeListener(_onFileSystemStateChanged);
     _authService.removeListener(_onAuthStateChanged);
 
     // Dispose services
@@ -319,5 +324,12 @@ class AppState with ChangeNotifier {
     } catch (e) {
       debugPrint('AppState: Error saving file system state: $e');
     }
+  }
+
+  void _onFileSystemStateChanged() {
+    debugPrint(
+      'AppState: FileSystemState changed, notifying AppState listeners',
+    );
+    notifyListeners();
   }
 }

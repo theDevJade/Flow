@@ -71,10 +71,33 @@ class FileSystemService {
         }
       } else if (message.type == 'file_content') {
         final requestId = message.data['requestId'] as String?;
+        final content = message.data['content'] as String?;
+        debugPrint(
+          '📄 FileSystemService: Received file_content - requestId: $requestId, content length: ${content?.length ?? 0}',
+        );
+        debugPrint('📄 FileSystemService: Raw message data: ${message.data}');
+
         if (requestId != null && _fileReadCompleters.containsKey(requestId)) {
-          final content = message.data['content'] as String?;
           _fileReadCompleters[requestId]!.complete(content);
           _fileReadCompleters.remove(requestId);
+        }
+      } else if (message.type == 'file_saved') {
+        final success = message.data['success'] as bool? ?? false;
+        final filePath = message.data['path'] as String?;
+        debugPrint(
+          '💾 FileSystemService: Received file_saved - path: $filePath, success: $success',
+        );
+
+        if (success &&
+            filePath != null &&
+            _saveCompleters.containsKey(filePath)) {
+          _saveCompleters[filePath]!.complete(true);
+          _saveCompleters.remove(filePath);
+        } else if (!success &&
+            filePath != null &&
+            _saveCompleters.containsKey(filePath)) {
+          _saveCompleters[filePath]!.complete(false);
+          _saveCompleters.remove(filePath);
         }
       }
     });
@@ -85,6 +108,7 @@ class FileSystemService {
   final StreamController<List<String>> _openFilesController =
       StreamController<List<String>>.broadcast();
   final Map<String, Completer<String>> _fileReadCompleters = {};
+  final Map<String, Completer<bool>> _saveCompleters = {};
 
   Stream<FileNode> get fileTreeStream => _fileTreeController.stream;
   Stream<List<String>> get openFilesStream => _openFilesController.stream;
@@ -122,11 +146,13 @@ class FileSystemService {
   }
 
   Future<bool> writeFile(String filePath, String content) async {
+    final completer = Completer<bool>();
+    _saveCompleters[filePath] = completer;
     _webSocketService.sendMessage('write_file', {
       'path': filePath,
       'content': content,
     });
-    return true;
+    return completer.future;
   }
 
   Future<bool> createFile(String dirPath, String fileName) async {
@@ -216,5 +242,18 @@ class FileSystemService {
   void dispose() {
     _fileTreeController.close();
     _openFilesController.close();
+    // Clean up any pending completers
+    for (final completer in _fileReadCompleters.values) {
+      if (!completer.isCompleted) {
+        completer.complete('');
+      }
+    }
+    for (final completer in _saveCompleters.values) {
+      if (!completer.isCompleted) {
+        completer.complete(false);
+      }
+    }
+    _fileReadCompleters.clear();
+    _saveCompleters.clear();
   }
 }

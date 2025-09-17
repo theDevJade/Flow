@@ -90,7 +90,7 @@ class _GraphEditorScreenState extends State<GraphEditorScreen> {
   void initState() {
     super.initState();
 
-    // Add sample connections
+
     sampleConnections = [
       GraphConnection(
         id: 'conn1',
@@ -175,7 +175,7 @@ class _GraphEditorScreenState extends State<GraphEditorScreen> {
           onNewProject: () {
             setState(() {
               currentProject = null;
-              // Reset to default nodes
+
               sampleNodes = _getDefaultNodes();
               sampleConnections = _getDefaultConnections();
             });
@@ -188,8 +188,8 @@ class _GraphEditorScreenState extends State<GraphEditorScreen> {
   void _loadProject(GraphProject project) {
     setState(() {
       currentProject = project;
-      // TODO: Load nodes and connections from project.graphData
-      // For now, keep sample data
+      // @TODO: Load nodes and connections from project.graphData
+
     });
     Navigator.of(context).pop();
   }
@@ -206,7 +206,7 @@ class _GraphEditorScreenState extends State<GraphEditorScreen> {
 
     try {
       // TODO: Get actual graph data from GraphEditor
-      // For now, use sample data
+
       final graphData = {
         'nodes': sampleNodes
             .map(

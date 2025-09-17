@@ -28,7 +28,7 @@ class _AnimatedLoadingScreenState extends State<AnimatedLoadingScreen>
   double _progress = 0.0;
   String _currentStep = 'Initializing...';
 
-  // Enhanced data
+
   ProjectStats? _projectStats;
   UpdateInfo? _updateInfo;
   String _greeting = '';
@@ -66,7 +66,7 @@ class _AnimatedLoadingScreenState extends State<AnimatedLoadingScreen>
   }
 
   void _startLoadingSequence() {
-    // Start logo animation immediately
+
     _logoController.forward();
 
     // Schedule progress updates

@@ -1,0 +1,126 @@
+name: 'Reusable Frontend Build'
+
+on:
+  workflow_call:
+    inputs:
+      build-target:
+        description: 'Build target: web, macos, windows, linux, or test'
+        required: true
+        type: string
+      upload-artifacts:
+        description: 'Whether to upload build artifacts'
+        required: false
+        default: false
+        type: boolean
+      artifact-retention:
+        description: 'Artifact retention days'
+        required: false
+        default: 30
+        type: number
+      flutter-version:
+        description: 'Flutter version to use'
+        required: false
+        default: '3.24.0'
+        type: string
+      run-tests:
+        description: 'Whether to run tests'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-frontend:
+    runs-on: ${{ inputs.build-target == 'macos' && 'macos-latest' || inputs.build-target == 'windows' && 'windows-latest' || 'ubuntu-latest' }}
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Linux Dependencies
+      if: inputs.build-target == 'linux'
+      uses: ./.github/actions/setup-linux-deps
+    
+    - name: Setup Flutter Environment
+      uses: ./.github/actions/setup-flutter
+      with:
+        flutter-version: ${{ inputs.flutter-version }}
+        enable-desktop: ${{ inputs.build-target == 'test' && 'none' || inputs.build-target == 'web' && 'none' || inputs.build-target }}
+    
+    - name: Check Dart Format
+      if: inputs.run-tests
+      working-directory: flow_frontend
+      run: dart format --set-exit-if-changed .
+    
+    - name: Analyze Flutter Code
+      if: inputs.run-tests
+      working-directory: flow_frontend
+      run: flutter analyze --fatal-warnings
+    
+    - name: Run Flutter Tests
+      if: inputs.run-tests
+      working-directory: flow_frontend
+      run: flutter test --coverage
+    
+    - name: Upload Coverage
+      if: inputs.run-tests
+      uses: codecov/codecov-action@v4
+      with:
+        file: flow_frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+        fail_ci_if_error: false
+    
+    - name: Build Flutter App
+      if: inputs.build-target != 'test'
+      working-directory: flow_frontend
+      run: |
+        case "${{ inputs.build-target }}" in
+          "web")
+            flutter build web --release --web-renderer html
+            ;;
+          "macos")
+            flutter build macos --release
+            ;;
+          "windows")
+            flutter build windows --release
+            ;;
+          "linux")
+            flutter build linux --release
+            ;;
+          *)
+            echo "Unknown build target: ${{ inputs.build-target }}"
+            exit 1
+            ;;
+        esac
+    
+    - name: Create Archive
+      if: inputs.upload-artifacts && inputs.build-target != 'test'
+      shell: bash
+      run: |
+        case "${{ inputs.build-target }}" in
+          "web")
+            cd flow_frontend/build
+            tar -czf ../../Flow-Web-${{ github.run_id }}.tar.gz web/
+            ;;
+          "macos")
+            cd flow_frontend/build/macos/Build/Products/Release
+            ditto -c -k --sequesterRsrc --keepParent flow_frontend.app ../../../../../Flow-macOS-${{ github.run_id }}.zip
+            ;;
+          "windows")
+            cd flow_frontend/build/windows/x64/runner/Release
+            powershell Compress-Archive -Path * -DestinationPath ../../../../../Flow-Windows-${{ github.run_id }}.zip
+            ;;
+          "linux")
+            cd flow_frontend/build/linux/x64/release
+            tar -czf ../../../../../Flow-Linux-${{ github.run_id }}.tar.gz bundle/
+            ;;
+        esac
+    
+    - name: Upload Build Artifacts
+      if: inputs.upload-artifacts && inputs.build-target != 'test'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.build-target }}-build-${{ github.run_id }}
+        path: |
+          Flow-*-${{ github.run_id }}.*
+        retention-days: ${{ inputs.artifact-retention }}

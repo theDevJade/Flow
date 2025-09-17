@@ -21,7 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-fill with default credentials for demo
+    // @REMOVE
     _usernameController.text = 'admin';
     _passwordController.text = 'admin123';
   }
@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final authService = appState.authService;
     final persistenceService = context.read<PersistenceService>();
 
-    // Get the server URL from settings
+
     final serverHost = persistenceService.getWebSocketHost();
     final serverPort = persistenceService.getWebSocketPort();
     final serverUrl = 'http://$serverHost:$serverPort';
@@ -61,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (mounted) {
         if (result.success) {
-          // Navigate to main app
+
           Navigator.of(context).pushReplacementNamed('/home');
         } else {
           setState(() {
@@ -85,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showSettingsDialog(BuildContext context) async {
-    // Load current settings from persistence service
+
     final persistenceService = context.read<PersistenceService>();
     final wsConfig = await persistenceService.loadWebSocketConfig();
     final appSettings = await persistenceService.loadAppSettings();
@@ -98,8 +98,8 @@ class _LoginScreenState extends State<LoginScreen> {
           currentPort: wsConfig?['port'] as int?,
           showIntroSplash: appSettings['showIntroSplash'] as bool? ?? true,
           onSettingsChanged: (host, port, showIntro) {
-            // Settings are automatically saved in the dialog
-            // Show confirmation message
+
+
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -143,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // App Logo/Title
+
                     const Icon(
                       Icons.account_tree,
                       size: 64,
