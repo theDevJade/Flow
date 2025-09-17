@@ -65,4 +65,4 @@ If you encounter **bugs** or **unexpected behavior**:
 
 ## 📜 License
 
-This project is licensed under the terms of the [Flow Copyleft License](LICENSE).
+This project is licensed under the terms of the [GNU AFFERO GENERAL PUBLIC LICENSE](LICENSE).
