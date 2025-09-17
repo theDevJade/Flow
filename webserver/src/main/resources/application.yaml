@@ -1,0 +1,6 @@
+ktor:
+  application:
+    modules:
+      - com.thedevjade.flow.webserver.ApplicationKt.module
+  deployment:
+    port: 8080

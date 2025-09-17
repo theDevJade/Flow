@@ -1,0 +1,1945 @@
+package com.thedevjade.flow.webserver.websocket
+
+import com.thedevjade.flow.webserver.logging.FlowLogger
+import com.thedevjade.flow.webserver.database.WorkspaceRepository
+import com.thedevjade.flow.common.models.FileTreeNode
+import com.thedevjade.flow.webserver.api.FlowAPI
+import flow.api.FileSystemAccess
+import flow.api.implementation.FileSystemAccessImpl
+import io.ktor.websocket.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.*
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.seconds
+
+
+class WebSocketMessageHandler(
+    private val sessionManager: WebSocketSessionManager,
+    private val dataManager: GraphDataManager,
+    private val graphSyncHandler: GraphSyncHandler,
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+) {
+
+    companion object {
+        private const val MAX_MESSAGE_SIZE = 1024 * 1024
+        private const val RATE_LIMIT_WINDOW_SECONDS = 60
+        private const val MAX_MESSAGES_PER_WINDOW = 1000
+        private val REQUIRED_AUTH_MESSAGE_TYPES = setOf("graph_save", "graph_delete", "workspace_create")
+    }
+
+
+    private val rateLimitData = ConcurrentHashMap<String, RateLimitInfo>()
+    private val rateLimitMutex = Mutex()
+
+
+    private val messageValidators = mapOf<String, MessageValidator>(
+        "auth" to AuthMessageValidator(),
+        "ping" to PingMessageValidator(),
+        "heartbeat" to HeartbeatMessageValidator(),
+        "graph_update" to GraphUpdateMessageValidator(),
+        "graph_save" to GraphSaveMessageValidator(),
+        "graph_load" to GraphLoadMessageValidator(),
+        "graph_list" to GraphListMessageValidator(),
+        "node_update" to NodeUpdateMessageValidator(),
+        "connection_update" to ConnectionUpdateMessageValidator(),
+        "user_cursor" to UserCursorMessageValidator(),
+
+        "get_file_tree" to FileTreeMessageValidator(),
+        "read_file" to ReadFileMessageValidator(),
+        "write_file" to WriteFileMessageValidator(),
+        "create_file" to CreateFileMessageValidator(),
+        "create_directory" to CreateDirectoryMessageValidator(),
+        "delete_file" to DeleteFileMessageValidator(),
+        "delete_directory" to DeleteDirectoryMessageValidator(),
+
+        "node_templates" to NodeTemplatesMessageValidator()
+    )
+
+
+    suspend fun handleMessage(
+        sessionId: String,
+        message: WebSocketMessage
+    ) {
+        val correlationId = generateCorrelationId()
+
+        FlowLogger.debug("WebSocketMessageHandler",
+            "Processing message - SessionId: $sessionId, Type: ${message.type}, CorrelationId: $correlationId")
+
+        try {
+
+            val sessionData = sessionManager.getSession(sessionId)
+            if (sessionData?.session == null) {
+                FlowLogger.error("WebSocketMessageHandler",
+                    "Session not found: $sessionId, CorrelationId: $correlationId")
+                return
+            }
+
+
+            if (!checkRateLimit(sessionId)) {
+                FlowLogger.warn("WebSocketMessageHandler",
+                    "Rate limit exceeded for session: $sessionId, CorrelationId: $correlationId")
+                sendErrorResponse(sessionId, message.id, "Rate limit exceeded", correlationId)
+                return
+            }
+
+
+            if (!validateMessageSize(message)) {
+                FlowLogger.warn("WebSocketMessageHandler",
+                    "Message too large for session: $sessionId, CorrelationId: $correlationId")
+                sendErrorResponse(sessionId, message.id, "Message size exceeds limit", correlationId)
+                return
+            }
+
+
+            if (REQUIRED_AUTH_MESSAGE_TYPES.contains(message.type) && !sessionData.isAuthenticated) {
+                FlowLogger.warn("WebSocketMessageHandler",
+                    "Unauthenticated access attempt for ${message.type}: $sessionId, CorrelationId: $correlationId")
+                sendErrorResponse(sessionId, message.id, "Authentication required", correlationId)
+                return
+            }
+
+
+            val validator = messageValidators[message.type]
+            if (validator != null) {
+                val validationResult = validator.validate(message)
+                if (!validationResult.isValid) {
+                    FlowLogger.warn("WebSocketMessageHandler",
+                        "Message validation failed: ${validationResult.error}, CorrelationId: $correlationId")
+                    sendErrorResponse(sessionId, message.id, validationResult.error ?: "Invalid message format", correlationId)
+                    return
+                }
+            }
+
+
+            withTimeout(30.seconds) {
+                processMessage(sessionId, message, sessionData, correlationId)
+            }
+
+        } catch (e: TimeoutCancellationException) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Message processing timeout - SessionId: $sessionId, Type: ${message.type}, CorrelationId: $correlationId", e)
+            sendErrorResponse(sessionId, message.id, "Request timeout", correlationId)
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling message - SessionId: $sessionId, Type: ${message.type}, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Internal server error", correlationId)
+        }
+    }
+
+
+    private suspend fun processMessage(
+        sessionId: String,
+        message: WebSocketMessage,
+        sessionData: WebSocketSessionData,
+        correlationId: String
+    ) {
+        when (message.type) {
+            "auth" -> handleAuthMessage(sessionId, message, sessionData.session, correlationId)
+            "ping" -> handlePingMessage(sessionId, message, correlationId)
+            "heartbeat" -> handleHeartbeatMessage(sessionId, message, correlationId)
+            "graph_update" -> handleGraphUpdate(sessionId, message, correlationId)
+            "graph_save" -> handleGraphSave(sessionId, message, correlationId)
+            "graph_load" -> handleGraphLoad(sessionId, message, correlationId)
+            "graph_list" -> handleGraphList(sessionId, message, correlationId)
+            "node_update" -> handleNodeUpdate(sessionId, message, correlationId)
+            "connection_update" -> handleConnectionUpdate(sessionId, message, correlationId)
+            "user_cursor" -> handleUserCursor(sessionId, message, correlationId)
+
+            "get_file_tree" -> handleGetFileTree(sessionId, message, correlationId)
+            "read_file" -> handleReadFile(sessionId, message, correlationId)
+            "write_file" -> handleWriteFile(sessionId, message, correlationId)
+            "create_file" -> handleCreateFile(sessionId, message, correlationId)
+            "create_directory" -> handleCreateDirectory(sessionId, message, correlationId)
+            "delete_file" -> handleDeleteFile(sessionId, message, correlationId)
+            "delete_directory" -> handleDeleteDirectory(sessionId, message, correlationId)
+            "terminal_command" -> handleTerminalCommand(sessionId, message, correlationId)
+            "viewport_update" -> handleViewportUpdate(sessionId, message, correlationId)
+
+            "node_templates" -> handleNodeTemplates(sessionId, message, correlationId)
+
+            "workspace_list" -> handleWorkspaceList(sessionId, message, correlationId)
+            "create_workspace" -> handleCreateWorkspace(sessionId, message, correlationId)
+            "update_workspace" -> handleUpdateWorkspace(sessionId, message, correlationId)
+            "delete_workspace" -> handleDeleteWorkspace(sessionId, message, correlationId)
+            else -> {
+                FlowLogger.warn("WebSocketMessageHandler",
+                    "Unknown message type: ${message.type}, CorrelationId: $correlationId")
+                sendErrorResponse(sessionId, message.id, "Unknown message type: ${message.type}", correlationId)
+            }
+        }
+    }
+
+
+
+    private suspend fun handleAuthMessage(
+        sessionId: String,
+        message: WebSocketMessage,
+        session: DefaultWebSocketSession,
+        correlationId: String
+    ) {
+        val userId = message.data["userId"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+        val username = message.data["username"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+        val token = message.data["token"]?.jsonPrimitive?.content
+
+        if (userId == null || username == null) {
+            FlowLogger.warn("WebSocketMessageHandler",
+                "Auth message missing required fields - SessionId: $sessionId, CorrelationId: $correlationId")
+            sendErrorResponse(sessionId, message.id, "Missing userId or username in auth message", correlationId)
+            return
+        }
+
+
+        if (token != null && !validateAuthToken(token, userId)) {
+            FlowLogger.warn("WebSocketMessageHandler",
+                "Invalid auth token - UserId: $userId, SessionId: $sessionId, CorrelationId: $correlationId")
+            sendErrorResponse(sessionId, message.id, "Invalid authentication token", correlationId)
+            return
+        }
+
+        // Update session with authentication info
+        val sessionData = sessionManager.getSession(sessionId)
+        if (sessionData != null) {
+            sessionData.isAuthenticated = true
+            sessionData.metadata["authenticatedAt"] = System.currentTimeMillis()
+
+            FlowLogger.info("WebSocketMessageHandler",
+                "User authenticated - Username: $username, UserId: $userId, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            // Send success response
+            val response = WebSocketMessage(
+                type = "auth_response",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(true))
+                    put("userId", JsonPrimitive(userId))
+                    put("username", JsonPrimitive(username))
+                    put("sessionId", JsonPrimitive(sessionId))
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+        } else {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Session data not found during auth - SessionId: $sessionId, CorrelationId: $correlationId")
+            sendErrorResponse(sessionId, message.id, "Session not found", correlationId)
+        }
+    }
+
+    /**
+     * Handle ping message with enhanced logging
+     */
+    private suspend fun handlePingMessage(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        val sessionData = sessionManager.getSession(sessionId)
+        val userId = sessionData?.userId
+
+        FlowLogger.debug("WebSocketMessageHandler",
+            "Received ping - UserId: $userId, SessionId: $sessionId, CorrelationId: $correlationId")
+
+        // Update session activity
+        sessionData?.lastActivity = System.currentTimeMillis()
+
+        val pongResponse = WebSocketMessage(
+            type = "pong",
+            id = message.id,
+            data = buildJsonObject {
+                put("timestamp", JsonPrimitive(System.currentTimeMillis()))
+                put("correlationId", JsonPrimitive(correlationId))
+                put("sessionId", JsonPrimitive(sessionId))
+            },
+            userId = userId,
+            sessionId = sessionId
+        )
+
+        sessionManager.sendToSession(sessionId, pongResponse)
+    }
+
+    /**
+     * Handle heartbeat message to keep connection alive
+     */
+    private suspend fun handleHeartbeatMessage(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        val sessionData = sessionManager.getSession(sessionId)
+        val userId = sessionData?.userId
+
+        FlowLogger.debug("WebSocketMessageHandler",
+            "Received heartbeat - UserId: $userId, SessionId: $sessionId, CorrelationId: $correlationId")
+
+        // Update session activity and metadata
+        sessionData?.let {
+            it.lastActivity = System.currentTimeMillis()
+            it.metadata["lastHeartbeat"] = System.currentTimeMillis()
+            it.metadata["heartbeatCount"] = (it.metadata["heartbeatCount"] as? Int ?: 0) + 1
+        }
+
+        // Send heartbeat acknowledgment
+        val heartbeatResponse = WebSocketMessage(
+            type = "heartbeat_ack",
+            id = message.id,
+            data = buildJsonObject {
+                put("timestamp", JsonPrimitive(System.currentTimeMillis()))
+                put("correlationId", JsonPrimitive(correlationId))
+                put("sessionId", JsonPrimitive(sessionId))
+                put("status", JsonPrimitive("alive"))
+            },
+            userId = userId,
+            sessionId = sessionId
+        )
+
+        sessionManager.sendToSession(sessionId, heartbeatResponse)
+    }
+
+    /**
+     * Handle graph update with validation and broadcasting
+     */
+    private suspend fun handleGraphUpdate(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        val graphId = message.data["graphId"]?.jsonPrimitive?.content
+        val updateType = message.data["updateType"]?.jsonPrimitive?.content
+
+        if (graphId.isNullOrBlank()) {
+            FlowLogger.warn("WebSocketMessageHandler",
+                "Graph update missing graphId - SessionId: $sessionId, CorrelationId: $correlationId")
+            sendErrorResponse(sessionId, message.id, "Missing graphId", correlationId)
+            return
+        }
+
+        FlowLogger.info("WebSocketMessageHandler",
+            "Processing graph update - GraphId: $graphId, UpdateType: $updateType, SessionId: $sessionId, CorrelationId: $correlationId")
+
+        try {
+            // Process the graph update
+            graphSyncHandler.handleGraphUpdate(sessionManager.getSession(sessionId)!!.session, message)
+
+            // Broadcast update to other sessions (excluding sender)
+            val broadcastMessage = WebSocketMessage(
+                type = "graph_updated",
+                data = buildJsonObject {
+                    put("graphId", JsonPrimitive(graphId))
+                    put("updateType", JsonPrimitive(updateType ?: "generic"))
+                    put("updatedBy", JsonPrimitive(sessionManager.getSession(sessionId)?.userId ?: "unknown"))
+                    put("correlationId", JsonPrimitive(correlationId))
+                }
+            )
+
+            sessionManager.broadcast(broadcastMessage, excludeSessionId = sessionId)
+
+            // Send acknowledgment
+            sendSuccessResponse(sessionId, message.id, "Graph updated successfully", correlationId)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Failed to process graph update - GraphId: $graphId, SessionId: $sessionId, CorrelationId: $correlationId", e)
+            sendErrorResponse(sessionId, message.id, "Failed to update graph: ${e.message}", correlationId)
+        }
+    }
+
+    /**
+     * Handle graph save operation
+     */
+    private suspend fun handleGraphSave(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        val graphId = message.data["graphId"]?.jsonPrimitive?.content
+        val graphData = message.data["graphData"]?.jsonObject
+
+        if (graphId.isNullOrBlank()) {
+            sendErrorResponse(sessionId, message.id, "Missing graphId", correlationId)
+            return
+        }
+
+        if (graphData == null) {
+            sendErrorResponse(sessionId, message.id, "Missing graphData", correlationId)
+            return
+        }
+
+        FlowLogger.info("WebSocketMessageHandler",
+            "Saving graph - GraphId: $graphId, SessionId: $sessionId, CorrelationId: $correlationId")
+
+        try {
+            // Convert JsonObject to GraphData and save
+            val graph = Json.decodeFromJsonElement<GraphData>(graphData)
+            val success = dataManager.saveGraph(graphId, graph)
+
+            if (success) {
+                sendSuccessResponse(sessionId, message.id, "Graph saved successfully", correlationId,
+                    mapOf("graphId" to JsonPrimitive(graphId)))
+
+                // Notify other sessions about the save
+                val notificationMessage = WebSocketMessage(
+                    type = "graph_saved",
+                    data = buildJsonObject {
+                        put("graphId", JsonPrimitive(graphId))
+                        put("savedBy", JsonPrimitive(sessionManager.getSession(sessionId)?.userId ?: "unknown"))
+                        put("correlationId", JsonPrimitive(correlationId))
+                    }
+                )
+                sessionManager.broadcast(notificationMessage, excludeSessionId = sessionId)
+
+            } else {
+                sendErrorResponse(sessionId, message.id, "Failed to save graph", correlationId)
+            }
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error saving graph - GraphId: $graphId, SessionId: $sessionId, CorrelationId: $correlationId", e)
+            sendErrorResponse(sessionId, message.id, "Error saving graph: ${e.message}", correlationId)
+        }
+    }
+
+    /**
+     * Handle graph load operation
+     */
+    private suspend fun handleGraphLoad(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        val graphId = message.data["graphId"]?.jsonPrimitive?.content
+
+        if (graphId.isNullOrBlank()) {
+            sendErrorResponse(sessionId, message.id, "Missing graphId", correlationId)
+            return
+        }
+
+        FlowLogger.info("WebSocketMessageHandler",
+            "Loading graph - GraphId: $graphId, SessionId: $sessionId, CorrelationId: $correlationId")
+
+        try {
+            val graph = dataManager.loadGraph(graphId)
+
+            if (graph != null) {
+                val responseData = buildJsonObject {
+                    put("success", JsonPrimitive(true))
+                    put("graphId", JsonPrimitive(graphId))
+                    put("graphData", Json.encodeToJsonElement(graph))
+                    put("correlationId", JsonPrimitive(correlationId))
+                }
+
+                val response = WebSocketMessage(
+                    type = "graph_load_response",
+                    id = message.id,
+                    data = responseData,
+                    sessionId = sessionId
+                )
+
+                sessionManager.sendToSession(sessionId, response)
+
+            } else {
+                sendErrorResponse(sessionId, message.id, "Graph not found", correlationId)
+            }
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error loading graph - GraphId: $graphId, SessionId: $sessionId, CorrelationId: $correlationId", e)
+            sendErrorResponse(sessionId, message.id, "Error loading graph: ${e.message}", correlationId)
+        }
+    }
+
+    private suspend fun handleGraphList(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        FlowLogger.info("WebSocketMessageHandler",
+            "Listing graphs - SessionId: $sessionId, CorrelationId: $correlationId")
+
+        try {
+            val graphIds = dataManager.listGraphs()
+
+            val responseData = buildJsonObject {
+                put("success", JsonPrimitive(true))
+                put("graphs", buildJsonArray {
+                    graphIds.forEach { graphId ->
+                        add(buildJsonObject {
+                            put("id", JsonPrimitive(graphId))
+                            put("name", JsonPrimitive(graphId)) // Use ID as name for now
+                            put("description", JsonPrimitive("Graph: $graphId"))
+                            put("createdAt", JsonPrimitive(java.time.Instant.now().toString()))
+                            put("updatedAt", JsonPrimitive(java.time.Instant.now().toString()))
+                        })
+                    }
+                })
+                put("correlationId", JsonPrimitive(correlationId))
+            }
+
+            val response = WebSocketMessage(
+                type = "graph_list_response",
+                id = message.id,
+                data = responseData,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error listing graphs - SessionId: $sessionId, CorrelationId: $correlationId", e)
+            sendErrorResponse(sessionId, message.id, "Error listing graphs: ${e.message}", correlationId)
+        }
+    }
+
+    /**
+     * Handle node update operation
+     */
+    private suspend fun handleNodeUpdate(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        val graphId = message.data["graphId"]?.jsonPrimitive?.content
+        val nodeId = message.data["nodeId"]?.jsonPrimitive?.content
+        val nodeData = message.data["nodeData"]?.jsonObject
+
+        if (graphId.isNullOrBlank() || nodeId.isNullOrBlank() || nodeData == null) {
+            sendErrorResponse(sessionId, message.id, "Missing required fields for node update", correlationId)
+            return
+        }
+
+        FlowLogger.debug("WebSocketMessageHandler",
+            "Node update - GraphId: $graphId, NodeId: $nodeId, SessionId: $sessionId, CorrelationId: $correlationId")
+
+        // Broadcast node update to other sessions
+        val broadcastMessage = WebSocketMessage(
+            type = "node_updated",
+            data = buildJsonObject {
+                put("graphId", JsonPrimitive(graphId))
+                put("nodeId", JsonPrimitive(nodeId))
+                put("nodeData", nodeData)
+                put("updatedBy", JsonPrimitive(sessionManager.getSession(sessionId)?.userId ?: "unknown"))
+                put("correlationId", JsonPrimitive(correlationId))
+            }
+        )
+
+        sessionManager.broadcast(broadcastMessage, excludeSessionId = sessionId)
+        sendSuccessResponse(sessionId, message.id, "Node updated successfully", correlationId)
+    }
+
+    /**
+     * Handle connection update operation
+     */
+    private suspend fun handleConnectionUpdate(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        val graphId = message.data["graphId"]?.jsonPrimitive?.content
+        val connectionId = message.data["connectionId"]?.jsonPrimitive?.content
+        val connectionData = message.data["connectionData"]?.jsonObject
+
+        if (graphId.isNullOrBlank() || connectionId.isNullOrBlank() || connectionData == null) {
+            sendErrorResponse(sessionId, message.id, "Missing required fields for connection update", correlationId)
+            return
+        }
+
+        FlowLogger.debug("WebSocketMessageHandler",
+            "Connection update - GraphId: $graphId, ConnectionId: $connectionId, SessionId: $sessionId, CorrelationId: $correlationId")
+
+        // Broadcast connection update to other sessions
+        val broadcastMessage = WebSocketMessage(
+            type = "connection_updated",
+            data = buildJsonObject {
+                put("graphId", JsonPrimitive(graphId))
+                put("connectionId", JsonPrimitive(connectionId))
+                put("connectionData", connectionData)
+                put("updatedBy", JsonPrimitive(sessionManager.getSession(sessionId)?.userId ?: "unknown"))
+                put("correlationId", JsonPrimitive(correlationId))
+            }
+        )
+
+        sessionManager.broadcast(broadcastMessage, excludeSessionId = sessionId)
+        sendSuccessResponse(sessionId, message.id, "Connection updated successfully", correlationId)
+    }
+
+    /**
+     * Handle user cursor position updates
+     */
+    private suspend fun handleUserCursor(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        val graphId = message.data["graphId"]?.jsonPrimitive?.content
+        val position = message.data["position"]?.jsonObject
+
+        if (graphId.isNullOrBlank() || position == null) {
+            // Don't send error for cursor updates, just log and ignore
+            FlowLogger.debug("WebSocketMessageHandler",
+                "Invalid cursor update - GraphId: $graphId, SessionId: $sessionId, CorrelationId: $correlationId")
+            return
+        }
+
+        // Broadcast cursor position to other sessions in the same graph
+        val broadcastMessage = WebSocketMessage(
+            type = "user_cursor_update",
+            data = buildJsonObject {
+                put("graphId", JsonPrimitive(graphId))
+                put("userId", JsonPrimitive(sessionManager.getSession(sessionId)?.userId ?: "unknown"))
+                put("position", position)
+                put("correlationId", JsonPrimitive(correlationId))
+            }
+        )
+
+        sessionManager.broadcast(broadcastMessage, excludeSessionId = sessionId)
+    }
+
+
+    // Utility methods
+
+    /**
+     * Generate a unique correlation ID for request tracking
+     */
+    private fun generateCorrelationId(): String {
+        return "req_${System.currentTimeMillis()}_${(1000..9999).random()}"
+    }
+
+    /**
+     * Check rate limiting for a session
+     */
+    private suspend fun checkRateLimit(sessionId: String): Boolean = rateLimitMutex.withLock {
+        val now = System.currentTimeMillis()
+        val windowStart = now - (RATE_LIMIT_WINDOW_SECONDS * 1000)
+
+        val rateLimitInfo = rateLimitData.computeIfAbsent(sessionId) {
+            RateLimitInfo(mutableListOf(), 0)
+        }
+
+        // Remove old timestamps
+        rateLimitInfo.timestamps.removeIf { it < windowStart }
+
+        if (rateLimitInfo.timestamps.size >= MAX_MESSAGES_PER_WINDOW) {
+            rateLimitInfo.violationCount++
+            return@withLock false
+        }
+
+        rateLimitInfo.timestamps.add(now)
+        return@withLock true
+    }
+
+    /**
+     * Validate message size
+     */
+    private fun validateMessageSize(message: WebSocketMessage): Boolean {
+        return try {
+            val messageSize = Json.encodeToString(WebSocketMessage.serializer(), message).toByteArray().size
+            messageSize <= MAX_MESSAGE_SIZE
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Validate authentication token (implement your own logic)
+     */
+    private fun validateAuthToken(token: String, userId: String): Boolean {
+        // TODO: Implement proper token validation
+        return token.isNotBlank() && token.length >= 8
+    }
+
+    /**
+     * Send error response with correlation ID
+     */
+    private suspend fun sendErrorResponse(
+        sessionId: String,
+        messageId: String?,
+        error: String,
+        correlationId: String
+    ) {
+        val errorResponse = WebSocketMessage(
+            type = "error",
+            id = messageId,
+            data = buildJsonObject {
+                put("error", JsonPrimitive(error))
+                put("correlationId", JsonPrimitive(correlationId))
+                put("timestamp", JsonPrimitive(System.currentTimeMillis()))
+            },
+            sessionId = sessionId
+        )
+
+        try {
+            sessionManager.sendToSession(sessionId, errorResponse)
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Failed to send error response - SessionId: $sessionId, CorrelationId: $correlationId", e)
+        }
+    }
+
+    /**
+     * Send success response with correlation ID
+     */
+    private suspend fun sendSuccessResponse(
+        sessionId: String,
+        messageId: String?,
+        message: String,
+        correlationId: String,
+        additionalData: Map<String, JsonElement> = emptyMap()
+    ) {
+        val dataMap = mutableMapOf<String, JsonElement>(
+            "success" to JsonPrimitive(true),
+            "message" to JsonPrimitive(message),
+            "correlationId" to JsonPrimitive(correlationId),
+            "timestamp" to JsonPrimitive(System.currentTimeMillis())
+        )
+        dataMap.putAll(additionalData)
+
+        val successResponse = WebSocketMessage(
+            type = "success",
+            id = messageId,
+            data = JsonObject(dataMap),
+            sessionId = sessionId
+        )
+
+        try {
+            sessionManager.sendToSession(sessionId, successResponse)
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Failed to send success response - SessionId: $sessionId, CorrelationId: $correlationId", e)
+        }
+    }
+
+    /**
+     * Cleanup resources when handler is disposed
+     */
+    /**
+     * Workspace Management Handlers
+     */
+
+    private suspend fun handleWorkspaceList(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            FlowLogger.info("WebSocketMessageHandler",
+                "Getting workspace list - SessionId: $sessionId, CorrelationId: $correlationId")
+
+            val session = sessionManager.getSession(sessionId)
+            if (session == null) {
+                sendErrorResponse(sessionId, message.id, "Session not found", correlationId)
+                return
+            }
+
+            // Get workspaces from database
+            val userId = session.userId.toIntOrNull() ?: 1 // Default to user 1 if conversion fails
+            val workspaces = WorkspaceRepository.loadWorkspacesByUser(userId)
+            val workspaceData = workspaces.map { workspace ->
+                mapOf(
+                    "workspaceId" to workspace.workspaceId,
+                    "name" to workspace.name,
+                    "data" to workspace.data,
+                    "currentPage" to workspace.currentPage,
+                    "settings" to workspace.settings,
+                    "createdAt" to workspace.createdAt.toString(),
+                    "updatedAt" to workspace.updatedAt.toString()
+                )
+            }
+
+            val response = WebSocketMessage(
+                type = "workspace_list_response",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(true))
+                    put("workspaces", Json.encodeToJsonElement(workspaceData))
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = session.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling workspace_list - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to get workspace list: ${e.message}", correlationId)
+        }
+    }
+
+    private suspend fun handleCreateWorkspace(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val name = message.data["name"]?.jsonPrimitive?.content
+            val data = message.data["data"]?.jsonObject ?: buildJsonObject { }
+            val settings = message.data["settings"]?.jsonObject ?: buildJsonObject { }
+
+            FlowLogger.info("WebSocketMessageHandler",
+                "Creating workspace - Name: $name, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            val session = sessionManager.getSession(sessionId)
+            if (session == null) {
+                sendErrorResponse(sessionId, message.id, "Session not found", correlationId)
+                return
+            }
+
+            if (name.isNullOrBlank()) {
+                sendErrorResponse(sessionId, message.id, "Workspace name is required", correlationId)
+                return
+            }
+
+            val workspaceId = "workspace_${System.currentTimeMillis()}"
+            val userId = session.userId.toIntOrNull() ?: 1 // Default to user 1 if conversion fails
+            val success = WorkspaceRepository.saveWorkspace(
+                workspaceId = workspaceId,
+                userId = userId,
+                name = name,
+                data = data.toString(),
+                currentPage = null,
+                settings = settings.toString()
+            )
+
+            val response = WebSocketMessage(
+                type = "workspace_created",
+                id = message.id,
+                data = if (success) {
+                    buildJsonObject {
+                        put("success", JsonPrimitive(true))
+                        put("workspace", Json.encodeToJsonElement(mapOf(
+                            "workspaceId" to workspaceId,
+                            "name" to name,
+                            "data" to data,
+                            "currentPage" to null,
+                            "settings" to settings,
+                            "createdAt" to java.time.Instant.now().toString(),
+                            "updatedAt" to java.time.Instant.now().toString()
+                        )))
+                        put("correlationId", JsonPrimitive(correlationId))
+                    }
+                } else {
+                    buildJsonObject {
+                        put("success", JsonPrimitive(false))
+                        put("error", JsonPrimitive("Failed to create workspace"))
+                        put("correlationId", JsonPrimitive(correlationId))
+                    }
+                },
+                userId = session.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling create_workspace - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to create workspace: ${e.message}", correlationId)
+        }
+    }
+
+    private suspend fun handleUpdateWorkspace(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val workspaceId = message.data["workspaceId"]?.jsonPrimitive?.content
+            val name = message.data["name"]?.jsonPrimitive?.content
+            val data = message.data["data"]?.jsonObject
+            val settings = message.data["settings"]?.jsonObject
+
+            FlowLogger.info("WebSocketMessageHandler",
+                "Updating workspace - ID: $workspaceId, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            val session = sessionManager.getSession(sessionId)
+            if (session == null) {
+                sendErrorResponse(sessionId, message.id, "Session not found", correlationId)
+                return
+            }
+
+            if (workspaceId.isNullOrBlank()) {
+                sendErrorResponse(sessionId, message.id, "Workspace ID is required", correlationId)
+                return
+            }
+
+            val existingWorkspace = WorkspaceRepository.loadWorkspace(workspaceId)
+            if (existingWorkspace == null) {
+                sendErrorResponse(sessionId, message.id, "Workspace not found", correlationId)
+                return
+            }
+
+            val userId = session.userId.toIntOrNull() ?: 1 // Default to user 1 if conversion fails
+            val success = WorkspaceRepository.saveWorkspace(
+                workspaceId = workspaceId,
+                userId = userId,
+                name = name ?: existingWorkspace.name,
+                data = data?.toString() ?: existingWorkspace.data,
+                currentPage = existingWorkspace.currentPage,
+                settings = settings?.toString() ?: existingWorkspace.settings
+            )
+
+            val response = WebSocketMessage(
+                type = "workspace_updated",
+                id = message.id,
+                data = if (success) {
+                    buildJsonObject {
+                        put("success", JsonPrimitive(true))
+                        put("workspace", Json.encodeToJsonElement(mapOf(
+                            "workspaceId" to workspaceId,
+                            "name" to (name ?: existingWorkspace.name),
+                            "data" to (data?.toString() ?: existingWorkspace.data),
+                            "currentPage" to existingWorkspace.currentPage,
+                            "settings" to (settings?.toString() ?: existingWorkspace.settings),
+                            "createdAt" to existingWorkspace.createdAt.toString(),
+                            "updatedAt" to java.time.Instant.now().toString()
+                        )))
+                        put("correlationId", JsonPrimitive(correlationId))
+                    }
+                } else {
+                    buildJsonObject {
+                        put("success", JsonPrimitive(false))
+                        put("error", JsonPrimitive("Failed to update workspace"))
+                        put("correlationId", JsonPrimitive(correlationId))
+                    }
+                },
+                userId = session.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling update_workspace - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to update workspace: ${e.message}", correlationId)
+        }
+    }
+
+    private suspend fun handleDeleteWorkspace(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val workspaceId = message.data["workspaceId"]?.jsonPrimitive?.content
+
+            FlowLogger.info("WebSocketMessageHandler",
+                "Deleting workspace - ID: $workspaceId, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            val session = sessionManager.getSession(sessionId)
+            if (session == null) {
+                sendErrorResponse(sessionId, message.id, "Session not found", correlationId)
+                return
+            }
+
+            if (workspaceId.isNullOrBlank()) {
+                sendErrorResponse(sessionId, message.id, "Workspace ID is required", correlationId)
+                return
+            }
+
+            val success = WorkspaceRepository.deleteWorkspace(workspaceId)
+
+            val response = WebSocketMessage(
+                type = "workspace_deleted",
+                id = message.id,
+                data = if (success) {
+                    buildJsonObject {
+                        put("success", JsonPrimitive(true))
+                        put("workspaceId", JsonPrimitive(workspaceId))
+                        put("correlationId", JsonPrimitive(correlationId))
+                    }
+                } else {
+                    buildJsonObject {
+                        put("success", JsonPrimitive(false))
+                        put("error", JsonPrimitive("Failed to delete workspace"))
+                        put("correlationId", JsonPrimitive(correlationId))
+                    }
+                },
+                userId = session.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling delete_workspace - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to delete workspace: ${e.message}", correlationId)
+        }
+    }
+
+    fun dispose() {
+        scope.cancel("WebSocketMessageHandler disposed")
+        rateLimitData.clear()
+        FlowLogger.info("WebSocketMessageHandler", "Message handler disposed")
+    }
+
+    /**
+     * File System Message Handlers
+     */
+
+    private fun fileTreeNodeToJson(node: FileTreeNode): JsonObject {
+        return buildJsonObject {
+            put("name", JsonPrimitive(node.name))
+            put("fullPath", JsonPrimitive(node.path))
+            put("isDirectory", JsonPrimitive(node.type == "directory"))
+            put("lastModified", JsonPrimitive(
+                node.lastModified?.let {
+                    java.time.Instant.ofEpochMilli(it).toString()
+                } ?: java.time.Instant.now().toString()
+            ))
+            put("size", JsonPrimitive(node.size ?: 0))
+            put("children", buildJsonArray {
+                node.children.forEach { child ->
+                    add(fileTreeNodeToJson(child))
+                }
+            })
+        }
+    }
+
+    private suspend fun handleGetFileTree(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val rootPath = message.data["rootPath"]?.jsonPrimitive?.content
+            FlowLogger.info("WebSocketMessageHandler",
+                "Getting file tree - RootPath: $rootPath, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            // Get FlowAPI instance and file system access
+            val flowApi = flow.api.implementation.FlowApiImpl()
+            val fileSystemAccess = flowApi.fileSystemAccess
+
+            // Ensure file system access is properly initialized
+            if (fileSystemAccess.getRootDirectory() == null) {
+                val currentWorkingDir = java.io.File("").absolutePath
+                if (!fileSystemAccess.setRootDirectory(java.nio.file.Paths.get(currentWorkingDir))) {
+                    FlowLogger.error("WebSocketMessageHandler", "Failed to initialize file system access")
+                    sendErrorResponse(sessionId, message.id, "File system not initialized", correlationId)
+                    return
+                }
+            }
+
+            val pathToUse = if (rootPath != null) java.nio.file.Paths.get(rootPath) else null
+            val fileTree = fileSystemAccess.getFileTree(pathToUse)
+
+            val response = WebSocketMessage(
+                type = "file_tree",
+                id = message.id,
+                data = if (fileTree != null) {
+                    val fileTreeJson = fileTreeNodeToJson(fileTree)
+                    buildJsonObject {
+                        put("success", JsonPrimitive(true))
+                        fileTreeJson.forEach { (key, value) ->
+                            put(key, value)
+                        }
+                        put("correlationId", JsonPrimitive(correlationId))
+                    }
+                } else {
+                    buildJsonObject {
+                        put("success", JsonPrimitive(false))
+                        put("error", JsonPrimitive("Failed to access file tree"))
+                        put("correlationId", JsonPrimitive(correlationId))
+                    }
+                },
+                userId = sessionManager.getSession(sessionId)?.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling get_file_tree - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to get file tree: ${e.message}", correlationId)
+        }
+    }
+
+    private suspend fun handleReadFile(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val filePath = message.data["path"]?.jsonPrimitive?.content
+            val requestId = message.data["requestId"]?.jsonPrimitive?.content
+
+            if (filePath.isNullOrBlank()) {
+                sendErrorResponse(sessionId, message.id, "Missing file path", correlationId)
+                return
+            }
+
+            FlowLogger.info("WebSocketMessageHandler",
+                "Reading file - Path: $filePath, RequestId: $requestId, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            val flowApi = FlowAPI.getInstance();
+            val fileSystemAccess = flowApi.getFileManager()
+
+            // Ensure file system access is properly initialized
+            if (fileSystemAccess.getRootDirectory() == null) {
+                val currentWorkingDir = java.io.File("").absolutePath
+                if (!fileSystemAccess.setRootDirectory(java.nio.file.Paths.get(currentWorkingDir))) {
+                    FlowLogger.error("WebSocketMessageHandler", "Failed to initialize file system access")
+                    sendErrorResponse(sessionId, message.id, "File system not initialized", correlationId)
+                    return
+                }
+            }
+
+            val path = java.nio.file.Paths.get(filePath)
+            val content = fileSystemAccess.readFile(path)
+
+            val response = WebSocketMessage(
+                type = "file_content",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(content != null))
+                    put("path", JsonPrimitive(filePath))
+                    put("content", JsonPrimitive(content ?: ""))
+                    if (requestId != null) put("requestId", JsonPrimitive(requestId))
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = sessionManager.getSession(sessionId)?.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling read_file - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to read file: ${e.message}", correlationId)
+        }
+    }
+
+    private suspend fun handleWriteFile(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val filePath = message.data["path"]?.jsonPrimitive?.content
+            val content = message.data["content"]?.jsonPrimitive?.content
+
+            if (filePath.isNullOrBlank()) {
+                sendErrorResponse(sessionId, message.id, "Missing file path", correlationId)
+                return
+            }
+
+            if (content == null) {
+                sendErrorResponse(sessionId, message.id, "Missing file content", correlationId)
+                return
+            }
+
+            FlowLogger.info("WebSocketMessageHandler",
+                "Writing file - Path: $filePath, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            val flowApi = FlowAPI.getInstance();
+            val fileSystemAccess = flowApi.getFileManager()
+            val path = java.nio.file.Paths.get(filePath)
+            val success = fileSystemAccess.writeFile(path, content)
+
+            val response = WebSocketMessage(
+                type = "file_saved",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(success))
+                    put("path", JsonPrimitive(filePath))
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = sessionManager.getSession(sessionId)?.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling write_file - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to write file: ${e.message}", correlationId)
+        }
+    }
+
+    private suspend fun handleCreateFile(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val dirPath = message.data["dirPath"]?.jsonPrimitive?.content
+            val fileName = message.data["fileName"]?.jsonPrimitive?.content
+
+            if (dirPath.isNullOrBlank() || fileName.isNullOrBlank()) {
+                sendErrorResponse(sessionId, message.id, "Missing dirPath or fileName", correlationId)
+                return
+            }
+
+            FlowLogger.info("WebSocketMessageHandler",
+                "Creating file - DirPath: $dirPath, FileName: $fileName, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            val flowApi = flow.api.implementation.FlowApiImpl()
+            val fileSystemAccess = flowApi.fileSystemAccess
+            val fullPath = java.nio.file.Paths.get(dirPath).resolve(fileName)
+            val success = fileSystemAccess.createFile(fullPath)
+
+            val response = WebSocketMessage(
+                type = "file_created",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(success))
+                    put("path", JsonPrimitive(fullPath.toString()))
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = sessionManager.getSession(sessionId)?.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling create_file - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to create file: ${e.message}", correlationId)
+        }
+    }
+
+    private suspend fun handleCreateDirectory(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val parentPath = message.data["parentPath"]?.jsonPrimitive?.content
+            val dirName = message.data["dirName"]?.jsonPrimitive?.content
+
+            if (parentPath.isNullOrBlank() || dirName.isNullOrBlank()) {
+                sendErrorResponse(sessionId, message.id, "Missing parentPath or dirName", correlationId)
+                return
+            }
+
+            FlowLogger.info("WebSocketMessageHandler",
+                "Creating directory - ParentPath: $parentPath, DirName: $dirName, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            val flowApi = flow.api.implementation.FlowApiImpl()
+            val fileSystemAccess = flowApi.fileSystemAccess
+            val fullPath = java.nio.file.Paths.get(parentPath).resolve(dirName)
+            val success = fileSystemAccess.createDirectory(fullPath)
+
+            val response = WebSocketMessage(
+                type = "directory_created",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(success))
+                    put("path", JsonPrimitive(fullPath.toString()))
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = sessionManager.getSession(sessionId)?.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling create_directory - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to create directory: ${e.message}", correlationId)
+        }
+    }
+
+    private suspend fun handleDeleteFile(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val filePath = message.data["path"]?.jsonPrimitive?.content
+
+            if (filePath.isNullOrBlank()) {
+                sendErrorResponse(sessionId, message.id, "Missing file path", correlationId)
+                return
+            }
+
+            FlowLogger.info("WebSocketMessageHandler",
+                "Deleting file - Path: $filePath, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            val flowApi = flow.api.implementation.FlowApiImpl()
+            val fileSystemAccess = flowApi.fileSystemAccess
+            val path = java.nio.file.Paths.get(filePath)
+            val success = fileSystemAccess.deleteFile(path)
+
+            val response = WebSocketMessage(
+                type = "file_deleted",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(success))
+                    put("path", JsonPrimitive(filePath))
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = sessionManager.getSession(sessionId)?.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling delete_file - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to delete file: ${e.message}", correlationId)
+        }
+    }
+
+    private suspend fun handleDeleteDirectory(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val dirPath = message.data["path"]?.jsonPrimitive?.content
+            val recursive = message.data["recursive"]?.jsonPrimitive?.booleanOrNull ?: false
+
+            if (dirPath.isNullOrBlank()) {
+                sendErrorResponse(sessionId, message.id, "Missing directory path", correlationId)
+                return
+            }
+
+            FlowLogger.info("WebSocketMessageHandler",
+                "Deleting directory - Path: $dirPath, Recursive: $recursive, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            val flowApi = flow.api.implementation.FlowApiImpl()
+            val fileSystemAccess = flowApi.fileSystemAccess
+            val path = java.nio.file.Paths.get(dirPath)
+            val success = fileSystemAccess.deleteDirectory(path, recursive)
+
+            val response = WebSocketMessage(
+                type = "directory_deleted",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(success))
+                    put("path", JsonPrimitive(dirPath))
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = sessionManager.getSession(sessionId)?.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling delete_directory - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to delete directory: ${e.message}", correlationId)
+        }
+    }
+
+    private suspend fun handleNodeTemplates(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            FlowLogger.info("WebSocketMessageHandler",
+                "Requesting node templates - SessionId: $sessionId, CorrelationId: $correlationId")
+
+            // Load node templates from assets file
+            val templatesJson = """
+            {
+              "version": "1.0",
+              "node_templates": [
+                {
+                  "id": "input_material",
+                  "name": "Material Input",
+                  "description": "Material input node for shaders",
+                  "category": "Input",
+                  "color": {
+                    "r": 0.2,
+                    "g": 0.6,
+                    "b": 0.2,
+                    "a": 1.0
+                  },
+                  "size": {
+                    "width": 150,
+                    "height": 80
+                  },
+                  "inputs": [],
+                  "outputs": [
+                    {
+                      "id": "material",
+                      "name": "Material",
+                      "type": "material",
+                      "color": {
+                        "r": 1.0,
+                        "g": 0.8,
+                        "b": 0.0,
+                        "a": 1.0
+                      }
+                    }
+                  ],
+                  "properties": [
+                    {
+                      "name": "material_name",
+                      "type": "string",
+                      "label": "Material Name",
+                      "default": "DefaultMaterial",
+                      "description": "Name of the material to load"
+                    }
+                  ]
+                },
+                {
+                  "id": "process_shader",
+                  "name": "Shader Processor",
+                  "description": "Process shader data with various operations",
+                  "category": "Processing",
+                  "color": {
+                    "r": 0.4,
+                    "g": 0.3,
+                    "b": 0.8,
+                    "a": 1.0
+                  },
+                  "size": {
+                    "width": 180,
+                    "height": 120
+                  },
+                  "inputs": [
+                    {
+                      "id": "input_data",
+                      "name": "Data",
+                      "type": "data",
+                      "color": {
+                        "r": 0.2,
+                        "g": 0.8,
+                        "b": 0.2,
+                        "a": 1.0
+                      }
+                    },
+                    {
+                      "id": "control_signal",
+                      "name": "Control",
+                      "type": "control",
+                      "color": {
+                        "r": 0.2,
+                        "g": 0.4,
+                        "b": 0.8,
+                        "a": 1.0
+                      }
+                    }
+                  ],
+                  "outputs": [
+                    {
+                      "id": "processed_result",
+                      "name": "Result",
+                      "type": "result",
+                      "color": {
+                        "r": 0.8,
+                        "g": 0.2,
+                        "b": 0.2,
+                        "a": 1.0
+                      }
+                    }
+                  ],
+                  "properties": [
+                    {
+                      "name": "operation_type",
+                      "type": "enum",
+                      "label": "Operation",
+                      "default": "multiply",
+                      "description": "Type of shader operation to perform",
+                      "options": ["multiply", "add", "subtract", "divide"]
+                    },
+                    {
+                      "name": "intensity",
+                      "type": "number",
+                      "label": "Intensity",
+                      "default": 1.0,
+                      "description": "Operation intensity factor",
+                      "min": 0.0,
+                      "max": 5.0
+                    }
+                  ]
+                },
+                {
+                  "id": "output_render",
+                  "name": "Render Output",
+                  "description": "Final render output node",
+                  "category": "Output",
+                  "color": {
+                    "r": 0.8,
+                    "g": 0.2,
+                    "b": 0.2,
+                    "a": 1.0
+                  },
+                  "size": {
+                    "width": 160,
+                    "height": 90
+                  },
+                  "inputs": [
+                    {
+                      "id": "final_result",
+                      "name": "Result",
+                      "type": "result",
+                      "color": {
+                        "r": 0.8,
+                        "g": 0.2,
+                        "b": 0.2,
+                        "a": 1.0
+                      }
+                    }
+                  ],
+                  "outputs": [],
+                  "properties": [
+                    {
+                      "name": "output_format",
+                      "type": "enum",
+                      "label": "Format",
+                      "default": "png",
+                      "description": "Output file format",
+                      "options": ["png", "jpg", "tiff", "exr"]
+                    },
+                    {
+                      "name": "quality",
+                      "type": "number",
+                      "label": "Quality",
+                      "default": 0.95,
+                      "description": "Output quality (0-1)",
+                      "min": 0.0,
+                      "max": 1.0
+                    }
+                  ]
+                }
+              ]
+            }
+            """
+
+            val templatesJsonElement = Json.parseToJsonElement(templatesJson)
+
+            val response = WebSocketMessage(
+                type = "node_templates_response",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(true))
+                    put("templates", templatesJsonElement)
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = sessionManager.getSession(sessionId)?.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling node_templates - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to get node templates: ${e.message}", correlationId)
+        }
+    }
+
+    private suspend fun handleTerminalCommand(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val command = message.data["command"]?.jsonPrimitive?.content
+            val cwd = message.data["cwd"]?.jsonPrimitive?.content ?: System.getProperty("user.dir")
+            val pageId = message.data["pageId"]?.jsonPrimitive?.content
+
+            if (command.isNullOrBlank()) {
+                sendErrorResponse(sessionId, message.id, "Missing command", correlationId)
+                return
+            }
+
+            FlowLogger.info("WebSocketMessageHandler",
+                "Executing terminal command - Command: $command, CWD: $cwd, PageId: $pageId, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            // Execute the command
+            val processBuilder = ProcessBuilder()
+            processBuilder.command("bash", "-c", command)
+            processBuilder.directory(java.io.File(cwd))
+
+            val process = processBuilder.start()
+
+            // Read output
+            val output = process.inputStream.bufferedReader().readText()
+            val errorOutput = process.errorStream.bufferedReader().readText()
+            val exitCode = process.waitFor()
+
+            val allOutput = if (errorOutput.isNotEmpty()) {
+                "$output\n$errorOutput"
+            } else {
+                output
+            }
+
+            val outputLines = allOutput.split("\n").filter { it.isNotEmpty() }
+
+            val response = WebSocketMessage(
+                type = "terminal_response",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(exitCode == 0))
+                    put("output", Json.encodeToJsonElement(outputLines))
+                    put("cwd", JsonPrimitive(cwd))
+                    put("exitCode", JsonPrimitive(exitCode))
+                    if (pageId != null) put("pageId", JsonPrimitive(pageId))
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = sessionManager.getSession(sessionId)?.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling terminal_command - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+
+            val errorResponse = WebSocketMessage(
+                type = "terminal_response",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(false))
+                    put("output", Json.encodeToJsonElement(listOf("Error: ${e.message}")))
+                    put("cwd", JsonPrimitive(System.getProperty("user.dir")))
+                    put("exitCode", JsonPrimitive(-1))
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = sessionManager.getSession(sessionId)?.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, errorResponse)
+        }
+    }
+
+    private suspend fun handleViewportUpdate(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val graphId = message.data["graphId"]?.jsonPrimitive?.content
+            val scale = message.data["scale"]?.jsonPrimitive?.doubleOrNull
+            val panOffsetData = message.data["panOffset"]?.jsonObject
+
+            if (graphId.isNullOrBlank()) {
+                sendErrorResponse(sessionId, message.id, "Missing graphId", correlationId)
+                return
+            }
+
+            FlowLogger.debug("WebSocketMessageHandler",
+                "Viewport update - GraphId: $graphId, Scale: $scale, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            // Update session viewport state
+            val sessionData = sessionManager.getSession(sessionId)
+            if (sessionData != null && scale != null && panOffsetData != null) {
+                val panOffsetX = panOffsetData["dx"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+                val panOffsetY = panOffsetData["dy"]?.jsonPrimitive?.doubleOrNull ?: 0.0
+
+                sessionData.viewportState = ViewportState(
+                    scale = scale,
+                    panOffsetX = panOffsetX,
+                    panOffsetY = panOffsetY,
+                    graphId = graphId
+                )
+
+                // Broadcast viewport update to other sessions
+                val broadcastMessage = WebSocketMessage(
+                    type = "viewport_updated",
+                    data = buildJsonObject {
+                        put("graphId", JsonPrimitive(graphId))
+                        put("scale", JsonPrimitive(scale))
+                        put("panOffset", panOffsetData)
+                        put("updatedBy", JsonPrimitive(sessionData.userId))
+                        put("correlationId", JsonPrimitive(correlationId))
+                    }
+                )
+
+                sessionManager.broadcast(broadcastMessage, excludeSessionId = sessionId)
+            }
+
+            sendSuccessResponse(sessionId, message.id, "Viewport updated successfully", correlationId)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling viewport_update - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+            sendErrorResponse(sessionId, message.id, "Failed to update viewport: ${e.message}", correlationId)
+        }
+    }
+}
+
+// Supporting data classes
+
+/**
+ * Rate limiting information for a session
+ */
+private data class RateLimitInfo(
+    val timestamps: MutableList<Long>,
+    var violationCount: Int
+)
+
+/**
+ * Message validation result
+ */
+data class ValidationResult(
+    val isValid: Boolean,
+    val error: String? = null
+)
+
+/**
+ * Base interface for message validators
+ */
+interface MessageValidator {
+    fun validate(message: WebSocketMessage): ValidationResult
+}
+
+/**
+ * Authentication message validator
+ */
+class AuthMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val userId = message.data["userId"]?.jsonPrimitive?.content
+        val username = message.data["username"]?.jsonPrimitive?.content
+
+        return when {
+            userId.isNullOrBlank() -> ValidationResult(false, "Missing userId")
+            username.isNullOrBlank() -> ValidationResult(false, "Missing username")
+            userId.length > 100 -> ValidationResult(false, "UserId too long")
+            username.length > 100 -> ValidationResult(false, "Username too long")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+/**
+ * Ping message validator
+ */
+class PingMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        // Ping messages don't require specific validation
+        return ValidationResult(true)
+    }
+}
+
+/**
+ * Heartbeat message validator
+ */
+class HeartbeatMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        // Heartbeat messages are similar to ping, no specific validation needed
+        return ValidationResult(true)
+    }
+}
+
+/**
+ * Graph update message validator
+ */
+class GraphUpdateMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val graphId = message.data["graphId"]?.jsonPrimitive?.content
+
+        return when {
+            graphId.isNullOrBlank() -> ValidationResult(false, "Missing graphId")
+            graphId.length > 255 -> ValidationResult(false, "GraphId too long")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+/**
+ * Graph save message validator
+ */
+class GraphSaveMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val graphId = message.data["graphId"]?.jsonPrimitive?.content
+        val graphData = message.data["graphData"]?.jsonObject
+
+        return when {
+            graphId.isNullOrBlank() -> ValidationResult(false, "Missing graphId")
+            graphData == null -> ValidationResult(false, "Missing graphData")
+            graphId.length > 255 -> ValidationResult(false, "GraphId too long")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+/**
+ * Graph load message validator
+ */
+class GraphLoadMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val graphId = message.data["graphId"]?.jsonPrimitive?.content
+
+        return when {
+            graphId.isNullOrBlank() -> ValidationResult(false, "Missing graphId")
+            graphId.length > 255 -> ValidationResult(false, "GraphId too long")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+/**
+ * Node update message validator
+ */
+class NodeUpdateMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val graphId = message.data["graphId"]?.jsonPrimitive?.content
+        val nodeId = message.data["nodeId"]?.jsonPrimitive?.content
+        val nodeData = message.data["nodeData"]?.jsonObject
+
+        return when {
+            graphId.isNullOrBlank() -> ValidationResult(false, "Missing graphId")
+            nodeId.isNullOrBlank() -> ValidationResult(false, "Missing nodeId")
+            nodeData == null -> ValidationResult(false, "Missing nodeData")
+            graphId.length > 255 -> ValidationResult(false, "GraphId too long")
+            nodeId.length > 255 -> ValidationResult(false, "NodeId too long")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+/**
+ * Connection update message validator
+ */
+class ConnectionUpdateMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val graphId = message.data["graphId"]?.jsonPrimitive?.content
+        val connectionId = message.data["connectionId"]?.jsonPrimitive?.content
+        val connectionData = message.data["connectionData"]?.jsonObject
+
+        return when {
+            graphId.isNullOrBlank() -> ValidationResult(false, "Missing graphId")
+            connectionId.isNullOrBlank() -> ValidationResult(false, "Missing connectionId")
+            connectionData == null -> ValidationResult(false, "Missing connectionData")
+            graphId.length > 255 -> ValidationResult(false, "GraphId too long")
+            connectionId.length > 255 -> ValidationResult(false, "ConnectionId too long")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+/**
+ * User cursor message validator
+ */
+class UserCursorMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val graphId = message.data["graphId"]?.jsonPrimitive?.content
+        val position = message.data["position"]?.jsonObject
+
+        return when {
+            graphId.isNullOrBlank() -> ValidationResult(false, "Missing graphId")
+            position == null -> ValidationResult(false, "Missing position")
+            graphId.length > 255 -> ValidationResult(false, "GraphId too long")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+/**
+ * File System Message Validators
+ */
+
+class FileTreeMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val rootPath = message.data["rootPath"]?.jsonPrimitive?.content
+        return when {
+            rootPath != null && rootPath.length > 500 -> ValidationResult(false, "Root path too long")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+class ReadFileMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val path = message.data["path"]?.jsonPrimitive?.content
+        return when {
+            path.isNullOrBlank() -> ValidationResult(false, "Missing file path")
+            path.length > 500 -> ValidationResult(false, "File path too long")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+class WriteFileMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val path = message.data["path"]?.jsonPrimitive?.content
+        val content = message.data["content"]?.jsonPrimitive?.content
+        return when {
+            path.isNullOrBlank() -> ValidationResult(false, "Missing file path")
+            content == null -> ValidationResult(false, "Missing file content")
+            path.length > 500 -> ValidationResult(false, "File path too long")
+            content.length > 10 * 1024 * 1024 -> ValidationResult(false, "File content too large (max 10MB)")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+class CreateFileMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val dirPath = message.data["dirPath"]?.jsonPrimitive?.content
+        val fileName = message.data["fileName"]?.jsonPrimitive?.content
+        return when {
+            dirPath.isNullOrBlank() -> ValidationResult(false, "Missing directory path")
+            fileName.isNullOrBlank() -> ValidationResult(false, "Missing file name")
+            dirPath.length > 500 -> ValidationResult(false, "Directory path too long")
+            fileName.length > 255 -> ValidationResult(false, "File name too long")
+            fileName.contains("/") || fileName.contains("\\") -> ValidationResult(false, "Invalid characters in file name")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+class CreateDirectoryMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val parentPath = message.data["parentPath"]?.jsonPrimitive?.content
+        val dirName = message.data["dirName"]?.jsonPrimitive?.content
+        return when {
+            parentPath.isNullOrBlank() -> ValidationResult(false, "Missing parent path")
+            dirName.isNullOrBlank() -> ValidationResult(false, "Missing directory name")
+            parentPath.length > 500 -> ValidationResult(false, "Parent path too long")
+            dirName.length > 255 -> ValidationResult(false, "Directory name too long")
+            dirName.contains("/") || dirName.contains("\\") -> ValidationResult(false, "Invalid characters in directory name")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+class DeleteFileMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val path = message.data["path"]?.jsonPrimitive?.content
+        return when {
+            path.isNullOrBlank() -> ValidationResult(false, "Missing file path")
+            path.length > 500 -> ValidationResult(false, "File path too long")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+class DeleteDirectoryMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        val path = message.data["path"]?.jsonPrimitive?.content
+        return when {
+            path.isNullOrBlank() -> ValidationResult(false, "Missing directory path")
+            path.length > 500 -> ValidationResult(false, "Directory path too long")
+            else -> ValidationResult(true)
+        }
+    }
+}
+
+class NodeTemplatesMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        // Node templates request doesn't require specific validation
+        return ValidationResult(true)
+    }
+}
+
+class GraphListMessageValidator : MessageValidator {
+    override fun validate(message: WebSocketMessage): ValidationResult {
+        // Graph list request doesn't require specific validation
+        return ValidationResult(true)
+    }
+}
+
