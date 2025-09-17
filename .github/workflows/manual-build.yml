@@ -39,6 +39,10 @@ on:
         default: true
         type: boolean
 
+env:
+  FLUTTER_VERSION: '3.35.3'
+  JAVA_VERSION: '23'
+
 jobs:
   # Backend Build Job
   build-backend:
