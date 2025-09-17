@@ -114,7 +114,7 @@ This project is licensed under the **Flow Non-Commercial Copyleft License (FNCL)
 - **No redistribution for profit** - cannot sell or distribute for monetary gain
 
 ### Commercial Licensing
-For commercial use, a separate license is required. Contact the copyright holder for commercial licensing terms.
+Flow's license is GNU AFFERO GENERAL PUBLIC LICENSE.
 
 See the [LICENSE file](/LICENSE) for complete terms and conditions.
 
