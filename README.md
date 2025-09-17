@@ -2,7 +2,7 @@
 
 [![Kotlin](https://img.shields.io/badge/kotlin-2.2-blue?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Flutter](https://img.shields.io/badge/flutter-app-blue?logo=flutter&logoColor=white)](https://flutter.dev/)
-[![Build](https://img.shields.io/github/actions/workflow/status/thedevjade/Flow/build.yml?label=build&logo=github)](https://github.com/thedevjade/Flow/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/thedevjade/Flow/automated-build.yml?label=build&logo=github)](https://github.com/thedevjade/Flow/actions)
 [![Docs](https://img.shields.io/badge/docs-online-success?logo=readthedocs&logoColor=white)](https://thedevjade.github.io/Flow/)
 [![License](https://img.shields.io/github/license/thedevjade/Flow?color=yellow)](LICENSE)
 
