@@ -51,6 +51,24 @@ The Flow backend webserver handles authentication, real-time collaboration, file
 - **Graph Synchronization**: Multi-user real-time graph editing
 - **Session Management**: Robust connection and session handling
 
+## 🔌 Flow Extension System
+
+**Super Simple Extension Development for Flow**
+
+The Flow Extension System makes it incredibly easy to create powerful extensions. Just annotate your classes and the framework handles everything else!
+
+[Get Started with Extensions →](/Flow/extension-system-introduction)
+
+### Key Features
+- **TRIGGER Nodes**: Start graph execution with simple annotations
+- **ACTION Nodes**: Perform actions with automatic input/output detection
+- **Hot Reloading**: Automatic reloading when you modify JAR files
+- **FlowLang Integration**: Add functions, events, and types to FlowLang
+- **Terminal Commands**: Add CLI commands with simple annotations
+- **Type Safety**: Full Kotlin type safety throughout
+- **JAR Support**: Load extensions from JAR files
+- **Auto-Discovery**: No manual registration required
+
 ## 📚 Documentation Structure
 
 ### FlowLang Documentation
@@ -74,6 +92,13 @@ The Flow backend webserver handles authentication, real-time collaboration, file
 - **[WebSocket API Reference](/websocket-api-reference)** - Message types and protocols
 - **[Developer Integration Guide](/developer-integration-guide)** - Integration examples and best practices
 
+### Flow Extension System Documentation
+- **[Extension System Introduction](/Flow/extension-system-introduction)** - System overview and key features
+- **[Quick Start Guide](/Flow/extension-system-quick-start)** - Get up and running in 5 minutes
+- **[Developer Guide](/Flow/extension-system-developer-guide)** - Comprehensive guide for creating extensions
+- **[API Reference](/Flow/extension-system-api-reference)** - Complete technical reference
+- **[Documentation Index](/Flow/extension-system-documentation-index)** - Complete overview of all documentation
+
 ### Legal Documentation
 - **[License](/license)** - Complete license terms and commercial licensing information
 
@@ -91,6 +116,13 @@ The Flow backend webserver handles authentication, real-time collaboration, file
 3. Run `flutter pub get`
 4. Start the development server
 5. Follow the [Getting Started Guide](/frontend/getting-started)
+
+### For Flow Extension System
+1. Create your first extension with annotations
+2. Build and deploy as JAR file
+3. Drop into extensions/ folder
+4. Hot reload automatically works!
+5. Follow the [Quick Start Guide](/Flow/extension-system-quick-start)
 
 ## 🤝 Contributing
 

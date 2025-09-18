@@ -48,6 +48,16 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Flow Extension System',
+          items: [
+            { label: 'Introduction', link: '/extension-system-introduction' },
+            { label: 'Quick Start', link: '/extension-system-quick-start' },
+            { label: 'Developer Guide', link: '/extension-system-developer-guide' },
+            { label: 'API Reference', link: '/extension-system-api-reference' },
+            { label: 'Documentation Index', link: '/extension-system-documentation-index' },
+          ],
+        },
+        {
           label: 'Legal',
           items: [
             { label: 'License', link: '/license' },
