@@ -232,7 +232,7 @@ class FileSystemAccessImpl : FileSystemAccess {
                     return@withContext false
                 }
 
-                // Create parent directories if they don't exist
+
                 filePath.parent?.let { parentDir ->
                     if (!Files.exists(parentDir)) {
                         Files.createDirectories(parentDir)
@@ -422,7 +422,7 @@ class FileSystemAccessImpl : FileSystemAccess {
                     name = fileName,
                     type = if (isDirectory) "directory" else "file",
                     path = path.toString(),
-                    children = emptyList(), // Don't load children for individual file info
+                    children = emptyList(),
                     size = size,
                     lastModified = lastModified
                 )

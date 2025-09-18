@@ -129,9 +129,7 @@ class UserManager(
         return users[userId]?.permissions?.contains(permission) ?: false
     }
 
-    /**
-     * Update user permissions
-     */
+
     suspend fun updatePermissions(userId: String, permissions: Set<UserPermission>): Boolean = userMutex.withLock {
         val user = users[userId] ?: return false
         users[userId] = user.copy(permissions = permissions)
@@ -139,9 +137,7 @@ class UserManager(
         true
     }
 
-    /**
-     * Update user profile
-     */
+
     suspend fun updateProfile(
         userId: String,
         username: String? = null,
@@ -170,49 +166,39 @@ class UserManager(
         true
     }
 
-    /**
-     * Get all users (with pagination)
-     */
+
     fun getAllUsers(offset: Int = 0, limit: Int = 100): List<FlowUser> {
         return users.values.drop(offset).take(limit)
     }
 
-    /**
-     * Get active users (users with at least one session)
-     */
+
     fun getActiveUsers(): List<FlowUser> {
         return userSessions.entries
             .filter { it.value.isNotEmpty() }
             .mapNotNull { users[it.key] }
     }
 
-    /**
-     * Get active user count
-     */
+
     fun getActiveUserCount(): Int = userSessions.values.count { it.isNotEmpty() }
 
-    /**
-     * Search users by username
-     */
+
     fun searchUsers(query: String, limit: Int = 20): List<FlowUser> {
         return users.values
             .filter { it.username.contains(query, ignoreCase = true) }
             .take(limit)
     }
 
-    /**
-     * Delete a user (and all their sessions)
-     */
+
     suspend fun deleteUser(userId: String): Boolean = userMutex.withLock {
         val user = users.remove(userId) ?: return false
 
-        // Remove all sessions
+
         userSessions[userId]?.forEach { sessionId ->
             sessionToUser.remove(sessionId)
         }
         userSessions.remove(userId)
 
-        // Remove auth tokens
+
         authTokens.entries.removeAll { it.value.userId == userId }
 
         eventManager.emit(UserEvent.UserDisconnected(userId, "", System.currentTimeMillis()))
@@ -220,40 +206,32 @@ class UserManager(
         true
     }
 
-    /**
-     * Create an authentication token
-     */
+
     private fun createAuthToken(userId: String): String {
         val token = "token_${userId}_${System.currentTimeMillis()}_${(1000..9999).random()}"
         authTokens[token] = AuthToken(
             token = token,
             userId = userId,
             createdAt = System.currentTimeMillis(),
-            expiresAt = System.currentTimeMillis() + (24 * 60 * 60 * 1000) // 24 hours
+            expiresAt = System.currentTimeMillis() + (24 * 60 * 60 * 1000)
         )
         return token
     }
 
-    /**
-     * Validate an authentication token
-     */
+
     private fun isValidAuthToken(token: String, expectedUserId: String): Boolean {
         val authToken = authTokens[token] ?: return false
         return authToken.userId == expectedUserId &&
                authToken.expiresAt > System.currentTimeMillis()
     }
 
-    /**
-     * Clean up expired tokens
-     */
+
     fun cleanupExpiredTokens() {
         val now = System.currentTimeMillis()
         authTokens.entries.removeAll { it.value.expiresAt <= now }
     }
 
-    /**
-     * Get user statistics
-     */
+
     fun getUserStatistics(): UserStatistics {
         return UserStatistics(
             totalUsers = users.size,
@@ -263,9 +241,7 @@ class UserManager(
         )
     }
 
-    /**
-     * Dispose the user manager
-     */
+
     fun dispose() {
         users.clear()
         userSessions.clear()
@@ -274,9 +250,7 @@ class UserManager(
     }
 }
 
-/**
- * Flow user data model
- */
+
 data class FlowUser(
     val id: String,
     val username: String,
@@ -287,9 +261,7 @@ data class FlowUser(
     val lastActiveAt: Long
 )
 
-/**
- * User permissions
- */
+
 enum class UserPermission {
     READ_GRAPHS,
     CREATE_GRAPHS,
@@ -301,9 +273,7 @@ enum class UserPermission {
     VIEW_ANALYTICS
 }
 
-/**
- * Authentication token
- */
+
 data class AuthToken(
     val token: String,
     val userId: String,
@@ -311,25 +281,19 @@ data class AuthToken(
     val expiresAt: Long
 )
 
-/**
- * User creation result
- */
+
 sealed class UserCreationResult {
     data class Success(val user: FlowUser) : UserCreationResult()
     data class Failure(val error: String) : UserCreationResult()
 }
 
-/**
- * Authentication result
- */
+
 sealed class AuthenticationResult {
     data class Success(val user: FlowUser, val token: String) : AuthenticationResult()
     data class Failure(val error: String) : AuthenticationResult()
 }
 
-/**
- * User statistics
- */
+
 data class UserStatistics(
     val totalUsers: Int,
     val activeUsers: Int,

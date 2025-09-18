@@ -128,12 +128,10 @@ interface EventListener<T : Any> {
 enum class EventPriority {
     HIGH,
     NORMAL,
-    LOW      // Processed asynchronously with lower priority
+    LOW
 }
 
-/**
- * Event subscription handle
- */
+
 class EventSubscription(
     val eventType: KClass<*>,
     val listener: EventListener<*>,
@@ -142,9 +140,7 @@ class EventSubscription(
     fun unsubscribe() = unsubscriber()
 }
 
-/**
- * Event metrics
- */
+
 data class EventMetrics(
     val totalEventsEmitted: Long,
     val totalEventsProcessed: Long,
@@ -152,11 +148,9 @@ data class EventMetrics(
     val totalListeners: Int
 )
 
-// Common event types for the Flow system
 
-/**
- * User-related events
- */
+
+
 sealed class UserEvent {
     data class UserConnected(val userId: String, val sessionId: String, val timestamp: Long) : UserEvent()
     data class UserDisconnected(val userId: String, val sessionId: String, val timestamp: Long) : UserEvent()
@@ -165,9 +159,7 @@ sealed class UserEvent {
     data class UserPermissionsChanged(val userId: String, val permissions: Set<String>, val timestamp: Long) : UserEvent()
 }
 
-/**
- * Graph-related events
- */
+
 sealed class GraphEvent {
     data class GraphCreated(val graphId: String, val userId: String, val timestamp: Long) : GraphEvent()
     data class GraphDeleted(val graphId: String, val userId: String, val timestamp: Long) : GraphEvent()
@@ -181,9 +173,7 @@ sealed class GraphEvent {
     data class ConnectionDeleted(val graphId: String, val connectionId: String, val userId: String, val timestamp: Long) : GraphEvent()
 }
 
-/**
- * WebSocket-related events
- */
+
 sealed class WebSocketEvent {
     data class ConnectionOpened(val sessionId: String, val userId: String?, val timestamp: Long) : WebSocketEvent()
     data class ConnectionClosed(val sessionId: String, val userId: String?, val timestamp: Long) : WebSocketEvent()
@@ -193,9 +183,7 @@ sealed class WebSocketEvent {
     data class RateLimitExceeded(val sessionId: String, val userId: String?, val timestamp: Long) : WebSocketEvent()
 }
 
-/**
- * System-related events
- */
+
 sealed class SystemEvent {
     data class SystemStarted(val timestamp: Long) : SystemEvent()
     data class SystemShutdown(val timestamp: Long) : SystemEvent()

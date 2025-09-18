@@ -196,9 +196,7 @@ class GraphManager(
         NodeOperationResult.Success(updatedNode)
     }
 
-    /**
-     * Delete a node from a graph
-     */
+
     suspend fun deleteNode(
         graphId: String,
         userId: String,
@@ -230,9 +228,7 @@ class GraphManager(
         true
     }
 
-    /**
-     * Add a connection between nodes
-     */
+
     suspend fun addConnection(
         graphId: String,
         userId: String,
@@ -249,7 +245,6 @@ class GraphManager(
             return ConnectionOperationResult.Failure("Connection with this ID already exists")
         }
 
-        // Validate that nodes exist
         val fromNodeExists = graph.nodes.any { it.id == connection.fromNodeId }
         val toNodeExists = graph.nodes.any { it.id == connection.toNodeId }
 
@@ -271,9 +266,7 @@ class GraphManager(
         ConnectionOperationResult.Success(connection)
     }
 
-    /**
-     * Delete a connection
-     */
+    
     suspend fun deleteConnection(
         graphId: String,
         userId: String,
@@ -300,9 +293,7 @@ class GraphManager(
         true
     }
 
-    /**
-     * Share a graph with another user
-     */
+    
     suspend fun shareGraph(
         graphId: String,
         ownerId: String,
@@ -323,9 +314,7 @@ class GraphManager(
         true
     }
 
-    /**
-     * Delete a graph
-     */
+    
     suspend fun deleteGraph(graphId: String, userId: String): Boolean = graphMutex.withLock {
         val graph = graphs[graphId] ?: return false
 
@@ -343,9 +332,7 @@ class GraphManager(
         true
     }
 
-    /**
-     * Create a version snapshot of a graph
-     */
+    
     private fun createVersion(graphId: String, userId: String, description: String, graph: FlowGraph) {
         val version = GraphVersion(
             versionNumber = graph.version,
@@ -358,16 +345,12 @@ class GraphManager(
         graphVersions.getOrPut(graphId) { mutableListOf() }.add(version)
     }
 
-    /**
-     * Get graph versions
-     */
+    
     fun getGraphVersions(graphId: String): List<GraphVersion> {
         return graphVersions[graphId] ?: emptyList()
     }
 
-    /**
-     * Restore a graph to a specific version
-     */
+    
     suspend fun restoreGraphVersion(
         graphId: String,
         userId: String,
@@ -390,7 +373,7 @@ class GraphManager(
 
         graphs[graphId] = restoredGraph
 
-        // Create a new version for the restore
+
         createVersion(graphId, userId, "Restored from version $versionNumber", restoredGraph)
 
         eventManager.emit(GraphEvent.GraphUpdated(graphId, userId, "version_restore", System.currentTimeMillis()))
@@ -398,17 +381,13 @@ class GraphManager(
         GraphUpdateResult.Success(restoredGraph)
     }
 
-    /**
-     * Check if user has write access to graph
-     */
+    
     private fun hasWriteAccess(graphId: String, userId: String): Boolean {
         val graph = graphs[graphId] ?: return false
         return graph.ownerId == userId || graphCollaborators[graphId]?.contains(userId) == true
     }
 
-    /**
-     * Check if user has read access to graph
-     */
+    
     fun hasReadAccess(graphId: String, userId: String): Boolean {
         val graph = graphs[graphId] ?: return false
         return graph.ownerId == userId ||
@@ -416,9 +395,7 @@ class GraphManager(
                graphCollaborators[graphId]?.contains(userId) == true
     }
 
-    /**
-     * Get graph statistics
-     */
+    
     fun getGraphStatistics(): GraphStatistics {
         return GraphStatistics(
             totalGraphs = graphs.size,
@@ -430,14 +407,10 @@ class GraphManager(
         )
     }
 
-    /**
-     * Get total graph count
-     */
+    
     fun getTotalGraphCount(): Int = graphs.size
 
-    /**
-     * Search graphs
-     */
+    
     fun searchGraphs(
         query: String,
         userId: String? = null,
@@ -454,9 +427,7 @@ class GraphManager(
             .take(limit)
     }
 
-    /**
-     * Dispose the graph manager
-     */
+    
     fun dispose() {
         graphs.clear()
         userGraphs.clear()
@@ -465,9 +436,7 @@ class GraphManager(
     }
 }
 
-/**
- * Flow graph data model
- */
+
 data class FlowGraph(
     val id: String,
     val name: String,
@@ -483,9 +452,7 @@ data class FlowGraph(
     val metadata: Map<String, String> = emptyMap()
 )
 
-/**
- * Graph node
- */
+
 data class GraphNode(
     val id: String,
     val name: String,
@@ -496,9 +463,7 @@ data class GraphNode(
     val outputs: List<GraphPort> = emptyList()
 )
 
-/**
- * Graph connection
- */
+
 data class GraphConnection(
     val id: String,
     val fromNodeId: String,
@@ -508,9 +473,7 @@ data class GraphConnection(
     val properties: Map<String, Any> = emptyMap()
 )
 
-/**
- * Graph port
- */
+
 data class GraphPort(
     val id: String,
     val name: String,
@@ -518,17 +481,13 @@ data class GraphPort(
     val isInput: Boolean
 )
 
-/**
- * Position
- */
+
 data class Position(
     val x: Double,
     val y: Double
 )
 
-/**
- * Graph version
- */
+
 data class GraphVersion(
     val versionNumber: Int,
     val description: String,
@@ -537,25 +496,21 @@ data class GraphVersion(
     val graphSnapshot: FlowGraph
 )
 
-/**
- * Node update data
- */
+
 data class NodeUpdate(
     val name: String? = null,
     val position: Position? = null,
     val properties: Map<String, Any>? = null
 )
 
-/**
- * Graph permissions
- */
+
 enum class GraphPermission {
     READ,
     WRITE,
     ADMIN
 }
 
-// Result types
+
 
 sealed class GraphCreationResult {
     data class Success(val graph: FlowGraph) : GraphCreationResult()
@@ -577,9 +532,7 @@ sealed class ConnectionOperationResult {
     data class Failure(val error: String) : ConnectionOperationResult()
 }
 
-/**
- * Graph statistics
- */
+
 data class GraphStatistics(
     val totalGraphs: Int,
     val publicGraphs: Int,

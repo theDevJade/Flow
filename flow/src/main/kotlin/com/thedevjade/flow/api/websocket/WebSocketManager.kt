@@ -198,46 +198,32 @@ class WebSocketManager(
         return sentCount
     }
 
-    /**
-     * Register a message handler
-     */
+
     fun registerMessageHandler(messageType: String, handler: MessageHandler) {
         messageHandlers[messageType] = handler
     }
 
-    /**
-     * Unregister a message handler
-     */
+    
     fun unregisterMessageHandler(messageType: String) {
         messageHandlers.remove(messageType)
     }
 
-    /**
-     * Get connection by ID
-     */
+    
     fun getConnection(connectionId: String): WebSocketConnection? = connections[connectionId]
 
-    /**
-     * Get all connections for a user
-     */
+    
     fun getUserConnections(userId: String): List<WebSocketConnection> {
         val connectionIds = userConnections[userId] ?: return emptyList()
         return connectionIds.mapNotNull { connections[it] }
     }
 
-    /**
-     * Get all active connections
-     */
+    
     fun getAllConnections(): List<WebSocketConnection> = connections.values.toList()
 
-    /**
-     * Get active connection count
-     */
+    
     fun getActiveConnectionCount(): Int = connections.size
 
-    /**
-     * Get connection statistics
-     */
+    
     fun getConnectionStatistics(): ConnectionStatistics {
         return ConnectionStatistics(
             totalConnections = connections.size,
@@ -250,10 +236,8 @@ class WebSocketManager(
         )
     }
 
-    /**
-     * Cleanup inactive connections
-     */
-    suspend fun cleanupInactiveConnections(timeoutMs: Long = 300000) { // 5 minutes default
+    
+    suspend fun cleanupInactiveConnections(timeoutMs: Long = 300000) {
         val now = System.currentTimeMillis()
         val inactiveConnections = connections.values
             .filter { now - it.lastActivityAt > timeoutMs }
@@ -264,11 +248,8 @@ class WebSocketManager(
         }
     }
 
-    /**
-     * Register default message handlers
-     */
+    
     private fun registerDefaultHandlers() {
-        // Auth handler
         registerMessageHandler("auth") { context, data ->
             val userId = data["userId"]?.toString()?.removeSurrounding("\"")
             val username = data["username"]?.toString()?.removeSurrounding("\"")
@@ -277,7 +258,7 @@ class WebSocketManager(
                 val authResult = userManager.authenticateUser(userId, context.connectionId, username)
                 when (authResult) {
                     is com.thedevjade.flow.api.user.AuthenticationResult.Success -> {
-                        // Update connection with user info
+
                         connections[context.connectionId]?.userId = userId
                         userConnections.getOrPut(userId) { mutableSetOf() }.add(context.connectionId)
 
@@ -297,7 +278,7 @@ class WebSocketManager(
             }
         }
 
-        // Ping/Pong handler
+
         registerMessageHandler("ping") { context, _ ->
             MessageProcessingResult.Success(mapOf(
                 "type" to "pong",
@@ -305,7 +286,7 @@ class WebSocketManager(
             ))
         }
 
-        // Heartbeat handler
+
         registerMessageHandler("heartbeat") { context, _ ->
             connections[context.connectionId]?.let { connection ->
                 connection.lastActivityAt = System.currentTimeMillis()
@@ -321,13 +302,11 @@ class WebSocketManager(
             ))
         }
 
-        // Graph operation handlers would be registered here
-        // registerGraphHandlers()
+
+
     }
 
-    /**
-     * Dispose the WebSocket manager
-     */
+    
     fun dispose() {
         connections.clear()
         userConnections.clear()
@@ -335,9 +314,7 @@ class WebSocketManager(
     }
 }
 
-/**
- * WebSocket connection data
- */
+
 data class WebSocketConnection(
     val id: String,
     var userId: String? = null,
@@ -346,9 +323,7 @@ data class WebSocketConnection(
     val metadata: MutableMap<String, Any> = mutableMapOf()
 )
 
-/**
- * Message processing context
- */
+
 data class MessageContext(
     val connectionId: String,
     val userId: String?,
@@ -356,32 +331,24 @@ data class MessageContext(
     val timestamp: Long
 )
 
-/**
- * Message handler interface
- */
+
 fun interface MessageHandler {
     suspend fun handle(context: MessageContext, data: Map<String, Any>): MessageProcessingResult
 }
 
-/**
- * Connection registration result
- */
+
 sealed class ConnectionRegistrationResult {
     data class Success(val connection: WebSocketConnection) : ConnectionRegistrationResult()
     data class Failure(val error: String) : ConnectionRegistrationResult()
 }
 
-/**
- * Message processing result
- */
+
 sealed class MessageProcessingResult {
     data class Success(val data: Map<String, Any> = emptyMap()) : MessageProcessingResult()
     data class Failure(val error: String) : MessageProcessingResult()
 }
 
-/**
- * Connection statistics
- */
+
 data class ConnectionStatistics(
     val totalConnections: Int,
     val totalUsers: Int,

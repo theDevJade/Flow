@@ -4,6 +4,7 @@ import com.thedevjade.flow.api.events.EventManager
 import com.thedevjade.flow.api.graph.GraphManager
 import com.thedevjade.flow.api.user.UserManager
 import com.thedevjade.flow.api.websocket.WebSocketManager
+import com.thedevjade.flow.extension.ExtensionManager
 import kotlinx.coroutines.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -37,6 +38,7 @@ class FlowCore private constructor() {
     private lateinit var _graphManager: GraphManager
     private lateinit var _eventManager: EventManager
     private lateinit var _webSocketManager: WebSocketManager
+    private lateinit var _extensionManager: ExtensionManager
 
 
     private lateinit var config: FlowConfig
@@ -56,11 +58,13 @@ class FlowCore private constructor() {
         _userManager = UserManager(_eventManager, config)
         _graphManager = GraphManager(_eventManager, config)
         _webSocketManager = WebSocketManager(_eventManager, _userManager, _graphManager, config)
+        _extensionManager = ExtensionManager(this, config.dataDirectory.let { java.io.File(it) })
 
         isInitialized = true
 
 
         applicationScope.launch {
+            _extensionManager.initialize()
             _eventManager.emit(SystemEvent.SystemInitialized(System.currentTimeMillis()))
         }
     }
@@ -91,6 +95,13 @@ class FlowCore private constructor() {
         get() {
             checkInitialized()
             return _webSocketManager
+        }
+
+
+    val extensions: ExtensionManager
+        get() {
+            checkInitialized()
+            return _extensionManager
         }
 
 
@@ -155,7 +166,8 @@ class FlowCore private constructor() {
         plugins.values.forEach { it.dispose() }
         plugins.clear()
 
-        // Shutdown managers in reverse order
+
+        _extensionManager.dispose()
         _webSocketManager.dispose()
         _graphManager.dispose()
         _userManager.dispose()
@@ -163,7 +175,7 @@ class FlowCore private constructor() {
 
         isInitialized = false
 
-        // Cancel application scope
+
         applicationScope.cancel()
     }
 
@@ -174,9 +186,7 @@ class FlowCore private constructor() {
     }
 }
 
-/**
- * Configuration for the Flow system
- */
+
 data class FlowConfig(
     val dataDirectory: String = "data",
     val maxUsers: Int = 1000,
@@ -192,9 +202,7 @@ data class FlowConfig(
     }
 }
 
-/**
- * Base interface for Flow plugins
- */
+
 interface FlowPlugin {
     val name: String
     val version: String
@@ -203,9 +211,7 @@ interface FlowPlugin {
     fun dispose()
 }
 
-/**
- * System status information
- */
+
 data class SystemStatus(
     val isInitialized: Boolean,
     val uptime: Long,
@@ -216,9 +222,7 @@ data class SystemStatus(
     val memoryUsage: Long
 )
 
-/**
- * System events
- */
+
 sealed class SystemEvent {
     data class SystemInitialized(val timestamp: Long) : SystemEvent()
     data class SystemShuttingDown(val timestamp: Long) : SystemEvent()

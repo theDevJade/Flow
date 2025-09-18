@@ -22,6 +22,8 @@
 
 - ⚡ **FlowLang** – Lightweight scripting language designed specifically for Flow.
 - 🖥 **Graph Editor** – Visual flowchart maker with **live execution** support.
+- 🎯 **Extension System** – Powerful, reflection-based extension system with hot reloading.
+- 🔥 **Hot Reloading** – Automatic extension reloading without restart.
 - 📡 **WebSocket Integration** – Real-time communication and data handling.
 - 🧩 **Developer API** – Extend and modify the language, graph editor, or terminal.
 - 📱 **Custom Flutter App** – Cross-platform UI with performance in mind.
@@ -36,6 +38,46 @@
 </p>
 
 ---
+
+## 🎯 Extension System
+
+Flow features a powerful, reflection-based extension system that makes it incredibly easy to create custom functionality:
+
+### Key Features
+- 🔥 **Hot Reloading** - Automatic reloading when you modify JAR files
+- 🎯 **Graph Nodes** - Create TRIGGER and ACTION nodes with simple annotations
+- 🔧 **FlowLang Integration** - Add functions, events, and types to FlowLang
+- ⌨️ **Terminal Commands** - Add CLI commands with simple annotations
+- 🛡️ **Type Safety** - Full Kotlin type safety throughout
+- 📦 **JAR Support** - Load extensions from JAR files
+
+### Quick Example
+
+```kotlin
+@TriggerNode(name = "User Login", category = "Auth")
+class UserLoginTrigger : SimpleTriggerNode() {
+    override suspend fun execute(): TriggerResult {
+        log("User logged in!")
+        return TriggerResult.Success
+    }
+}
+
+@ActionNode(name = "Send Email", category = "Communication")
+class SendEmailAction : SimpleActionNode() {
+    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+        val recipient = inputs["recipient"] as? String ?: return ActionResult.Error("No recipient")
+        // Send email logic...
+        return ActionResult.Success(mapOf("messageId" to "123"))
+    }
+}
+```
+
+### Documentation
+- 📋 [**Documentation Index**](flow/src/main/kotlin/extension/DOCUMENTATION_INDEX.md) - Complete overview of all documentation
+- 🚀 [**Quick Start Guide**](flow/src/main/kotlin/extension/QUICK_START.md) - Get up and running in 5 minutes
+- 📖 [**Extension Developer Guide**](flow/src/main/kotlin/extension/DEVELOPER_GUIDE.md) - Complete documentation
+- 📚 [**Extension README**](flow/src/main/kotlin/extension/README.md) - System overview
+- 🔧 [**API Reference**](flow/src/main/kotlin/extension/API_REFERENCE.md) - Complete API docs
 
 ## 📖 Documentation
 
@@ -56,8 +98,10 @@ If you encounter **bugs** or **unexpected behavior**:
 ## ✅ TODO
 
 - [X] Improve **graph editor UX** (zoom, pan, snapping).
+- [X] Implement **extension system** with hot reloading and reflection-based discovery.
+- [X] Implement **graph executor** to run flow charts with TRIGGER and ACTION nodes.
+- [X] Implement **FlowLang integration** for extensions.
 - [ ] Implement **debugging tools** for the scripting engine.
-- [ ] Implement **graph executor** to run flow charts
 - [ ] Implement full **Minecraft** support with extensions and events
 - [ ] Improve performance
 
