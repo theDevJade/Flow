@@ -151,9 +151,9 @@ jobs:
         Compress-Archive -Path * -DestinationPath "Flow-Windows-${{ github.run_id }}.zip"
         echo "Created archive in: $(Get-Location)"
         Get-ChildItem "Flow-Windows-${{ github.run_id }}.zip"
-        Move-Item "Flow-Windows-${{ github.run_id }}.zip" -Destination "../../../../../"
+        Move-Item "Flow-Windows-${{ github.run_id }}.zip" -Destination "../../../../../../"
         echo "Moved to root directory"
-        cd ../../../../../
+        cd ../../../../../../
         Get-ChildItem "Flow-Windows-${{ github.run_id }}.zip"
     
     - name: Find Windows Archive
