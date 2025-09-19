@@ -9,6 +9,7 @@ import '../services/graph_project_service.dart';
 import 'package:flow_frontend/state/file_system_state.dart' as fs;
 import 'package:flow_frontend/state/workspace_state.dart';
 import 'package:flow_frontend/state/workspace_manager.dart';
+import 'package:flow_frontend/state/page_manager.dart';
 
 class AppState with ChangeNotifier {
   final AuthService _authService = AuthService.instance;
@@ -17,6 +18,7 @@ class AppState with ChangeNotifier {
   final WorkspaceState _workspaceState = WorkspaceState();
   final WorkspaceManager _workspaceManager = WorkspaceManager();
   final fs.FileSystemState _fileSystemState = fs.FileSystemState();
+  final PageManager _pageManager = PageManager.instance;
 
   bool _isInitialized = false;
   String? _error;
@@ -27,6 +29,7 @@ class AppState with ChangeNotifier {
   WorkspaceState get workspaceState => _workspaceState;
   WorkspaceManager get workspaceManager => _workspaceManager;
   fs.FileSystemState get fileSystemState => _fileSystemState;
+  PageManager get pageManager => _pageManager;
 
   bool get isInitialized => _isInitialized;
   String? get error => _error;
@@ -53,7 +56,7 @@ class AppState with ChangeNotifier {
         );
       }
 
-      // Connect to WebSocket regardless of authentication status for basic functionality
+
       debugPrint('AppState: Connecting to WebSocket...');
       try {
         await _connectWebSocketWithAuth().timeout(
@@ -73,9 +76,9 @@ class AppState with ChangeNotifier {
       if (_authService.isAuthenticated) {
         debugPrint('AppState: Loading workspaces and syncing data...');
         try {
-          // Load workspaces first
+
           await _workspaceManager.loadWorkspaces();
-          // Sync data from server on startup (but don't wait forever)
+
           await _syncDataFromServer().timeout(
             const Duration(seconds: 5),
             onTimeout: () {
@@ -93,6 +96,7 @@ class AppState with ChangeNotifier {
       await _restoreWorkspaceState();
 
       debugPrint('AppState: Setting up listeners and services...');
+      _pageManager.initialize(_workspaceManager);
       _authService.addListener(_onAuthStateChanged);
       _webSocketService.messages.listen(_handleWebSocketMessage);
 
@@ -124,7 +128,7 @@ class AppState with ChangeNotifier {
   void _onAuthStateChanged() {
     if (_authService.isAuthenticated) {
       _connectWebSocketWithAuth().then((_) {
-        // Sync data after successful authentication
+
         _syncDataFromServer();
       });
     } else {
@@ -134,7 +138,7 @@ class AppState with ChangeNotifier {
   }
 
   Future<void> _connectWebSocketWithAuth() async {
-    // Connect with or without authentication token
+
     final token = _authService.isAuthenticated ? _authService.authToken : null;
     await _webSocketService.connect(token);
   }
@@ -152,24 +156,24 @@ class AppState with ChangeNotifier {
           }
           break;
         case 'file_tree':
-          // File system service will handle this
+
           break;
         case 'file_content':
-          // File system service will handle this
+
           break;
         case 'workspace_list_response':
         case 'workspace_created':
         case 'workspace_updated':
         case 'workspace_deleted':
-          // Workspace manager will handle these
+
           break;
         case 'graph_data':
         case 'graph_list_response':
         case 'graph_load_response':
-          // Graph service will handle these
+
           break;
         case 'node_templates_response':
-          // NodeTemplateService will handle this
+
           break;
         case 'connection_established':
           debugPrint('AppState: WebSocket connection established');
@@ -179,7 +183,7 @@ class AppState with ChangeNotifier {
           break;
         case 'pong':
         case 'heartbeat_ack':
-          // Heartbeat acknowledgments - no action needed
+
           break;
         case 'success':
           debugPrint(
@@ -200,7 +204,7 @@ class AppState with ChangeNotifier {
           notifyListeners();
           break;
         case 'file_saved':
-          // File save responses are handled by FileSystemService
+
           break;
         default:
           debugPrint('AppState: Unhandled message type: ${message.type}');
@@ -211,12 +215,12 @@ class AppState with ChangeNotifier {
     }
   }
 
-  /// Synchronize data from server on startup
+
   Future<void> _syncDataFromServer() async {
     try {
       debugPrint('AppState: Starting data synchronization from server...');
 
-      // Wait a moment for WebSocket connection to stabilize
+
       await Future.delayed(const Duration(milliseconds: 500));
 
       if (_webSocketService.currentStatus !=
@@ -228,13 +232,13 @@ class AppState with ChangeNotifier {
         return;
       }
 
-      // Request file tree first
+
       _webSocketService.sendMessage('get_file_tree', {});
 
-      // Request list of available workspaces
+
       _webSocketService.sendMessage('workspace_list', {});
 
-      // Request list of available graphs
+
       _webSocketService.sendMessage('graph_list', {});
 
       // Try to load default graph for synchronization

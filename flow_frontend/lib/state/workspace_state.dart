@@ -14,7 +14,7 @@ class WorkspaceState with ChangeNotifier {
       _isTransitioning = true;
       notifyListeners();
 
-      // Simulate transition delay
+
       Future.delayed(const Duration(milliseconds: 300), () {
         _currentWorkspace = workspace;
         _isTransitioning = false;

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/workspace_state.dart';
-import '../state/page_state_manager.dart';
+import '../state/workspace_manager.dart';
+import '../state/page_manager.dart';
 
 enum WorkspacePageType { graphEditor, codeEditor, terminal }
 
@@ -45,93 +46,196 @@ class WorkspaceSidebar extends StatefulWidget {
 }
 
 class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
-  final List<WorkspacePage> _pages = [
-    WorkspacePage(
-      id: 'graph',
-      name: 'Graph Editor',
-      type: WorkspacePageType.graphEditor,
-      icon: Icons.account_tree,
-      isActive: true,
-    ),
-    WorkspacePage(
-      id: 'code',
-      name: 'Code Editor',
-      type: WorkspacePageType.codeEditor,
-      icon: Icons.code,
-    ),
-    WorkspacePage(
-      id: 'terminal',
-      name: 'Terminal',
-      type: WorkspacePageType.terminal,
-      icon: Icons.terminal,
-    ),
-  ];
+  List<WorkspacePage> _pages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadWorkspacePages();
+    });
+  }
+
+  void _loadWorkspacePages() {
+    final workspaceManager = context.read<WorkspaceManager>();
+    final currentWorkspace = workspaceManager.currentWorkspace;
+
+    if (currentWorkspace != null) {
+
+      final pagesData = currentWorkspace.data['pages'] as List<dynamic>?;
+
+      if (pagesData != null && pagesData.isNotEmpty) {
+        setState(() {
+          _pages = pagesData
+              .map(
+                (pageData) => WorkspacePage(
+                  id: pageData['id'] ?? '',
+                  name: pageData['name'] ?? '',
+                  type: _parsePageType(pageData['type'] ?? 'codeEditor'),
+                  icon: _getIconForPageType(
+                    _parsePageType(pageData['type'] ?? 'codeEditor'),
+                  ),
+                  isActive: pageData['isActive'] ?? false,
+                ),
+              )
+              .toList();
+        });
+      } else {
+        // Load default pages if no pages exist
+        _loadDefaultPages();
+      }
+    } else {
+      // No workspace selected, load defaults
+      _loadDefaultPages();
+    }
+  }
+
+  void _loadDefaultPages() {
+    setState(() {
+      _pages = [
+        WorkspacePage(
+          id: 'graph',
+          name: 'Graph Editor',
+          type: WorkspacePageType.graphEditor,
+          icon: Icons.account_tree,
+          isActive: true,
+        ),
+        WorkspacePage(
+          id: 'code',
+          name: 'Code Editor',
+          type: WorkspacePageType.codeEditor,
+          icon: Icons.code,
+        ),
+        WorkspacePage(
+          id: 'terminal',
+          name: 'Terminal',
+          type: WorkspacePageType.terminal,
+          icon: Icons.terminal,
+        ),
+      ];
+    });
+    _saveWorkspacePages();
+  }
+
+  WorkspacePageType _parsePageType(String typeString) {
+    switch (typeString) {
+      case 'graphEditor':
+        return WorkspacePageType.graphEditor;
+      case 'terminal':
+        return WorkspacePageType.terminal;
+      case 'codeEditor':
+      default:
+        return WorkspacePageType.codeEditor;
+    }
+  }
+
+  void _saveWorkspacePages() {
+    final workspaceManager = context.read<WorkspaceManager>();
+    final currentWorkspace = workspaceManager.currentWorkspace;
+
+    if (currentWorkspace != null) {
+      final pagesData = _pages
+          .map(
+            (page) => {
+              'id': page.id,
+              'name': page.name,
+              'type': page.type.name,
+              'isActive': page.isActive,
+            },
+          )
+          .toList();
+
+      // Update workspace data with pages
+      final updatedData = Map<String, dynamic>.from(currentWorkspace.data);
+      updatedData['pages'] = pagesData;
+
+      workspaceManager.updateWorkspace(currentWorkspace.id, data: updatedData);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 200,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          right: BorderSide(color: Theme.of(context).dividerColor, width: 0.5),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              border: Border(
-                bottom: BorderSide(
-                  color: Theme.of(context).dividerColor,
-                  width: 0.5,
-                ),
+    return Consumer<WorkspaceManager>(
+      builder: (context, workspaceManager, child) {
+        // Reload pages if workspace changed
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (workspaceManager.currentWorkspace != null) {
+            _loadWorkspacePages();
+          }
+        });
+
+        return Container(
+          width: 200,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              right: BorderSide(
+                color: Theme.of(context).dividerColor,
+                width: 0.5,
               ),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.workspaces,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.primary,
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                height: 50,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Workspace',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context).dividerColor,
+                      width: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.workspaces,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        workspaceManager.currentWorkspace?.name ?? 'Workspace',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
-                  ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add, size: 18),
+                      onPressed: () => _showAddPageDialog(context),
+                      tooltip: 'Add Page',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.add, size: 18),
-                  onPressed: () => _showAddPageDialog(context),
-                  tooltip: 'Add Page',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 28,
-                    minHeight: 28,
-                  ),
+              ),
+              // Pages list
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: _pages.length,
+                  itemBuilder: (context, index) =>
+                      _buildPageItem(_pages[index]),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          // Pages list
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(8),
-              itemCount: _pages.length,
-              itemBuilder: (context, index) => _buildPageItem(_pages[index]),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -166,13 +270,13 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                   child: Text(
                     page.name,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: page.isActive
-                              ? Theme.of(context).colorScheme.onPrimaryContainer
-                              : Theme.of(context).colorScheme.onSurface,
-                          fontWeight: page.isActive
-                              ? FontWeight.w500
-                              : FontWeight.normal,
-                        ),
+                      color: page.isActive
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                          : Theme.of(context).colorScheme.onSurface,
+                      fontWeight: page.isActive
+                          ? FontWeight.w500
+                          : FontWeight.normal,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -199,13 +303,12 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       }
     });
 
-    // Update workspace state
+    // Update the PageManager with the active page
+    final pageManager = PageManager.instance;
+    pageManager.setActivePage(page.id, page.type.name);
+
+    // Update workspace state for UI consistency (still needed for main shell)
     final workspaceState = context.read<WorkspaceState>();
-    final pageStateManager = PageStateManager.instance;
-
-    // Create or get page state for this page
-    pageStateManager.getOrCreatePageState(page.id, page.type.name);
-
     switch (page.type) {
       case WorkspacePageType.graphEditor:
         workspaceState.switchToWorkspace(WorkspaceType.graphEditor);
@@ -217,6 +320,9 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
         workspaceState.switchToWorkspace(WorkspaceType.terminal);
         break;
     }
+
+    // Save the updated pages state
+    _saveWorkspacePages();
   }
 
   void _showAddPageDialog(BuildContext context) {
@@ -321,6 +427,9 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     setState(() {
       _pages.add(newPage);
     });
+
+    // Save pages to workspace
+    _saveWorkspacePages();
   }
 
   IconData _getIconForPageType(WorkspacePageType type) {
@@ -438,6 +547,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
         _pages[index] = _pages[index].copyWith(name: newName);
       }
     });
+    _saveWorkspacePages();
   }
 
   void _duplicatePage(WorkspacePage page) {
@@ -451,6 +561,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     setState(() {
       _pages.add(duplicatedPage);
     });
+    _saveWorkspacePages();
   }
 
   void _deletePage(WorkspacePage page) {
@@ -481,6 +592,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                   _switchToPage(_pages[0]);
                 }
               });
+              _saveWorkspacePages();
               Navigator.of(context).pop();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),

@@ -128,7 +128,7 @@ class _WebSocketTestState extends State<WebSocketTest> {
         children: [
           Expanded(flex: 2, child: const GraphEditor()),
 
-          // Connection status and recent messages
+
           Container(
             height: 100,
             color: const Color(0xFF2E2E2E),

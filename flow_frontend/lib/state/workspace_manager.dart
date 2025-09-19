@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../services/websocket_service.dart';
+import 'page_manager.dart';
 
 class Workspace {
   final String id;
@@ -24,7 +25,7 @@ class Workspace {
   factory Workspace.fromJson(Map<String, dynamic> json) {
     debugPrint('WorkspaceManager: Parsing workspace JSON: $json');
 
-    // Parse data field - it might be a JSON string or already a Map
+
     Map<String, dynamic> parsedData = {};
     final dataField = json['data'];
     debugPrint(
@@ -49,7 +50,7 @@ class Workspace {
       );
     }
 
-    // Parse settings field - it might be a JSON string or already a Map
+
     Map<String, dynamic> parsedSettings = {};
     final settingsField = json['settings'];
     debugPrint(
@@ -182,7 +183,7 @@ class WorkspaceManager with ChangeNotifier {
           .map((w) => Workspace.fromJson(w as Map<String, dynamic>))
           .toList();
 
-      // Set current workspace if not set
+
       if (_currentWorkspaceId == null && _workspaces.isNotEmpty) {
         _currentWorkspaceId = _workspaces.first.id;
       }
@@ -229,8 +230,9 @@ class WorkspaceManager with ChangeNotifier {
       if (workspaceId != null) {
         _workspaces.removeWhere((w) => w.id == workspaceId);
         if (_currentWorkspaceId == workspaceId) {
-          _currentWorkspaceId =
-              _workspaces.isNotEmpty ? _workspaces.first.id : null;
+          _currentWorkspaceId = _workspaces.isNotEmpty
+              ? _workspaces.first.id
+              : null;
         }
         notifyListeners();
       }
@@ -270,13 +272,23 @@ class WorkspaceManager with ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    _webSocketService.sendMessage('update_workspace', {
+
+    final messageData = <String, dynamic>{
       'request_type': 'update_workspace',
       'workspaceId': workspaceId,
-      'name': name,
-      'data': data,
-      'settings': settings,
-    });
+    };
+
+    if (name != null) {
+      messageData['name'] = name;
+    }
+    if (data != null) {
+      messageData['data'] = data;
+    }
+    if (settings != null) {
+      messageData['settings'] = settings;
+    }
+
+    _webSocketService.sendMessage('update_workspace', messageData);
   }
 
   Future<void> deleteWorkspace(String workspaceId) async {
@@ -291,8 +303,27 @@ class WorkspaceManager with ChangeNotifier {
   }
 
   void setCurrentWorkspace(String workspaceId) {
-    if (_workspaces.any((w) => w.id == workspaceId)) {
+    if (_workspaces.any((w) => w.id == workspaceId) &&
+        _currentWorkspaceId != workspaceId) {
+      debugPrint('WorkspaceManager: Switching workspace to $workspaceId');
+
+      // First, clear the current workspace state
+      final oldWorkspaceId = _currentWorkspaceId;
+      _currentWorkspaceId = null;
+
+      // Notify the PageManager to clear its state before setting the new workspace
+      final pageManager = PageManager.instance;
+      pageManager.clearActivePage(); // Clear current page
+
+      // Now set the new workspace
       _currentWorkspaceId = workspaceId;
+
+      // Load the active page from the new workspace
+      pageManager.loadActivePageFromWorkspace();
+
+      debugPrint(
+        'WorkspaceManager: Switched from $oldWorkspaceId to $workspaceId',
+      );
       notifyListeners();
     }
   }

@@ -312,7 +312,7 @@ class _ConnectionConfigScreenState extends State<ConnectionConfigScreen>
   }
 
   Widget _buildSkipOption() {
-    // Skip option removed - WebSocket connection is now required
+
     return const SizedBox.shrink();
   }
 }

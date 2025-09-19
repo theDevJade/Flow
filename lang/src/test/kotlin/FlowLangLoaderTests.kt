@@ -1,14 +1,16 @@
 package com.thedevjade.io.flowlang
 
-import com.thedevjade.io.flowlang.language.FlowLangEngine
-import com.thedevjade.io.flowlang.language.memory.FlowLangFunction
-import com.thedevjade.io.flowlang.language.memory.FlowLangParameter
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.FlowLang
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.FlowLangConfiguration
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.FlowLangEngine
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.memory.FlowLangFunction
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.memory.FlowLangParameter
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import java.io.File
 
 class FlowLangLoaderTests {
-    
+
     @Test
     fun testLoaderTests() {
         FlowLang.stop()
@@ -28,10 +30,10 @@ class FlowLangLoaderTests {
         }, arrayOf(
             FlowLangParameter("content", "text")
         )))
-        
+
         FlowLang.stop()
         val configuration = FlowLangConfiguration()
-        
+
         // Find project root directory
         var directory = File(".").absolutePath
         while (directory != "/" && directory.isNotEmpty()) {
@@ -40,10 +42,10 @@ class FlowLangLoaderTests {
             }
             directory = File(directory).parent ?: break
         }
-        
+
         configuration.flowLangPath = "$directory/testFlowLang"
         FlowLang.start(configuration)
-        
+
         val path = File(FlowLang.configuration?.flowLangPath ?: "./flowlang").absolutePath
         assertNotNull(path)
         assertTrue(path.isNotEmpty())

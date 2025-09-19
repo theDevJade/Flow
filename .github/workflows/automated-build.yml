@@ -95,10 +95,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos, windows, linux]
+        platform: [macos, linux]
     uses: ./.github/workflows/frontend-build.yml
     with:
       build-target: ${{ matrix.platform }}
+      upload-artifacts: true
+      artifact-retention: 30
+
+  # Windows Build (separate workflow to avoid case statement issues)
+  build-windows:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [detect-changes, test-backend, test-frontend, test-plugin]
+    uses: ./.github/workflows/windows-build.yml
+    with:
       upload-artifacts: true
       artifact-retention: 30
 
@@ -126,7 +135,7 @@ jobs:
   # Deployment Summary
   deployment-summary:
     if: always()
-    needs: [detect-changes, test-backend, test-frontend, test-plugin, build-all-platforms, security-scan]
+    needs: [detect-changes, test-backend, test-frontend, test-plugin, build-all-platforms, build-windows, security-scan]
     runs-on: ubuntu-latest
     steps:
     - name: Create Deployment Summary
@@ -144,6 +153,7 @@ jobs:
         echo "| Frontend | ${{ needs.detect-changes.outputs.frontend }} | ${{ needs.test-frontend.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Plugin | ${{ needs.detect-changes.outputs.plugin }} | ${{ needs.test-plugin.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Platform Builds | ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }} | ${{ needs.build-all-platforms.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Windows Build | ${{ github.ref == 'refs/heads/main' && 'true' || 'false' }} | ${{ needs.build-windows.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Security Scan | Always | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
@@ -152,3 +162,73 @@ jobs:
         else
           echo "ℹ️ **Test build only - no production artifacts generated**" >> $GITHUB_STEP_SUMMARY
         fi
+
+  # Discord Webhook Notification
+  discord-notification:
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [detect-changes, test-backend, test-frontend, test-plugin, build-all-platforms, build-windows, security-scan, deployment-summary]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Download All Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+    
+    - name: Create Artifact Summary
+      id: artifact-summary
+      run: |
+        echo "## 📦 Build Artifacts Available" > artifact_summary.md
+        echo "" >> artifact_summary.md
+        
+        # Count artifacts by type
+        BACKEND_COUNT=$(find ./artifacts -name "*backend*" -type f | wc -l)
+        FRONTEND_COUNT=$(find ./artifacts -name "*frontend*" -type f | wc -l)
+        PLUGIN_COUNT=$(find ./artifacts -name "*plugin*" -type f | wc -l)
+        MACOS_COUNT=$(find ./artifacts -name "*macos*" -type f | wc -l)
+        WINDOWS_COUNT=$(find ./artifacts -name "*windows*" -type f | wc -l)
+        LINUX_COUNT=$(find ./artifacts -name "*linux*" -type f | wc -l)
+        WEB_COUNT=$(find ./artifacts -name "*web*" -type f | wc -l)
+        
+        echo "| Component | Artifacts | Status |" >> artifact_summary.md
+        echo "|-----------|-----------|--------|" >> artifact_summary.md
+        echo "| Backend | $BACKEND_COUNT | ${{ needs.test-backend.result || 'Skipped' }} |" >> artifact_summary.md
+        echo "| Frontend | $FRONTEND_COUNT | ${{ needs.test-frontend.result || 'Skipped' }} |" >> artifact_summary.md
+        echo "| Plugin | $PLUGIN_COUNT | ${{ needs.test-plugin.result || 'Skipped' }} |" >> artifact_summary.md
+        echo "| macOS | $MACOS_COUNT | ${{ needs.build-all-platforms.result || 'Skipped' }} |" >> artifact_summary.md
+        echo "| Windows | $WINDOWS_COUNT | ${{ needs.build-windows.result || 'Skipped' }} |" >> artifact_summary.md
+        echo "| Linux | $LINUX_COUNT | ${{ needs.build-all-platforms.result || 'Skipped' }} |" >> artifact_summary.md
+        echo "| Web | $WEB_COUNT | ${{ needs.test-frontend.result || 'Skipped' }} |" >> artifact_summary.md
+        
+        # List all artifacts
+        echo "" >> artifact_summary.md
+        echo "### Available Files:" >> artifact_summary.md
+        find ./artifacts -type f -name "*.jar" -o -name "*.zip" -o -name "*.tar.gz" | while read file; do
+          filename=$(basename "$file")
+          size=$(du -h "$file" | cut -f1)
+          echo "- \`$filename\` ($size)" >> artifact_summary.md
+        done
+        
+        # Create summary for Discord
+        echo "summary<<EOF" >> $GITHUB_OUTPUT
+        cat artifact_summary.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Send Discord Notification
+      if: env.DISCORD_WEBHOOK_URL != ''
+      uses: Ilshidur/action-discord@master
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      with:
+        args: |
+          🚀 **Flow Build Complete!**
+          
+          **Commit:** `${{ github.sha }}`
+          **Branch:** `${{ github.ref_name }}`
+          **Author:** ${{ github.actor }}
+          
+          ${{ steps.artifact-summary.outputs.summary }}
+          
+          📥 **Download artifacts:** [GitHub Actions](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})

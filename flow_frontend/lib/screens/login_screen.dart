@@ -158,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // Username Field
+
                     TextFormField(
                       controller: _usernameController,
                       decoration: const InputDecoration(
@@ -176,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Password Field
+
                     TextFormField(
                       controller: _passwordController,
                       decoration: const InputDecoration(
@@ -195,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Error Message
+
                     if (_errorMessage != null)
                       Container(
                         width: double.infinity,
@@ -213,7 +213,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
 
-                    // Login Button
+
                     SizedBox(
                       width: double.infinity,
                       height: 48,

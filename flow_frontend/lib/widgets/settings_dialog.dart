@@ -113,7 +113,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
               const SizedBox(height: 24),
 
-              // UI Preferences Section
+
               Text(
                 'UI Preferences',
                 style: Theme.of(
@@ -122,7 +122,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
               ),
               const SizedBox(height: 16),
 
-              // Intro splash toggle
+
               SwitchListTile(
                 title: const Text('Show intro splash screen'),
                 subtitle: const Text('Display welcome screen on app startup'),
@@ -157,14 +157,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
     final port = int.parse(_portController.text.trim());
 
     try {
-      // Save settings to persistent storage
+
       await PersistenceService.instance.saveWebSocketConfig(host, port);
 
       await PersistenceService.instance.saveAppSettings({
         'showIntroSplash': _showIntroSplash,
       });
 
-      // Call the callback
+
       widget.onSettingsChanged(host, port, _showIntroSplash);
 
       if (mounted) {

@@ -46,7 +46,7 @@ class FileSystemState with ChangeNotifier {
         '📂 FileSystemState: Added new file to openFiles, now have ${_openFiles.length} files',
       );
     } else {
-      // Update content of existing file
+
       final existingFile = _openFiles[existingFileIndex];
       _openFiles[existingFileIndex] = OpenFile(
         path: existingFile.path,

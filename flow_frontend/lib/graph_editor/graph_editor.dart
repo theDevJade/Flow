@@ -25,7 +25,9 @@ class GraphEditor extends StatefulWidget {
   final Function(GraphConnection)? onConnectionAdded;
   final Function(String)? onConnectionDeleted;
   final Function(String)? onGraphSaved; // Callback when graph is saved
-  final Function(GraphData)? onGraphLoaded; // Callback when graph is loaded
+  final Function(dynamic)? onGraphLoaded; // Callback when graph is loaded
+  final String? workspaceId;
+  final String? pageId;
 
   const GraphEditor({
     super.key,
@@ -37,6 +39,8 @@ class GraphEditor extends StatefulWidget {
     this.onConnectionDeleted,
     this.onGraphSaved,
     this.onGraphLoaded,
+    this.workspaceId,
+    this.pageId,
   });
 
   @override
@@ -136,7 +140,11 @@ class _GraphEditorState extends State<GraphEditor>
 
     // Set the current graph for persistence service and listen for updates
     final persistenceService = GraphPersistenceService.instance;
-    persistenceService.setCurrentGraph('default', 'main-workspace');
+    final workspaceId = widget.workspaceId ?? 'default_workspace';
+    final pageId = widget.pageId ?? 'default';
+    // Combine workspace ID and page ID to create a unique graph ID
+    final graphId = '${workspaceId}-${pageId}';
+    persistenceService.setCurrentGraph(graphId, workspaceId);
     persistenceService.addListener(_handleGraphDataUpdate);
 
     // Load node templates
@@ -157,12 +165,48 @@ class _GraphEditorState extends State<GraphEditor>
     });
   }
 
+  @override
+  void didUpdateWidget(GraphEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Check if pageId or workspaceId has changed
+    if (oldWidget.pageId != widget.pageId ||
+        oldWidget.workspaceId != widget.workspaceId) {
+      debugPrint(
+        'GraphEditor: Page/Workspace changed from ${oldWidget.workspaceId}-${oldWidget.pageId} to ${widget.workspaceId}-${widget.pageId}',
+      );
+
+      // Update persistence service to use the new graph ID
+      final persistenceService = GraphPersistenceService.instance;
+      final workspaceId = widget.workspaceId ?? 'default_workspace';
+      final pageId = widget.pageId ?? 'default';
+      final graphId = '$workspaceId-$pageId';
+
+      // Reset current graph state
+      setState(() {
+        nodes = List.from(widget.initialNodes);
+        connections = List.from(widget.initialConnections);
+        scale = 1.0;
+        panOffset = Offset.zero;
+        selectedNodeId = null;
+        selectedConnectionId = null;
+      });
+
+      // Configure persistence service for the new graph and load it
+      persistenceService.setCurrentGraph(graphId, workspaceId);
+      _loadGraphFromPersistenceService();
+    }
+  }
+
   void _handleGraphDataUpdate() {
     // Called when GraphPersistenceService has new data available
     if (!mounted) return;
 
     final persistenceService = GraphPersistenceService.instance;
-    final graphData = persistenceService.getCachedGraph('default');
+    final workspaceId = widget.workspaceId ?? 'default_workspace';
+    final pageId = widget.pageId ?? 'default';
+    final graphId = '$workspaceId-$pageId';
+    final graphData = persistenceService.getCachedGraph(graphId);
 
     if (graphData != null) {
       debugPrint(
@@ -174,16 +218,31 @@ class _GraphEditorState extends State<GraphEditor>
 
   void _loadGraphFromPersistenceService() {
     final persistenceService = GraphPersistenceService.instance;
+    final workspaceId = widget.workspaceId ?? 'default_workspace';
+    final pageId = widget.pageId ?? 'default';
+
+    // Construct the graph ID according to the expected format
+    String graphId;
+    if (workspaceId.startsWith('workspace_')) {
+      graphId = '$workspaceId-$pageId';
+    } else {
+      graphId = pageId;
+    }
+
+    debugPrint('GraphEditor: Loading graph with ID: $graphId');
 
     // Try to get cached data first
-    final cachedData = persistenceService.getCachedGraph('default');
+    final cachedData = persistenceService.getCachedGraph(graphId);
     if (cachedData != null) {
       debugPrint('GraphEditor: Using cached graph data');
       _applyLoadedGraphData(cachedData);
     } else {
       // Request fresh data from WebSocket
       debugPrint('GraphEditor: Requesting fresh graph data');
-      persistenceService.loadGraph('default');
+      persistenceService.loadGraph(graphId);
+
+      // Set the current graph in the persistence service
+      persistenceService.setCurrentGraph(graphId, workspaceId);
 
       // If WebSocket fails, fallback to local persistence
       Timer(const Duration(seconds: 2), () {
@@ -203,7 +262,10 @@ class _GraphEditorState extends State<GraphEditor>
     // If we just reconnected, ask persistence service to reload
     if (status == WebSocketConnectionStatus.connected) {
       debugPrint('WebSocket reconnected, loading graph...');
-      GraphPersistenceService.instance.loadGraph('default');
+      final workspaceId = widget.workspaceId ?? 'default_workspace';
+      final pageId = widget.pageId ?? 'default';
+      final graphId = '$workspaceId-$pageId';
+      GraphPersistenceService.instance.loadGraph(graphId);
     }
   }
 
@@ -239,6 +301,8 @@ class _GraphEditorState extends State<GraphEditor>
   }
 
   // Load graph data from WebSocket service
+  // This method is not currently used but kept for reference
+  /*
   void _loadGraphFromWebSocket() {
     if (_webSocketService == null ||
         _webSocketService!.currentStatus !=
@@ -251,7 +315,10 @@ class _GraphEditorState extends State<GraphEditor>
     debugPrint('Loading graph from WebSocket...');
     _webSocketService!.sendMessage('graph_load', {'graphId': 'default'});
   }
+  */
 
+  // This method is not currently used but kept for reference
+  /*
   void _handleGraphLoadResponse(WebSocketMessage message) {
     if (message.type == 'graph_load_response') {
       debugPrint(
@@ -274,7 +341,10 @@ class _GraphEditorState extends State<GraphEditor>
       }
     }
   }
+  */
 
+  // This method is not currently used but kept for reference
+  /*
   void _handleBatchUpdate(WebSocketMessage message) {
     // Check if widget is still mounted before processing updates
     if (!mounted) {
@@ -324,44 +394,116 @@ class _GraphEditorState extends State<GraphEditor>
       });
     }
   }
+  */
 
   // Viewport updates are now local only - this method is no longer needed
 
   // Load graph data from local persistence
   void _loadGraphFromLocalPersistence() async {
-    final graphData = await PersistenceService.instance.loadGraphData();
-    if (graphData != null) {
-      _applyLoadedGraphData(graphData);
+    String graphId = 'default';
+
+    // Format graph ID properly if we have workspace and page IDs
+    if (widget.workspaceId != null && widget.pageId != null) {
+      if (widget.workspaceId!.startsWith('workspace_')) {
+        graphId = '${widget.workspaceId}-${widget.pageId}';
+      } else {
+        graphId = widget.pageId!;
+      }
+      debugPrint('Loading graph with ID: $graphId from local persistence');
+    }
+
+    // Try to get cached data from GraphPersistenceService
+    final graphPersistenceService = GraphPersistenceService.instance;
+    final cachedData = graphPersistenceService.getCachedGraph(graphId);
+
+    if (cachedData != null) {
+      debugPrint('Found cached graph data for $graphId');
+      _applyLoadedGraphData(cachedData);
+    } else {
+      debugPrint('No cached data found, attempting to load from server');
+      graphPersistenceService.loadGraph(graphId);
     }
   }
 
   // Apply loaded graph data to the editor
   void _applyLoadedGraphData(Map<String, dynamic> graphData) {
-    debugPrint(
-      'Applying graph data: nodes=${graphData['nodes']?.length ?? 0}, connections=${graphData['connections']?.length ?? 0}',
-    );
-
     // Check if widget is still mounted before updating state
     if (!mounted) {
       debugPrint('Widget not mounted, skipping graph data application');
       return;
     }
 
-    if (graphData['nodes'] != null) {
-      final loadedNodes = (graphData['nodes'] as List).map((nodeData) {
-        final node = GraphNode.fromJson(Map<String, dynamic>.from(nodeData));
-        debugPrint(
-          'Loaded node: ${node.name} at position (${node.position.dx}, ${node.position.dy})',
-        );
-        return node;
-      }).toList();
+    // Safely access nodes and connections with null handling
+    final nodesData = graphData['nodes'];
+    final connectionsData = graphData['connections'];
 
-      final loadedConnections = (graphData['connections'] as List).map((
-        connData,
-      ) {
-        return GraphConnection.fromJson(Map<String, dynamic>.from(connData));
-      }).toList();
+    debugPrint(
+      'Applying graph data: nodes=${nodesData is List ? nodesData.length : 0}, '
+      'connections=${connectionsData is List ? connectionsData.length : 0}',
+    );
 
+    // Clear existing nodes and connections first to avoid state sharing between pages
+    List<GraphNode> loadedNodes = [];
+    List<GraphConnection> loadedConnections = [];
+
+    if (nodesData is List) {
+      try {
+        loadedNodes = nodesData
+            .map((nodeData) {
+              if (nodeData is Map<String, dynamic>) {
+                final node = GraphNode.fromJson(nodeData);
+                debugPrint(
+                  'Loaded node: ${node.name} at position (${node.position.dx}, ${node.position.dy})',
+                );
+                return node;
+              } else if (nodeData != null) {
+                // Try to convert to Map<String, dynamic> if it's another Map type
+                try {
+                  final nodeMap = Map<String, dynamic>.from(nodeData as Map);
+                  return GraphNode.fromJson(nodeMap);
+                } catch (e) {
+                  debugPrint('Error converting node data: $e');
+                  return null;
+                }
+              }
+              return null;
+            })
+            .whereType<GraphNode>()
+            .toList();
+      } catch (e) {
+        debugPrint('Error parsing nodes: $e');
+        loadedNodes = [];
+      }
+    }
+
+    if (connectionsData is List) {
+      try {
+        loadedConnections = connectionsData
+            .map((connData) {
+              if (connData is Map<String, dynamic>) {
+                return GraphConnection.fromJson(connData);
+              } else if (connData != null) {
+                // Try to convert to Map<String, dynamic> if it's another Map type
+                try {
+                  final connMap = Map<String, dynamic>.from(connData as Map);
+                  return GraphConnection.fromJson(connMap);
+                } catch (e) {
+                  debugPrint('Error converting connection data: $e');
+                  return null;
+                }
+              }
+              return null;
+            })
+            .whereType<GraphConnection>()
+            .toList();
+      } catch (e) {
+        debugPrint('Error parsing connections: $e');
+        loadedConnections = [];
+      }
+    }
+
+    // Only update state if the widget is still mounted
+    if (mounted) {
       setState(() {
         nodes = loadedNodes;
         connections = loadedConnections;
@@ -376,20 +518,34 @@ class _GraphEditorState extends State<GraphEditor>
           selectedConnectionId = null;
         }
       });
-
-      debugPrint(
-        'Applied ${loadedNodes.length} nodes and ${loadedConnections.length} connections',
-      );
-
-      // Auto-fit to show all nodes after loading
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _frameAll();
-        }
-      });
-    } else {
-      debugPrint('No nodes found in graph data');
     }
+
+    debugPrint(
+      'Applied ${loadedNodes.length} nodes and ${loadedConnections.length} connections',
+    );
+
+    // Notify parent about loaded graph if callback is provided
+    if (mounted && widget.onGraphLoaded != null) {
+      try {
+        // Create a safe data structure for the callback
+        final callbackData = {
+          'nodes': loadedNodes,
+          'connections': loadedConnections,
+          'metadata': <String, dynamic>{},
+          'version': '1.0',
+        };
+        widget.onGraphLoaded!(callbackData);
+      } catch (e) {
+        debugPrint('Error in onGraphLoaded callback: $e');
+      }
+    }
+
+    // Auto-fit to show all nodes after loading
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _frameAll();
+      }
+    });
   }
 
   // Auto-save graph data to WebSocket service and local persistence
@@ -430,8 +586,13 @@ class _GraphEditorState extends State<GraphEditor>
           .toList(),
     };
 
+    // Get the current graph ID (workspaceId-pageId format)
+    final workspaceId = widget.workspaceId ?? 'default_workspace';
+    final pageId = widget.pageId ?? 'default';
+    final graphId = '$workspaceId-$pageId';
+
     // Use the comprehensive graph persistence service
-    GraphPersistenceService.instance.updateGraphDataCache('default', graphData);
+    GraphPersistenceService.instance.updateGraphDataCache(graphId, graphData);
     GraphPersistenceService.instance.markGraphAsModified();
     GraphPersistenceService.instance.forceSave(graphData: graphData);
 
@@ -439,10 +600,13 @@ class _GraphEditorState extends State<GraphEditor>
     _saveViewState();
   }
 
+  // This method is not currently used but kept for reference
+  /*
   void _sendViewportUpdate() {
     // Viewport updates are now local only - no WebSocket communication needed
     // This method is kept for potential future use but doesn't send WebSocket messages
   }
+  */
 
   // Save the current view state (zoom, pan, selection)
   void _saveViewState() {
@@ -647,8 +811,8 @@ class _GraphEditorState extends State<GraphEditor>
                   child: PropertyInspector(
                     selectedNode: selectedNodeId != null
                         ? nodes
-                            .where((node) => node.id == selectedNodeId)
-                            .firstOrNull
+                              .where((node) => node.id == selectedNodeId)
+                              .firstOrNull
                         : null,
                     onNodeUpdated: _updateNode,
                   ),
@@ -1104,8 +1268,9 @@ class _GraphEditorState extends State<GraphEditor>
       return;
     }
 
-    final fromNode =
-        nodes.where((n) => n.id == connectingFromNodeId).firstOrNull;
+    final fromNode = nodes
+        .where((n) => n.id == connectingFromNodeId)
+        .firstOrNull;
     final toNode = nodes.where((n) => n.id == toNodeId).firstOrNull;
 
     if (fromNode == null || toNode == null) return;
@@ -1613,18 +1778,21 @@ class _GraphEditorState extends State<GraphEditor>
 
     for (final connection in connections) {
       // Get the positions of the connected ports
-      final fromNode =
-          nodes.where((n) => n.id == connection.fromNodeId).firstOrNull;
-      final toNode =
-          nodes.where((n) => n.id == connection.toNodeId).firstOrNull;
+      final fromNode = nodes
+          .where((n) => n.id == connection.fromNodeId)
+          .firstOrNull;
+      final toNode = nodes
+          .where((n) => n.id == connection.toNodeId)
+          .firstOrNull;
 
       if (fromNode == null || toNode == null) continue;
 
       final fromPort = fromNode.outputs
           .where((p) => p.id == connection.fromPortId)
           .firstOrNull;
-      final toPort =
-          toNode.inputs.where((p) => p.id == connection.toPortId).firstOrNull;
+      final toPort = toNode.inputs
+          .where((p) => p.id == connection.toPortId)
+          .firstOrNull;
 
       if (fromPort == null || toPort == null) continue;
 
@@ -1719,8 +1887,7 @@ class _GraphEditorState extends State<GraphEditor>
       );
 
       final newPanOffset = zoomCenter - (graphPoint * clampedScale);
-      _panAnimation =
-          Tween<Offset>(begin: panOffset, end: newPanOffset).animate(
+      _panAnimation = Tween<Offset>(begin: panOffset, end: newPanOffset).animate(
         CurvedAnimation(
           parent: _panAnimationController!,
           curve: Curves

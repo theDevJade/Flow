@@ -70,7 +70,7 @@ class StatusBar extends StatelessWidget {
           case WebSocketConnectionStatus.reconnecting:
             statusColor = Colors.orange;
             statusText = 'Reconnecting';
-            // Show reconnection attempt count
+
             final logs = webSocketService.logs;
             final reconnectLogs =
                 logs.where((log) => log.type == 'RECONNECT').length;
@@ -82,7 +82,7 @@ class StatusBar extends StatelessWidget {
           case WebSocketConnectionStatus.error:
             statusColor = Colors.red;
             statusText = 'Error';
-            // Show last error message
+
             final logs = webSocketService.logs;
             final errorLogs = logs.where((log) => log.isError).toList();
             if (errorLogs.isNotEmpty) {
@@ -583,7 +583,7 @@ class StatusBar extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop(); // Close dialog
+              Navigator.of(context).pop();
               webSocketService.clearAuthAndReconnect();
             },
             child: const Text('Reauthenticate'),

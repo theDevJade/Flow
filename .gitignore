@@ -46,3 +46,7 @@ bin/
 
 ### Flow Spef Things ###
 /data
+
+### RunServer task ###
+/app/run
+data

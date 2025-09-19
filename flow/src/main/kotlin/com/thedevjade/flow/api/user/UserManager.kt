@@ -115,6 +115,13 @@ class UserManager(
 
     fun getUser(userId: String): FlowUser? = users[userId]
 
+    fun getUserByUsername(username: String): FlowUser? {
+        val users = users.filter {
+            it.value.username == username
+        }.map { it.value }
+        return users.firstOrNull()
+    }
+
 
     fun getUserBySession(sessionId: String): FlowUser? {
         val userId = sessionToUser[sessionId] ?: return null
@@ -126,14 +133,20 @@ class UserManager(
 
 
     fun hasPermission(userId: String, permission: UserPermission): Boolean {
-        return users[userId]?.permissions?.contains(permission) ?: false
+        return users[userId]?.permissions?.contains(permission) == true
     }
 
 
     suspend fun updatePermissions(userId: String, permissions: Set<UserPermission>): Boolean = userMutex.withLock {
         val user = users[userId] ?: return false
         users[userId] = user.copy(permissions = permissions)
-        eventManager.emit(UserEvent.UserPermissionsChanged(userId, permissions.map { it.name }.toSet(), System.currentTimeMillis()))
+        eventManager.emit(
+            UserEvent.UserPermissionsChanged(
+                userId,
+                permissions.map { it.name }.toSet(),
+                System.currentTimeMillis()
+            )
+        )
         true
     }
 
@@ -190,7 +203,7 @@ class UserManager(
 
 
     suspend fun deleteUser(userId: String): Boolean = userMutex.withLock {
-        val user = users.remove(userId) ?: return false
+        users.remove(userId) ?: return false
 
 
         userSessions[userId]?.forEach { sessionId ->
@@ -222,7 +235,7 @@ class UserManager(
     private fun isValidAuthToken(token: String, expectedUserId: String): Boolean {
         val authToken = authTokens[token] ?: return false
         return authToken.userId == expectedUserId &&
-               authToken.expiresAt > System.currentTimeMillis()
+                authToken.expiresAt > System.currentTimeMillis()
     }
 
 

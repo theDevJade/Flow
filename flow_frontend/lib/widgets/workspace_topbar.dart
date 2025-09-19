@@ -29,23 +29,23 @@ class WorkspaceTopBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                // Logo/App name
+
                 Text(
                   'Flow',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
 
                 const SizedBox(width: 24),
 
-                // Workspace manager
+
                 _buildWorkspaceManager(context, appState.workspaceManager),
 
                 const Spacer(),
 
-                // Connection status
+
                 _buildConnectionStatus(context, appState.webSocketService),
 
                 const SizedBox(width: 16),
@@ -84,10 +84,12 @@ class WorkspaceTopBar extends StatelessWidget {
   }
 
   Widget _buildWorkspaceDropdown(
-      BuildContext context, WorkspaceManager manager) {
+    BuildContext context,
+    WorkspaceManager manager,
+  ) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
       child: DropdownButtonHideUnderline(
@@ -126,7 +128,9 @@ class WorkspaceTopBar extends StatelessWidget {
   }
 
   Widget _buildCreateWorkspaceButton(
-      BuildContext context, WorkspaceManager manager) {
+    BuildContext context,
+    WorkspaceManager manager,
+  ) {
     return IconButton(
       onPressed: () => _showCreateWorkspaceDialog(context, manager),
       icon: const Icon(Icons.add),
@@ -134,9 +138,7 @@ class WorkspaceTopBar extends StatelessWidget {
       style: IconButton.styleFrom(
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -200,9 +202,9 @@ class WorkspaceTopBar extends StatelessWidget {
                 Text(
                   statusText,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: statusColor,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    color: statusColor,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -271,9 +273,9 @@ class WorkspaceTopBar extends StatelessWidget {
             child: Text(
               user.username.isNotEmpty ? user.username[0].toUpperCase() : 'U',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
           ),
           itemBuilder: (context) => <PopupMenuEntry<String>>[
@@ -308,7 +310,9 @@ class WorkspaceTopBar extends StatelessWidget {
   }
 
   void _showCreateWorkspaceDialog(
-      BuildContext context, WorkspaceManager manager) {
+    BuildContext context,
+    WorkspaceManager manager,
+  ) {
     final nameController = TextEditingController();
 
     showDialog(
@@ -417,9 +421,8 @@ class _LoginDialogState extends State<LoginDialog> {
             'dev456 (Developer)\\n'
             'user789 (User)',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                ),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
           ),
         ],
       ),

@@ -3,7 +3,8 @@ import '../widgets/file_tree_view.dart';
 import '../widgets/tabbed_code_editor.dart';
 
 class CodeEditorScreen extends StatelessWidget {
-  const CodeEditorScreen({super.key});
+  final String? pageId;
+  const CodeEditorScreen({super.key, this.pageId});
 
   @override
   Widget build(BuildContext context) {

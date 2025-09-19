@@ -6,6 +6,7 @@ import com.thedevjade.flow.api.user.UserManager
 import com.thedevjade.flow.api.websocket.WebSocketManager
 import com.thedevjade.flow.extension.ExtensionManager
 import kotlinx.coroutines.*
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 
@@ -58,7 +59,7 @@ class FlowCore private constructor() {
         _userManager = UserManager(_eventManager, config)
         _graphManager = GraphManager(_eventManager, config)
         _webSocketManager = WebSocketManager(_eventManager, _userManager, _graphManager, config)
-        _extensionManager = ExtensionManager(this, config.dataDirectory.let { java.io.File(it) })
+        _extensionManager = ExtensionManager(this, config.dataDirectory.let { File(it) })
 
         isInitialized = true
 

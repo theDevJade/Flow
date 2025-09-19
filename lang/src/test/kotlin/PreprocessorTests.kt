@@ -1,12 +1,12 @@
 package com.thedevjade.io.flowlang
 
-import com.thedevjade.io.flowlang.language.parsing.Preprocessor
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.parsing.Preprocessor
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import java.util.regex.Pattern
 
 class PreprocessorTests {
-    
+
     /**
      * Collapses every run of whitespace to a single space and trims ends,
      * so tests are agnostic to line‑break style or indentation.

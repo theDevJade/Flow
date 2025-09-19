@@ -101,6 +101,10 @@ class WebSocketService with ChangeNotifier {
   final List<WebSocketLogEntry> _logs = [];
   static const int maxLogEntries = 1000;
 
+  // Message queue for messages that couldn't be sent due to connection issues
+  final List<WebSocketMessage> _messageQueue = [];
+  static const int maxQueuedMessages = 50;
+
   List<WebSocketLogEntry> get logs => List.unmodifiable(_logs);
 
   String? _token;
@@ -251,6 +255,9 @@ class WebSocketService with ChangeNotifier {
       _addLog('CONNECTION', 'Connected successfully');
       debugPrint('WebSocket connected successfully');
       _startHeartbeat();
+
+      // Process any queued messages
+      _processMessageQueue();
     } catch (e) {
       _addLog('CONNECTION', 'Failed to connect: $e', isError: true);
       debugPrint('Failed to connect to WebSocket server: $e');
@@ -326,11 +333,22 @@ class WebSocketService with ChangeNotifier {
       _addLog(
         'MESSAGE_OUT',
         'Cannot send ${message.type}: Not connected (${_currentStatus.name})',
+        data: message.data,
         isError: true,
       );
       debugPrint(
-        'Cannot send message: WebSocket not connected (status: $_currentStatus)',
+        'Cannot send message type: ${message.type} with data: ${message.data}. WebSocket not connected (status: $_currentStatus)',
       );
+
+      // Store message to be sent once reconnected
+      if (_messageQueue.length < maxQueuedMessages) {
+        _messageQueue.add(message);
+        debugPrint(
+          'Added message to queue for later delivery (${_messageQueue.length} pending messages)',
+        );
+      } else {
+        debugPrint('Message queue full, dropping message: ${message.type}');
+      }
 
       // Attempt to reconnect if we have a token and are not already reconnecting
       if (_token != null &&
@@ -415,8 +433,8 @@ class WebSocketService with ChangeNotifier {
 
     final baseDelay = Duration(seconds: (2 * _reconnectAttempts).clamp(2, 30));
     final jitter = Duration(
-      milliseconds:
-          (1000 * (0.5 + 0.5 * DateTime.now().millisecond / 1000)).round(),
+      milliseconds: (1000 * (0.5 + 0.5 * DateTime.now().millisecond / 1000))
+          .round(),
     );
     final delay = baseDelay + jitter;
 
@@ -487,6 +505,31 @@ class WebSocketService with ChangeNotifier {
         isError: true,
       );
       debugPrint('Cannot reconnect: No authentication token available');
+    }
+  }
+
+  void _processMessageQueue() {
+    if (_messageQueue.isEmpty) {
+      debugPrint('No queued messages to process');
+      return;
+    }
+
+    _addLog('QUEUE', 'Processing ${_messageQueue.length} queued messages');
+
+    // Create a copy of the queue to avoid modification issues during iteration
+    final messagesToProcess = List<WebSocketMessage>.from(_messageQueue);
+    _messageQueue.clear();
+
+    // Process each message
+    for (final message in messagesToProcess) {
+      _addLog(
+        'QUEUE',
+        'Sending queued message: ${message.type}',
+        data: message.data,
+      );
+
+      // Call send again - this will either send or requeue if still not connected
+      send(message);
     }
   }
 

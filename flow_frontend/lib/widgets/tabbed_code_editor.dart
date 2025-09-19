@@ -4,7 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import '../models/open_file.dart';
 import '../state/app_state.dart';
-import 'syntax_highlighted_editor.dart';
+import 'editor/advanced_code_editor.dart';
 
 class TabbedCodeEditor extends StatefulWidget {
   const TabbedCodeEditor({super.key});
@@ -66,9 +66,8 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
           Text(
             file.fileName,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                ),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
           ),
           const Spacer(),
           IconButton(
@@ -80,7 +79,7 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
                   : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
             ),
             tooltip: 'Save (Cmd+S)',
-            onPressed: () => _saveFile(file),
+            onPressed: file.isModified ? () => _triggerSave(file) : null,
             iconSize: 16,
           ),
           const SizedBox(width: 4),
@@ -151,14 +150,13 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
                 child: Text(
                   file.fileName,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: isActive
-                            ? Theme.of(context).colorScheme.onBackground
-                            : Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withOpacity(0.8),
-                        fontWeight:
-                            isActive ? FontWeight.w500 : FontWeight.normal,
-                      ),
+                    color: isActive
+                        ? Theme.of(context).colorScheme.onBackground
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.8),
+                    fontWeight: isActive ? FontWeight.w500 : FontWeight.normal,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -204,20 +202,17 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
       '📄 TabbedCodeEditor: Using language "$language" for extension "${file.fileExtension}"',
     );
 
-    return RawKeyboardListener(
+    return KeyboardListener(
       focusNode: FocusNode(),
-      onKey: (RawKeyEvent event) {
-        if (event is RawKeyDownEvent) {
-          // Handle Ctrl+S (or Cmd+S on Mac)
-          if ((event.logicalKey == LogicalKeyboardKey.keyS) &&
-              (event.isControlPressed || event.isMetaPressed)) {
-            _saveFile(file);
-          }
+      onKeyEvent: (KeyEvent event) {
+        if (event is KeyDownEvent) {
+          // Note: Save functionality is now handled directly in AdvancedCodeEditor
+          // through the onSave callback, so Cmd+S/Ctrl+S will be handled there
         }
       },
       child: Container(
         color: Theme.of(context).colorScheme.background,
-        child: SyntaxHighlightedEditor(
+        child: AdvancedCodeEditor(
           content: file.content,
           language: language,
           onChanged: (text) {
@@ -228,19 +223,31 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
             SchedulerBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                 context.read<AppState>().fileSystemState.updateFileContent(
-                      file.path,
-                      text,
-                    );
+                  file.path,
+                  text,
+                );
               }
             });
+          },
+          onSave: (content) {
+            debugPrint('💾 Saving file: ${file.path}');
+            final webSocketService = context.read<AppState>().webSocketService;
+            webSocketService.sendMessage('write_file', {
+              'path': file.path,
+              'content': content,
+            });
+            context.read<AppState>().fileSystemState.markFileSaved(file.path);
           },
         ),
       ),
     );
   }
 
-  void _saveFile(OpenFile file) {
-    debugPrint('💾 Saving file: ${file.path}');
+  void _triggerSave(OpenFile file) {
+    // The save functionality is now handled directly by the AdvancedCodeEditor
+    // This method is just for the toolbar button - the actual save happens
+    // through keyboard shortcut handling in the editor
+    debugPrint('💾 Save triggered for: ${file.path}');
 
     // Send save request via WebSocket
     final webSocketService = context.read<AppState>().webSocketService;
@@ -249,7 +256,7 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
       'content': file.content,
     });
 
-    // Mark as saved locally (the server response will confirm)
+    // Mark as saved locally
     context.read<AppState>().fileSystemState.markFileSaved(file.path);
   }
 
@@ -267,17 +274,15 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
           Text(
             'No files open',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                ),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Open a file from the explorer to start editing',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                ),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            ),
           ),
         ],
       ),

@@ -21,23 +21,22 @@ class _CustomTerminalState extends State<CustomTerminal> {
   final FocusNode _focusNode = FocusNode();
 
   late TerminalPageState _terminalState;
-  List<String> _availableCommands = [];
 
   List<String> _currentSuggestions = [];
-  bool _showSuggestions = false;
   int _selectedSuggestionIndex = -1;
-  OverlayEntry? _suggestionOverlay;
+  Timer? _autocompleteTimer;
 
   @override
   void initState() {
     super.initState();
-    _terminalState = PageStateManager.instance.getOrCreatePageState(
-      widget.pageId,
-      'terminal',
-    ) as TerminalPageState;
+    _terminalState =
+        PageStateManager.instance.getOrCreatePageState(
+              widget.pageId,
+              'terminal',
+            )
+            as TerminalPageState;
 
     _initializeTerminal();
-    _loadAvailableCommands();
   }
 
   @override
@@ -64,6 +63,9 @@ class _CustomTerminalState extends State<CustomTerminal> {
       if (message.type == 'terminal_response' &&
           message.data['pageId'] == widget.pageId) {
         _handleTerminalResponse(message);
+      } else if (message.type == 'terminal_autocomplete_response' &&
+          message.data['pageId'] == widget.pageId) {
+        _handleAutocompleteResponse(message);
       }
     });
   }
@@ -71,25 +73,115 @@ class _CustomTerminalState extends State<CustomTerminal> {
   void _handleTerminalResponse(WebSocketMessage message) {
     if (!mounted) return;
 
+    final responseType = message.data['type']?.toString() ?? '';
+
+    switch (responseType) {
+      case 'start':
+
+        setState(() {
+          _terminalState.currentDirectory =
+              message.data['cwd']?.toString() ??
+              _terminalState.currentDirectory;
+        });
+        break;
+
+      case 'stream':
+
+        final stream = message.data['stream']?.toString() ?? 'stdout';
+        final data = message.data['data']?.toString() ?? '';
+
+        if (data.isNotEmpty) {
+          setState(() {
+
+            final streamPrefix = stream == 'stderr' ? '⚠️ ' : '';
+            _terminalState.history.add('$streamPrefix$data');
+          });
+          _scrollToBottom();
+          _saveTerminalState();
+        }
+        break;
+
+      case 'end':
+
+        final exitCode = message.data['exitCode'] as int? ?? 0;
+
+
+        if (message.data['action']?.toString() == 'clear') {
+          setState(() {
+            _terminalState.history.clear();
+            _terminalState.currentDirectory =
+                message.data['cwd']?.toString() ??
+                _terminalState.currentDirectory;
+          });
+        } else {
+          setState(() {
+            _terminalState.currentDirectory =
+                message.data['cwd']?.toString() ??
+                _terminalState.currentDirectory;
+            if (exitCode != 0) {
+              _terminalState.history.add('Process exited with code $exitCode');
+            }
+          });
+        }
+
+        _scrollToBottom();
+        _saveTerminalState();
+        break;
+
+      case 'error':
+        // Error occurred
+        final error = message.data['error']?.toString() ?? 'Unknown error';
+        setState(() {
+          _terminalState.history.add('Error: $error');
+        });
+        _scrollToBottom();
+        _saveTerminalState();
+        break;
+
+      default:
+        // Legacy format support (fallback)
+        if (message.data['success'] == true) {
+          final output = message.data['output'] as List<dynamic>? ?? [];
+          final outputLines = output.map((e) => e.toString()).toList();
+
+          setState(() {
+            _terminalState.history.addAll(outputLines);
+            _terminalState.currentDirectory =
+                message.data['cwd']?.toString() ??
+                _terminalState.currentDirectory;
+          });
+
+          _scrollToBottom();
+          _saveTerminalState();
+        }
+        break;
+    }
+  }
+
+  void _handleAutocompleteResponse(WebSocketMessage message) {
+    if (!mounted) return;
+
     if (message.data['success'] == true) {
-      final output = message.data['output'] as List<dynamic>;
-      final outputLines = output.map((e) => e.toString()).toList();
+      final suggestionsData =
+          message.data['suggestions'] as List<dynamic>? ?? [];
+      final suggestions = suggestionsData
+          .map((s) => s as Map<String, dynamic>)
+          .toList();
 
       setState(() {
-        _terminalState.history.addAll(outputLines);
-        _terminalState.currentDirectory =
-            message.data['cwd'] ?? _terminalState.currentDirectory;
+        _currentSuggestions = suggestions
+            .map((s) => s['text']?.toString() ?? '')
+            .toList();
+        _selectedSuggestionIndex = _currentSuggestions.isNotEmpty ? 0 : -1;
       });
-
-      _scrollToBottom();
-      _saveTerminalState();
+      // No overlay needed - suggestions are shown inline
     }
   }
 
   @override
   void dispose() {
-    _hideSuggestionOverlay();
     _webSocketListener?.cancel();
+    _autocompleteTimer?.cancel();
     _inputController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
@@ -99,51 +191,13 @@ class _CustomTerminalState extends State<CustomTerminal> {
   void _initializeTerminal() {
     if (_terminalState.history.isEmpty) {
       final welcomeMessages = [
-        'Flow Terminal v1.0.0',
-        'Type "help" for available commands.',
-        'Use Tab for autocompletion.',
+        'Flow Custom Terminal v1.0.0',
+        'Type "help" to see available Flow commands.',
+        'This is a custom command interpreter for Flow development.',
         '',
       ];
       _terminalState.history = welcomeMessages;
     }
-  }
-
-  void _loadAvailableCommands() {
-    // Mock available commands @TODO
-    _availableCommands = [
-      'help',
-      'ls',
-      'cd',
-      'pwd',
-      'mkdir',
-      'rmdir',
-      'rm',
-      'cp',
-      'mv',
-      'cat',
-      'echo',
-      'grep',
-      'find',
-      'ps',
-      'top',
-      'kill',
-      'clear',
-      'npm',
-      'node',
-      'flutter',
-      'dart',
-      'git',
-      'python',
-      'pip',
-      'docker',
-      'kubectl',
-      'ssh',
-      'scp',
-      'curl',
-      'wget',
-      'vim',
-      'nano',
-    ];
   }
 
   @override
@@ -171,17 +225,17 @@ class _CustomTerminalState extends State<CustomTerminal> {
                 Text(
                   'Terminal',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const Spacer(),
                 Text(
                   _terminalState.currentDirectory,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.green,
-                        fontFamily: 'monospace',
-                      ),
+                    color: Colors.green,
+                    fontFamily: 'monospace',
+                  ),
                 ),
               ],
             ),
@@ -518,22 +572,33 @@ class _CustomTerminalState extends State<CustomTerminal> {
             child: KeyboardListener(
               focusNode: _focusNode,
               onKeyEvent: _handleKeyEvent,
-              child: TextField(
-                controller: _inputController,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                  color: Colors.white,
-                  height: 1.2,
-                ),
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                onChanged: _onInputChanged,
-                onSubmitted: _executeCommand,
-                autofocus: true,
+              child: Stack(
+                alignment: Alignment.centerLeft,
+                children: [
+                  // Suggestion text (gray background)
+                  if (_currentSuggestions.isNotEmpty &&
+                      _selectedSuggestionIndex >= 0)
+                    _buildSuggestionText(),
+                  // Actual input field
+                  TextField(
+                    controller: _inputController,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 13,
+                      color: Colors.white,
+                      height: 1.2,
+                      backgroundColor: Colors.transparent,
+                    ),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    onChanged: _onInputChanged,
+                    onSubmitted: _executeCommand,
+                    autofocus: true,
+                  ),
+                ],
               ),
             ),
           ),
@@ -542,140 +607,58 @@ class _CustomTerminalState extends State<CustomTerminal> {
     );
   }
 
-  void _hideSuggestionOverlay() {
-    _suggestionOverlay?.remove();
-    _suggestionOverlay = null;
-    if (mounted) {
-      setState(() {
-        _showSuggestions = false;
-      });
+  Widget _buildSuggestionText() {
+    if (_currentSuggestions.isEmpty || _selectedSuggestionIndex < 0) {
+      return const SizedBox.shrink();
     }
-  }
 
-  void _showSuggestionOverlay() {
-    if (_currentSuggestions.isEmpty) return;
+    final suggestion = _currentSuggestions[_selectedSuggestionIndex];
+    final currentText = _inputController.text;
 
-    _hideSuggestionOverlay();
+    // Find the completion part that should be shown in gray
+    String completionText = '';
+    if (suggestion.startsWith(currentText) &&
+        suggestion.length > currentText.length) {
+      completionText = suggestion.substring(currentText.length);
+    } else {
+      // For more complex completions, show the full suggestion after current text
+      final words = currentText.split(' ');
+      if (words.isNotEmpty) {
+        // Replace the last word with the suggestion
+        words[words.length - 1] = suggestion;
+        final fullText = words.join(' ');
+        if (fullText.length > currentText.length) {
+          completionText = fullText.substring(currentText.length);
+        }
+      }
+    }
 
-    final overlay = Overlay.of(context);
-    final renderBox = context.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
+    if (completionText.isEmpty) return const SizedBox.shrink();
 
-    final position = renderBox.localToGlobal(Offset.zero);
-
-    _suggestionOverlay = OverlayEntry(
-      builder: (context) => Positioned(
-        left: position.dx + 20, // Position near cursor
-        top: position.dy + renderBox.size.height - 150, // Above input
-        child: Material(
-          elevation: 4,
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 300, maxHeight: 200),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.withOpacity(0.3)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2D2D30),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(8),
-                      topRight: Radius.circular(8),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.lightbulb_outline,
-                        size: 14,
-                        color: Colors.amber,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Suggestions',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white70,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: _currentSuggestions.length,
-                    itemBuilder: (context, index) {
-                      final suggestion = _currentSuggestions[index];
-                      final isSelected = index == _selectedSuggestionIndex;
-
-                      return InkWell(
-                        onTap: () => _applySuggestion(suggestion),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Colors.blue.withOpacity(0.2)
-                                : null,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.terminal,
-                                size: 14,
-                                color:
-                                    isSelected ? Colors.blue : Colors.white38,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  suggestion,
-                                  style: TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 13,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.white70,
-                                  ),
-                                ),
-                              ),
-                              if (isSelected)
-                                const Icon(
-                                  Icons.keyboard_tab,
-                                  size: 14,
-                                  color: Colors.blue,
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
+    return Positioned(
+      left: _getTextWidth(currentText),
+      child: Text(
+        completionText,
+        style: TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 13,
+          color: Colors.grey.shade600,
+          height: 1.2,
         ),
       ),
     );
+  }
 
-    overlay.insert(_suggestionOverlay!);
-    setState(() {
-      _showSuggestions = true;
-    });
+  double _getTextWidth(String text) {
+    final TextPainter textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(fontFamily: 'monospace', fontSize: 13, height: 1.2),
+      ),
+      maxLines: 1,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    return textPainter.size.width;
   }
 
   void _handleKeyEvent(KeyEvent event) {
@@ -685,14 +668,14 @@ class _CustomTerminalState extends State<CustomTerminal> {
           _handleTabCompletion();
           break;
         case LogicalKeyboardKey.arrowUp:
-          if (_showSuggestions) {
+          if (_currentSuggestions.isNotEmpty) {
             _navigateSuggestions(-1);
           } else {
             _navigateHistory(-1);
           }
           break;
         case LogicalKeyboardKey.arrowDown:
-          if (_showSuggestions) {
+          if (_currentSuggestions.isNotEmpty) {
             _navigateSuggestions(1);
           } else {
             _navigateHistory(1);
@@ -702,7 +685,7 @@ class _CustomTerminalState extends State<CustomTerminal> {
           _hideSuggestions();
           break;
         case LogicalKeyboardKey.enter:
-          if (_showSuggestions && _selectedSuggestionIndex >= 0) {
+          if (_currentSuggestions.isNotEmpty && _selectedSuggestionIndex >= 0) {
             _applySuggestion(_currentSuggestions[_selectedSuggestionIndex]);
           }
           break;
@@ -711,58 +694,56 @@ class _CustomTerminalState extends State<CustomTerminal> {
   }
 
   void _onInputChanged(String text) {
-    _updateSuggestions(text);
+    // Cancel any existing autocomplete timer
+    _autocompleteTimer?.cancel();
+
+    // Debounce autocomplete requests
+    _autocompleteTimer = Timer(const Duration(milliseconds: 300), () {
+      _requestBackendAutocomplete(text);
+    });
   }
 
-  void _updateSuggestions(String input) {
-    if (input.isEmpty) {
+  void _requestBackendAutocomplete(String input) {
+    if (input.isEmpty || !mounted) {
       _hideSuggestions();
       return;
     }
 
-    final words = input.split(' ');
-    final currentWord = words.isNotEmpty ? words.last : '';
+    // Get cursor position
+    final cursorPosition = _inputController.selection.baseOffset;
 
-    if (currentWord.isEmpty) {
-      _hideSuggestions();
-      return;
-    }
-
-    final suggestions = _availableCommands
-        .where((cmd) => cmd.toLowerCase().startsWith(currentWord.toLowerCase()))
-        .toList();
-
-    setState(() {
-      _currentSuggestions = suggestions;
-      _selectedSuggestionIndex = suggestions.isNotEmpty ? 0 : -1;
-    });
-
-    if (suggestions.isNotEmpty) {
-      // Delay showing overlay to ensure widget is built
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showSuggestionOverlay();
-      });
-    } else {
-      _hideSuggestions();
-    }
+    final appState = context.read<AppState>();
+    appState.webSocketService.send(
+      WebSocketMessage(
+        type: 'terminal_autocomplete',
+        data: {
+          'input': input,
+          'cursorPosition': cursorPosition,
+          'cwd': _terminalState.currentDirectory,
+          'pageId': widget.pageId,
+        },
+      ),
+    );
   }
 
   void _handleTabCompletion() {
-    if (_showSuggestions && _currentSuggestions.isNotEmpty) {
+    if (_currentSuggestions.isNotEmpty) {
       _applySuggestion(
-        _currentSuggestions[
-            _selectedSuggestionIndex >= 0 ? _selectedSuggestionIndex : 0],
+        _currentSuggestions[_selectedSuggestionIndex >= 0
+            ? _selectedSuggestionIndex
+            : 0],
       );
     }
   }
 
   void _applySuggestion(String suggestion) {
     final currentText = _inputController.text;
-    final words = currentText.split(' ');
 
+    // Simple replacement logic for the current word
+    final words = currentText.split(' ');
     if (words.isNotEmpty) {
       words[words.length - 1] = suggestion;
-      final newText = '${words.join(' ')} ';
+      final newText = words.join(' ');
       _inputController.value = TextEditingValue(
         text: newText,
         selection: TextSelection.collapsed(offset: newText.length),
@@ -782,8 +763,7 @@ class _CustomTerminalState extends State<CustomTerminal> {
       );
     });
 
-    // Update the overlay to reflect the new selection
-    _showSuggestionOverlay();
+    // No overlay needed - suggestions are shown inline automatically via setState
   }
 
   void _navigateHistory(int direction) {
@@ -809,7 +789,6 @@ class _CustomTerminalState extends State<CustomTerminal> {
   }
 
   void _hideSuggestions() {
-    _hideSuggestionOverlay();
     setState(() {
       _currentSuggestions.clear();
       _selectedSuggestionIndex = -1;
@@ -819,12 +798,7 @@ class _CustomTerminalState extends State<CustomTerminal> {
   void _executeCommand(String command) {
     if (command.trim().isEmpty) return;
 
-    // Add command to input history for display
-    final commandLine = '${_terminalState.currentDirectory}\$ $command';
-    final updatedHistory = List<String>.from(_terminalState.history);
-    updatedHistory.add(commandLine);
-
-    // Add to command history for navigation
+    // Add command to command history for navigation (not display history)
     final updatedCommandHistory = List<String>.from(
       _terminalState.commandHistory,
     );
@@ -837,10 +811,10 @@ class _CustomTerminalState extends State<CustomTerminal> {
     _terminalState.historyIndex = -1;
     _terminalState.commandHistory = updatedCommandHistory;
 
-    // Update state immediately with command input
-    _terminalState.history = updatedHistory;
-
+    // Add command line to display history - but don't duplicate, backend will send the prompt
+    final commandLine = '${_terminalState.currentDirectory}\$ $command';
     setState(() {
+      _terminalState.history.add(commandLine);
       _inputController.clear();
       _hideSuggestions();
     });

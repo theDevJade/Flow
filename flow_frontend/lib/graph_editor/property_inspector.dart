@@ -91,7 +91,8 @@ class _PropertyInspectorState extends State<PropertyInspector>
       if (property.type == 'string' ||
           property.type == 'float' ||
           property.type == 'int') {
-        final currentValue = widget.selectedNode!.properties[property.name] ??
+        final currentValue =
+            widget.selectedNode!.properties[property.name] ??
             property.defaultValue;
         _textControllers[property.name] = TextEditingController(
           text: currentValue.toString(),
@@ -128,6 +129,8 @@ class _PropertyInspectorState extends State<PropertyInspector>
     switch (property.type) {
       case 'string':
         return _buildStringProperty(property, currentValue);
+      case 'number':
+        return _buildNumberProperty(property, currentValue);
       case 'float':
       case 'double':
         return _buildFloatProperty(property, currentValue);
@@ -179,6 +182,100 @@ class _PropertyInspectorState extends State<PropertyInspector>
           style: const TextStyle(color: Colors.white, fontSize: 12),
           onChanged: (value) {
             _updateNodeProperty(property.name, value);
+          },
+        ),
+        if (property.description.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              property.description,
+              style: const TextStyle(color: Color(0xFF888888), fontSize: 11),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNumberProperty(NodeProperty property, dynamic currentValue) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          property.label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: _textControllers[property.name],
+          decoration: InputDecoration(
+            hintText: property.defaultValue?.toString(),
+            hintStyle: const TextStyle(color: Color(0xFF666666)),
+            border: const OutlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF404040)),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderSide: BorderSide(color: Color(0xFF66BB6A)),
+            ),
+            fillColor: const Color(0xFF1E1E1E),
+            filled: true,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+            suffixText: property.min != null && property.max != null
+                ? '[${property.min}-${property.max}]'
+                : null,
+            suffixStyle: const TextStyle(
+              color: Color(0xFF666666),
+              fontSize: 10,
+            ),
+          ),
+          style: const TextStyle(color: Colors.white, fontSize: 12),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          onChanged: (value) {
+            // Try to parse as int first, then as double
+            final intValue = int.tryParse(value);
+            if (intValue != null) {
+              // Apply min/max constraints for integers
+              num clampedValue = intValue;
+              if (property.min != null) {
+                clampedValue = clampedValue.clamp(
+                  property.min!.toInt(),
+                  intValue >= 0 ? double.maxFinite.toInt() : 0,
+                );
+              }
+              if (property.max != null) {
+                clampedValue = clampedValue.clamp(
+                  intValue < 0 ? double.negativeInfinity.toInt() : 0,
+                  property.max!.toInt(),
+                );
+              }
+              _updateNodeProperty(property.name, clampedValue);
+            } else {
+              final doubleValue = double.tryParse(value);
+              if (doubleValue != null) {
+                // Apply min/max constraints for doubles
+                double clampedValue = doubleValue;
+                if (property.min != null) {
+                  clampedValue = clampedValue.clamp(
+                    property.min!,
+                    double.infinity,
+                  );
+                }
+                if (property.max != null) {
+                  clampedValue = clampedValue.clamp(
+                    double.negativeInfinity,
+                    property.max!,
+                  );
+                }
+                _updateNodeProperty(property.name, clampedValue);
+              }
+            }
           },
         ),
         if (property.description.isNotEmpty)
@@ -336,7 +433,8 @@ class _PropertyInspectorState extends State<PropertyInspector>
               ),
             ),
             Switch.adaptive(
-              value: currentValue as bool? ??
+              value:
+                  currentValue as bool? ??
                   property.defaultValue as bool? ??
                   false,
               onChanged: (value) {

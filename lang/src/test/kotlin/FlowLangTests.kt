@@ -1,10 +1,13 @@
 package com.thedevjade.io.flowlang
 
-import com.thedevjade.io.flowlang.language.FlowLangEngine
-import com.thedevjade.io.flowlang.language.memory.FlowLangContext
-import com.thedevjade.io.flowlang.language.memory.FlowLangEvent
-import com.thedevjade.io.flowlang.language.memory.FlowLangParameter
-import com.thedevjade.io.flowlang.language.types.Vector3
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.FlowLang
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.FlowLangEngine
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.memory.FlowLangContext
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.memory.FlowLangFunction
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.memory.FlowLangEvent
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.memory.FlowLangParameter
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.memory.FlowLangType
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.types.Vector3
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
@@ -20,7 +23,7 @@ class FlowLangTests {
         val field = FlowLangEngine::class.java.getDeclaredField("instance")
         field.isAccessible = true
         field.set(null, null)
-        
+
         engine = FlowLangEngine.getInstance()
         FlowLang.start()
     }
@@ -199,19 +202,23 @@ class FlowLangTests {
     @Test
     fun testGameIntegration() {
         // Register game types
-        engine.registerType(com.thedevjade.io.flowlang.language.memory.FlowLangType("Player", Player::class.java))
-        engine.registerType(com.thedevjade.io.flowlang.language.memory.FlowLangType("Vector", Vector3::class.java))
+        engine.registerType(FlowLangType("Player", Player::class.java))
+        engine.registerType(FlowLangType("Vector", Vector3::class.java))
 
         // Register game functions
-        engine.registerFunction(com.thedevjade.io.flowlang.language.memory.FlowLangFunction("spawn", { args ->
-            val et = args[0]?.toString()
-            val pos = args[1] as Vector3
-            println("Spawned $et at $pos")
-            null
-        }, arrayOf(
-            com.thedevjade.io.flowlang.language.memory.FlowLangParameter("entityType", "text"),
-            com.thedevjade.io.flowlang.language.memory.FlowLangParameter("position", "Vector")
-        )))
+        engine.registerFunction(
+            FlowLangFunction(
+                "spawn", { args ->
+                    val et = args[0]?.toString()
+                    val pos = args[1] as Vector3
+                    println("Spawned $et at $pos")
+                    null
+                }, arrayOf(
+                    FlowLangParameter("entityType", "text"),
+                    FlowLangParameter("position", "Vector")
+                )
+            )
+        )
 
         // Register game events
         engine.registerEvent(FlowLangEvent("playerJoin", arrayOf(

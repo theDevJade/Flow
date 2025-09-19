@@ -1,12 +1,13 @@
 package com.thedevjade.io.flowlang
 
-import com.thedevjade.io.flowlang.language.FlowLangEngine
-import com.thedevjade.io.flowlang.language.memory.FlowLangContext
-import com.thedevjade.io.flowlang.language.memory.FlowLangEvent
-import com.thedevjade.io.flowlang.language.memory.FlowLangFunction
-import com.thedevjade.io.flowlang.language.memory.FlowLangParameter
-import com.thedevjade.io.flowlang.language.parsing.Preprocessor
-import com.thedevjade.io.flowlang.language.types.Vector3
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.FlowLang
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.FlowLangEngine
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.memory.FlowLangContext
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.memory.FlowLangEvent
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.memory.FlowLangFunction
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.memory.FlowLangParameter
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.memory.FlowLangType
+import com.thedevjade.io.flowlang.com.thedevjade.flow.flowlang.language.parsing.Preprocessor
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -24,7 +25,7 @@ class FlowLangIntegrationTest {
         val field = FlowLangEngine::class.java.getDeclaredField("instance")
         field.isAccessible = true
         field.set(null, null)
-        
+
         engine = FlowLangEngine.getInstance()
         preprocessor = Preprocessor()
         FlowLang.start()
@@ -45,7 +46,7 @@ class FlowLangIntegrationTest {
             var sum = x + y
             print("Sum: " + sum)
         """.trimIndent()
-        
+
         val output = captureOutput { engine.execute(basicScript) }
         assertTrue(output.contains("Testing FlowLang library..."))
         assertTrue(output.contains("Sum: 30"))
@@ -61,14 +62,14 @@ class FlowLangIntegrationTest {
             set result to 10 times 5
             print("Result: " + result)
         """.trimIndent()
-        
+
         val processedScript = preprocessor.process(naturalLanguageScript)
-        
+
         // Verify the preprocessing worked
         assertTrue(processedScript.contains("var total = 100 + 50"))
         assertTrue(processedScript.contains("if (total > 100)"))
         assertTrue(processedScript.contains("var result = 10 * 5"))
-        
+
         // Execute the processed script
         val output = captureOutput { engine.execute(processedScript) }
         assertTrue(output.contains("Total is high!"))
@@ -86,15 +87,15 @@ class FlowLangIntegrationTest {
             FlowLangParameter("length", "number"),
             FlowLangParameter("width", "number")
         )))
-        
+
         // Register custom type
-        engine.registerType(com.thedevjade.io.flowlang.language.memory.FlowLangType("Rectangle", Rectangle::class.java))
-        
+        engine.registerType(FlowLangType("Rectangle", Rectangle::class.java))
+
         val script = """
             var area = calculateArea(5, 3)
             print("Area: " + area)
         """.trimIndent()
-        
+
         val output = captureOutput { engine.execute(script) }
         assertTrue(output.contains("Area: 15"))
     }
@@ -106,16 +107,16 @@ class FlowLangIntegrationTest {
             FlowLangParameter("data", "text"),
             FlowLangParameter("count", "number")
         )))
-        
+
         // Set up event handler
         engine.execute("""
             on dataProcessed {
                 print("Processed " + count + " items: " + data)
             }
         """.trimIndent())
-        
+
         // Trigger event
-        val output = captureOutput { 
+        val output = captureOutput {
             engine.triggerEvent("dataProcessed", "test data", 42)
         }
         assertTrue(output.contains("Processed 42 items: test data"))
@@ -163,7 +164,7 @@ class FlowLangIntegrationTest {
             
             print("Complex script completed!")
         """.trimIndent()
-        
+
         val output = captureOutput { engine.execute(complexScript) }
         assertTrue(output.contains("Starting complex script..."))
         assertTrue(output.contains("z = 50"))
@@ -176,16 +177,16 @@ class FlowLangIntegrationTest {
     @Test
     fun testPreprocessorCustomRules() {
         val customPreprocessor = Preprocessor(registerDefaults = false)
-        
+
         // Add custom rules
         customPreprocessor.registerPhraseReplacement("\\bset\\s+([A-Za-z_]\\w*)\\s+to\\b", "var $1 =")
         customPreprocessor.registerPhraseReplacement("\\btwice\\s+as\\s+big\\b", "* 2")
         customPreprocessor.registerTokenReplacement("double", "* 2")
         customPreprocessor.registerRemovableKeyword("please")
-        
+
         val input = "please set width to base twice as big"
         val output = customPreprocessor.process(input)
-        
+
         assertEquals("var width = base * 2", output.trim())
     }
 
@@ -195,12 +196,12 @@ class FlowLangIntegrationTest {
         assertThrows(Exception::class.java) {
             engine.execute("var x = ") // Incomplete statement
         }
-        
+
         // Test undefined variable
         assertThrows(Exception::class.java) {
             engine.execute("print(undefinedVariable)")
         }
-        
+
         // Test undefined function
         assertThrows(Exception::class.java) {
             engine.execute("undefinedFunction()")
@@ -211,10 +212,10 @@ class FlowLangIntegrationTest {
     fun testContextIsolation() {
         val ctx1 = FlowLangContext()
         val ctx2 = FlowLangContext()
-        
+
         engine.execute("var x = 10", ctx1)
         engine.execute("var x = 20", ctx2)
-        
+
         assertEquals(10.0, engine.execute("x", ctx1))
         assertEquals(20.0, engine.execute("x", ctx2))
     }
@@ -223,13 +224,13 @@ class FlowLangIntegrationTest {
         val output = ByteArrayOutputStream()
         val originalOut = System.out
         System.setOut(PrintStream(output))
-        
+
         try {
             block()
         } finally {
             System.setOut(originalOut)
         }
-        
+
         return output.toString()
     }
 }

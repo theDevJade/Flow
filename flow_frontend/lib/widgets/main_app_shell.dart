@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../state/app_state.dart';
 import '../state/workspace_state.dart';
+import '../state/page_manager.dart';
 import '../widgets/workspace_topbar.dart';
 import '../widgets/workspace_sidebar.dart';
 import '../widgets/animated_loading_screen.dart';
@@ -101,6 +102,53 @@ class _MainAppShellState extends State<MainAppShell>
   }
 
   Widget _buildCurrentWorkspace(WorkspaceType workspace) {
+    return Consumer<AppState>(
+      builder: (context, appState, child) {
+        final pageManager = appState.pageManager;
+        final activePageId = pageManager.activePageId;
+        final activePageType = pageManager.activePageType;
+
+
+        if (activePageId == null || activePageType == null) {
+          switch (workspace) {
+            case WorkspaceType.graphEditor:
+              return const GraphEditorScreen(key: ValueKey('graph_editor'));
+            case WorkspaceType.codeEditor:
+              return const CodeEditorScreen(key: ValueKey('code_editor'));
+            case WorkspaceType.terminal:
+              return const TerminalScreen(
+                key: ValueKey('terminal'),
+                pageId: 'main_terminal',
+              );
+          }
+        }
+
+
+        switch (activePageType) {
+          case 'graphEditor':
+            return GraphEditorScreen(
+              key: ValueKey('graph_editor_$activePageId'),
+              pageId: activePageId,
+            );
+          case 'codeEditor':
+            return CodeEditorScreen(
+              key: ValueKey('code_editor_$activePageId'),
+              pageId: activePageId,
+            );
+          case 'terminal':
+            return TerminalScreen(
+              key: ValueKey('terminal_$activePageId'),
+              pageId: activePageId,
+            );
+          default:
+
+            return _buildFallbackWorkspace(workspace);
+        }
+      },
+    );
+  }
+
+  Widget _buildFallbackWorkspace(WorkspaceType workspace) {
     switch (workspace) {
       case WorkspaceType.graphEditor:
         return const GraphEditorScreen(key: ValueKey('graph_editor'));
@@ -117,8 +165,8 @@ class _MainAppShellState extends State<MainAppShell>
   Widget _buildLoadingScreen() {
     return AnimatedLoadingScreen(
       onLoadingComplete: () {
-        // Trigger app initialization completion
-        // Provider.of<AppState>(context, listen: false).markInitialized();
+
+
       },
     );
   }
@@ -133,10 +181,10 @@ class _MainAppShellState extends State<MainAppShell>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Theme.of(context).colorScheme.error,
-              )
+                    Icons.error_outline,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.error,
+                  )
                   .animate()
                   .scale(duration: 300.ms)
                   .shake(hz: 2, curve: Curves.easeInOut),
@@ -144,31 +192,31 @@ class _MainAppShellState extends State<MainAppShell>
               Text(
                 'Initialization Error',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.bold,
+                ),
               ).animate().fadeIn(duration: 400.ms, delay: 100.ms),
               const SizedBox(height: 16),
               Text(
                 error,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.8),
-                    ),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.8),
+                ),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(duration: 400.ms, delay: 200.ms),
               const SizedBox(height: 32),
               ElevatedButton.icon(
-                onPressed: () {
-                  Provider.of<AppState>(
-                    context,
-                    listen: false,
-                  ).initialize();
-                },
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-              )
+                    onPressed: () {
+                      Provider.of<AppState>(
+                        context,
+                        listen: false,
+                      ).initialize();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                  )
                   .animate()
                   .fadeIn(duration: 400.ms, delay: 300.ms)
                   .slideY(begin: 0.2, end: 0),

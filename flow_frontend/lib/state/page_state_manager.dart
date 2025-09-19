@@ -8,7 +8,7 @@ class PageState {
 
   PageState(this.pageId);
 
-  // Generic data storage
+
   void setValue(String key, dynamic value) {
     _data[key] = value;
   }
@@ -27,7 +27,7 @@ class PageState {
 class GraphEditorPageState extends PageState {
   GraphEditorPageState(super.pageId);
 
-  // Graph-specific state
+
   Offset get panOffset => getValue<Offset>('panOffset') ?? Offset.zero;
   set panOffset(Offset value) => setValue('panOffset', value);
 
@@ -50,7 +50,7 @@ class GraphEditorPageState extends PageState {
 class CodeEditorPageState extends PageState {
   CodeEditorPageState(super.pageId);
 
-  // Code editor specific state
+
   List<String> get openFiles => getValue<List<String>>('openFiles') ?? [];
   set openFiles(List<String> value) => setValue('openFiles', value);
 
@@ -66,7 +66,7 @@ class CodeEditorPageState extends PageState {
 class TerminalPageState extends PageState {
   TerminalPageState(super.pageId);
 
-  // Terminal specific state
+
   List<String> get history => getValue<List<String>>('history') ?? [];
   set history(List<String> value) => setValue('history', value);
 
@@ -107,7 +107,7 @@ class PageStateManager with ChangeNotifier {
         break;
       case 'terminal':
         pageState = TerminalPageState(pageId);
-        // Try to restore terminal state from persistence
+
         _restoreTerminalState(pageState as TerminalPageState);
         break;
       default:
@@ -175,7 +175,7 @@ class PageStateManager with ChangeNotifier {
     notifyListeners();
   }
 
-  // Save/restore functionality for persistence
+
   Map<String, Map<String, dynamic>> exportStates() {
     return _pageStates.map((key, value) => MapEntry(key, value.data));
   }
