@@ -194,6 +194,12 @@ jobs:
           touch ../../../../../Flow-macOS-${{ github.run_id }}.zip
         fi
     
+    - name: Copy macOS Archive to Root
+      if: inputs.upload-artifacts
+      run: |
+        cp Flow-macOS-${{ github.run_id }}.zip ./
+        ls -la Flow-macOS-${{ github.run_id }}.zip
+    
     - name: Upload macOS Build
       if: inputs.upload-artifacts
       uses: actions/upload-artifact@v4
@@ -224,6 +230,12 @@ jobs:
       run: |
         cd flow_frontend/build/windows/x64/runner/Release
         Compress-Archive -Path * -DestinationPath ../../../../../Flow-Windows-${{ github.run_id }}.zip
+    
+    - name: Copy Windows Archive to Root
+      if: inputs.upload-artifacts
+      run: |
+        Copy-Item "Flow-Windows-${{ github.run_id }}.zip" -Destination "."
+        Get-ChildItem "Flow-Windows-${{ github.run_id }}.zip" | Format-List
     
     - name: Upload Windows Build
       if: inputs.upload-artifacts
@@ -258,6 +270,12 @@ jobs:
       run: |
         cd flow_frontend/build/linux/x64/release
         tar -czf ../../../../../Flow-Linux-${{ github.run_id }}.tar.gz bundle/
+    
+    - name: Copy Linux Archive to Root
+      if: inputs.upload-artifacts
+      run: |
+        cp Flow-Linux-${{ github.run_id }}.tar.gz ./
+        ls -la Flow-Linux-${{ github.run_id }}.tar.gz
     
     - name: Upload Linux Build
       if: inputs.upload-artifacts
