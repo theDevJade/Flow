@@ -80,8 +80,8 @@ jobs:
         cd flow_frontend/build
         tar -czf ../../Flow-Web-${{ github.run_id }}.tar.gz web/
         # Copy to root directory for upload
-        cp Flow-Web-${{ github.run_id }}.tar.gz ../
-        ls -la ../Flow-Web-${{ github.run_id }}.tar.gz
+        cp Flow-Web-${{ github.run_id }}.tar.gz ../../
+        ls -la ../../Flow-Web-${{ github.run_id }}.tar.gz
     
     - name: Create macOS Archive
       if: inputs.upload-artifacts && inputs.build-target == 'macos'
@@ -94,8 +94,8 @@ jobs:
           touch ../../../../../Flow-macOS-${{ github.run_id }}.zip
         fi
         # Copy to root directory for upload
-        cp ../../../../../Flow-macOS-${{ github.run_id }}.zip ../../../../../
-        ls -la ../../../../../Flow-macOS-${{ github.run_id }}.zip
+        cp ../../../../../Flow-macOS-${{ github.run_id }}.zip ../../../../../../
+        ls -la ../../../../../../Flow-macOS-${{ github.run_id }}.zip
     
     - name: Create Windows Archive
       if: inputs.upload-artifacts && inputs.build-target == 'windows'
@@ -103,8 +103,8 @@ jobs:
         cd flow_frontend/build/windows/x64/runner/Release
         tar -czf ../../../../../Flow-Windows-${{ github.run_id }}.tar.gz *
         # Copy to root directory for upload
-        cp ../../../../../Flow-Windows-${{ github.run_id }}.tar.gz ../../../../../
-        ls -la ../../../../../Flow-Windows-${{ github.run_id }}.tar.gz
+        cp ../../../../../Flow-Windows-${{ github.run_id }}.tar.gz ../../../../../../
+        ls -la ../../../../../../Flow-Windows-${{ github.run_id }}.tar.gz
     
     - name: Create Linux Archive
       if: inputs.upload-artifacts && inputs.build-target == 'linux'
@@ -112,8 +112,8 @@ jobs:
         cd flow_frontend/build/linux/x64/release
         tar -czf ../../../../../Flow-Linux-${{ github.run_id }}.tar.gz bundle/
         # Copy to root directory for upload
-        cp ../../../../../Flow-Linux-${{ github.run_id }}.tar.gz ../../../../../
-        ls -la ../../../../../Flow-Linux-${{ github.run_id }}.tar.gz
+        cp ../../../../../Flow-Linux-${{ github.run_id }}.tar.gz ../../../../../../
+        ls -la ../../../../../../Flow-Linux-${{ github.run_id }}.tar.gz
     
     - name: Copy Artifacts to Root
       if: inputs.upload-artifacts && inputs.build-target != 'test'
