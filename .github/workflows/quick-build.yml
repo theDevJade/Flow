@@ -2,6 +2,12 @@ name: Quick Build All
 
 on:
   workflow_dispatch:
+    inputs:
+      upload-artifacts:
+        description: 'Whether to upload build artifacts'
+        required: true
+        default: true
+        type: boolean
 
 env:
   FLUTTER_VERSION: '3.35.3'
