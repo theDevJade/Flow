@@ -117,5 +117,5 @@ jobs:
       with:
         name: ${{ inputs.build-target }}-build-${{ github.run_id }}
         path: |
-          **/Flow-*-${{ github.run_id }}.*
+          "**/Flow-*-${{ github.run_id }}.*"
         retention-days: ${{ inputs.artifact-retention }}

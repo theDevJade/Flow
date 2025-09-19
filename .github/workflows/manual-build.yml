@@ -205,7 +205,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: macos-build-${{ github.run_id }}
-        path: **/Flow-macOS-${{ github.run_id }}.zip
+        path: "**/Flow-macOS-${{ github.run_id }}.zip"
         retention-days: ${{ inputs.artifact-retention }}
 
   build-frontend-windows:
@@ -242,7 +242,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: windows-build-${{ github.run_id }}
-        path: **/Flow-Windows-${{ github.run_id }}.zip
+        path: "**/Flow-Windows-${{ github.run_id }}.zip"
         retention-days: ${{ inputs.artifact-retention }}
 
   build-frontend-linux:
@@ -282,7 +282,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: linux-build-${{ github.run_id }}
-        path: **/Flow-Linux-${{ github.run_id }}.tar.gz
+        path: "**/Flow-Linux-${{ github.run_id }}.tar.gz"
         retention-days: ${{ inputs.artifact-retention }}
 
   # Build Summary
