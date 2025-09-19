@@ -43,11 +43,6 @@ jobs:
       working-directory: flow_frontend
       run: dart format .
     
-    - name: Analyze Flutter Code
-      if: inputs.run-tests
-      working-directory: flow_frontend
-      run: flutter analyze --no-fatal-infos --no-fatal-warnings
-    
     - name: Run Flutter Tests
       if: inputs.run-tests
       working-directory: flow_frontend

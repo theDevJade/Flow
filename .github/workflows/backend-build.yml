@@ -43,9 +43,13 @@ jobs:
       with:
         java-version: ${{ inputs.java-version }}
     
+    - name: Build Dependencies
+      if: inputs.build-type == 'test' || inputs.build-type == 'release'
+      run: ./gradlew clean :common:build --no-daemon
+    
     - name: Run Tests and Analysis
       if: inputs.build-type == 'test' || inputs.build-type == 'release'
-      run: ./gradlew clean check --no-daemon --continue
+      run: ./gradlew check --no-daemon --continue
     
     - name: Build Backend Modules
       id: build
