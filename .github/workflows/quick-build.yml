@@ -109,11 +109,13 @@ jobs:
         fi
     
     - name: Find macOS Archive
+      if: inputs.upload-artifacts
       run: |
         echo "Searching for macOS archive:"
         find . -name "Flow-macOS-${{ github.run_id }}.zip" -type f
     
     - name: Upload macOS Build
+      if: inputs.upload-artifacts
       uses: actions/upload-artifact@v4
       with:
         name: macos-build-${{ github.run_id }}
@@ -143,11 +145,13 @@ jobs:
         Compress-Archive -Path * -DestinationPath ../../../../../Flow-Windows-${{ github.run_id }}.zip
     
     - name: Find Windows Archive
+      if: inputs.upload-artifacts
       run: |
         echo "Searching for Windows archive:"
         Get-ChildItem -Recurse -Name "Flow-Windows-${{ github.run_id }}.zip"
     
     - name: Upload Windows Build
+      if: inputs.upload-artifacts
       uses: actions/upload-artifact@v4
       with:
         name: windows-build-${{ github.run_id }}
@@ -180,11 +184,13 @@ jobs:
         tar -czf ../../../../../Flow-Linux-${{ github.run_id }}.tar.gz bundle/
     
     - name: Find Linux Archive
+      if: inputs.upload-artifacts
       run: |
         echo "Searching for Linux archive:"
         find . -name "Flow-Linux-${{ github.run_id }}.tar.gz" -type f
     
     - name: Upload Linux Build
+      if: inputs.upload-artifacts
       uses: actions/upload-artifact@v4
       with:
         name: linux-build-${{ github.run_id }}
