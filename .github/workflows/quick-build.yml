@@ -149,7 +149,12 @@ jobs:
       run: |
         cd flow_frontend/build/windows/x64/runner/Release
         Compress-Archive -Path * -DestinationPath "Flow-Windows-${{ github.run_id }}.zip"
+        echo "Created archive in: $(Get-Location)"
+        ls -la "Flow-Windows-${{ github.run_id }}.zip"
         Move-Item "Flow-Windows-${{ github.run_id }}.zip" -Destination "../../../../../"
+        echo "Moved to root directory"
+        cd ../../../../../
+        ls -la "Flow-Windows-${{ github.run_id }}.zip"
     
     - name: Find Windows Archive
       if: inputs.upload-artifacts
