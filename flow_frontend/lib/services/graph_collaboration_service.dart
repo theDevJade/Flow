@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/websocket_service.dart';
 import '../graph_editor/models.dart';

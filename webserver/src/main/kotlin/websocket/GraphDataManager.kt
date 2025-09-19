@@ -15,38 +15,38 @@ class GraphDataManager {
     private val graphsDir = "$baseDataDir/graphs"
     private val workspacesDir = "$baseDataDir/workspaces"
     private val filesDir = "$baseDataDir/files"
-    
+
     init {
-        // Ensure data directories exist
+
         File(graphsDir).mkdirs()
         File(workspacesDir).mkdirs()
         File(filesDir).mkdirs()
-        println("GraphDataManager initialized with directories: graphs=$graphsDir, workspaces=$workspacesDir, files=$filesDir")
+        FlowLogger.debug("GraphDataManager initialized with directories: graphs=$graphsDir, workspaces=$workspacesDir, files=$filesDir")
     }
-    
+
     fun saveGraph(graphId: String, graphData: GraphData): Boolean {
         return try {
             graphs[graphId] = graphData
-            
-            // Persist to file
+
+
             val file = File("$graphsDir/$graphId.json")
             val jsonString = Json.encodeToString(GraphData.serializer(), graphData)
             file.writeText(jsonString)
-            
-            println("Saved graph: $graphId")
+
+            FlowLogger.debug("Saved graph: $graphId")
             true
         } catch (e: Exception) {
-            println("Failed to save graph $graphId: ${e.message}")
+            FlowLogger.debug("Failed to save graph $graphId: ${e.message}")
             false
         }
     }
-    
+
     fun loadGraph(graphId: String): GraphData? {
         return try {
-            // Try from memory first
+
             graphs[graphId]?.let { return it }
-            
-            // Try from file
+
+
             val file = File("$graphsDir/$graphId.json")
             if (file.exists()) {
                 val jsonString = file.readText()
@@ -57,11 +57,11 @@ class GraphDataManager {
                 null
             }
         } catch (e: Exception) {
-            println("Failed to load graph $graphId: ${e.message}")
+            FlowLogger.debug("Failed to load graph $graphId: ${e.message}")
             null
         }
     }
-    
+
     fun deleteGraph(graphId: String): Boolean {
         return try {
             graphs.remove(graphId)
@@ -71,33 +71,33 @@ class GraphDataManager {
             }
             true
         } catch (e: Exception) {
-            println("Failed to delete graph $graphId: ${e.message}")
+            FlowLogger.debug("Failed to delete graph $graphId: ${e.message}")
             false
         }
     }
-    
+
     fun listGraphs(): List<String> {
         val fileGraphs = File(graphsDir).listFiles()
             ?.filter { it.extension == "json" }
             ?.map { it.nameWithoutExtension }
             ?: emptyList()
-        
+
         return (graphs.keys + fileGraphs).distinct()
     }
-    
+
     fun saveFile(path: String, content: String): Boolean {
         return try {
             val file = File(filesDir, path)
             file.parentFile.mkdirs()
             file.writeText(content)
-            println("Saved file: $path")
+            FlowLogger.debug("Saved file: $path")
             true
         } catch (e: Exception) {
-            println("Failed to save file $path: ${e.message}")
+            FlowLogger.debug("Failed to save file $path: ${e.message}")
             false
         }
     }
-    
+
     fun loadFile(path: String): String? {
         return try {
             val file = File(filesDir, path)
@@ -107,11 +107,11 @@ class GraphDataManager {
                 null
             }
         } catch (e: Exception) {
-            println("Failed to load file $path: ${e.message}")
+            FlowLogger.debug("Failed to load file $path: ${e.message}")
             null
         }
     }
-    
+
     fun deleteFile(path: String): Boolean {
         return try {
             val file = File(filesDir, path)
@@ -124,11 +124,11 @@ class GraphDataManager {
             }
             true
         } catch (e: Exception) {
-            println("Failed to delete file $path: ${e.message}")
+            FlowLogger.debug("Failed to delete file $path: ${e.message}")
             false
         }
     }
-    
+
     fun createFile(path: String, content: String = ""): Boolean {
         return try {
             val file = File(filesDir, path)
@@ -137,19 +137,19 @@ class GraphDataManager {
                 file.writeText(content)
                 true
             } else {
-                false // File already exists
+                false
             }
         } catch (e: Exception) {
-            println("Failed to create file $path: ${e.message}")
+            FlowLogger.debug("Failed to create file $path: ${e.message}")
             false
         }
     }
-    
+
     fun renameFile(oldPath: String, newPath: String): Boolean {
         return try {
             val oldFile = File(filesDir, oldPath)
             val newFile = File(filesDir, newPath)
-            
+
             if (oldFile.exists()) {
                 newFile.parentFile.mkdirs()
                 oldFile.renameTo(newFile)
@@ -157,11 +157,11 @@ class GraphDataManager {
                 false
             }
         } catch (e: Exception) {
-            println("Failed to rename file $oldPath to $newPath: ${e.message}")
+            FlowLogger.debug("Failed to rename file $oldPath to $newPath: ${e.message}")
             false
         }
     }
-    
+
     fun updateNode(graphId: String, nodeId: String, nodeData: NodeData): Boolean {
         return try {
             val graph = loadGraph(graphId) ?: return false
@@ -171,7 +171,7 @@ class GraphDataManager {
             val updatedGraph = graph.copy(nodes = updatedNodes as List<GraphNode>)
             saveGraph(graphId, updatedGraph)
         } catch (e: Exception) {
-            println("Failed to update node $nodeId in graph $graphId: ${e.message}")
+            FlowLogger.debug("Failed to update node $nodeId in graph $graphId: ${e.message}")
             false
         }
     }
@@ -185,11 +185,11 @@ class GraphDataManager {
             val updatedGraph = graph.copy(nodes = updatedNodes)
             saveGraph(graphId, updatedGraph)
         } catch (e: Exception) {
-            println("Failed to update node position for $nodeId in graph $graphId: ${e.message}")
+            FlowLogger.debug("Failed to update node position for $nodeId in graph $graphId: ${e.message}")
             false
         }
     }
-    
+
     fun getFileTree(): FileTreeNode? {
         return try {
             val rootDir = File(filesDir)
@@ -199,20 +199,20 @@ class GraphDataManager {
                 null
             }
         } catch (e: Exception) {
-            println("Failed to build file tree: ${e.message}")
+            FlowLogger.debug("Failed to build file tree: ${e.message}")
             null
         }
     }
-    
+
     private fun buildFileTree(file: File, basePath: String): FileTreeNode {
         val relativePath = file.absolutePath.removePrefix(File(basePath).absolutePath).removePrefix("/")
-        
+
         return if (file.isDirectory) {
             val children = file.listFiles()
                 ?.map { buildFileTree(it, basePath) }
                 ?.sortedWith(compareBy({ it.type != "directory" }, { it.name }))
                 ?: emptyList()
-            
+
             FileTreeNode(
                 name = file.name.ifEmpty { "root" },
                 type = "directory",
@@ -230,31 +230,31 @@ class GraphDataManager {
             )
         }
     }
-    
-    // Workspace management methods
+
+
     fun saveWorkspace(workspaceId: String, workspaceData: WorkspaceData): Boolean {
         return try {
             workspaces[workspaceId] = workspaceData
-            
-            // Persist to file
+
+
             val file = File("$workspacesDir/$workspaceId.json")
             val jsonString = Json.encodeToString(WorkspaceData.serializer(), workspaceData)
             file.writeText(jsonString)
-            
-            println("Saved workspace: $workspaceId")
+
+            FlowLogger.debug("Saved workspace: $workspaceId")
             true
         } catch (e: Exception) {
-            println("Failed to save workspace $workspaceId: ${e.message}")
+            FlowLogger.debug("Failed to save workspace $workspaceId: ${e.message}")
             false
         }
     }
-    
+
     fun loadWorkspace(workspaceId: String): WorkspaceData? {
         return try {
-            // Try from memory first
+
             workspaces[workspaceId]?.let { return it }
-            
-            // Try from file
+
+
             val file = File("$workspacesDir/$workspaceId.json")
             if (file.exists()) {
                 val jsonString = file.readText()
@@ -265,11 +265,11 @@ class GraphDataManager {
                 null
             }
         } catch (e: Exception) {
-            println("Failed to load workspace $workspaceId: ${e.message}")
+            FlowLogger.debug("Failed to load workspace $workspaceId: ${e.message}")
             null
         }
     }
-    
+
     fun deleteWorkspace(workspaceId: String): Boolean {
         return try {
             workspaces.remove(workspaceId)
@@ -277,43 +277,43 @@ class GraphDataManager {
             if (file.exists()) {
                 file.delete()
             }
-            println("Deleted workspace: $workspaceId")
+            FlowLogger.debug("Deleted workspace: $workspaceId")
             true
         } catch (e: Exception) {
-            println("Failed to delete workspace $workspaceId: ${e.message}")
+            FlowLogger.debug("Failed to delete workspace $workspaceId: ${e.message}")
             false
         }
     }
-    
+
     fun listWorkspaces(): List<String> {
         val fileWorkspaces = File(workspacesDir).listFiles()
             ?.filter { it.extension == "json" }
             ?.map { it.nameWithoutExtension }
             ?: emptyList()
-        
+
         return (workspaces.keys + fileWorkspaces).distinct()
     }
-    
+
     fun updateWorkspacePage(workspaceId: String, pageData: PageData): Boolean {
         return try {
             val workspace = loadWorkspace(workspaceId) ?: return false
             val updatedPages = workspace.pages.toMutableList()
             val existingPageIndex = updatedPages.indexOfFirst { it.id == pageData.id }
-            
+
             if (existingPageIndex >= 0) {
                 updatedPages[existingPageIndex] = pageData
             } else {
                 updatedPages.add(pageData)
             }
-            
+
             val updatedWorkspace = workspace.copy(
                 pages = updatedPages,
                 lastModified = java.time.Instant.now().toString()
             )
-            
+
             saveWorkspace(workspaceId, updatedWorkspace)
         } catch (e: Exception) {
-            println("Failed to update workspace page: ${e.message}")
+            FlowLogger.debug("Failed to update workspace page: ${e.message}")
             false
         }
     }

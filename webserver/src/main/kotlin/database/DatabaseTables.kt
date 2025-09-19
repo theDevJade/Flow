@@ -23,7 +23,7 @@ object GraphDataTable : IntIdTable("graph_data") {
     val userId = reference("user_id", UsersTable)
     val workspaceId = varchar("workspace_id", 255)
     val name = varchar("name", 255)
-    val data = text("data") // JSON string
+    val data = text("data")
     val version = varchar("version", 50).default("1.0.0")
     val isActive = bool("is_active").default(true)
     val createdAt = timestamp("created_at").default(Instant.now())
@@ -34,7 +34,7 @@ object WorkspaceDataTable : IntIdTable("workspace_data") {
     val workspaceId = varchar("workspace_id", 255).uniqueIndex()
     val userId = reference("user_id", UsersTable)
     val name = varchar("name", 255)
-    val data = text("data") // JSON string
+    val data = text("data")
     val currentPage = varchar("current_page", 255).nullable()
     val settings = text("settings").default("{}")
     val createdAt = timestamp("created_at").default(Instant.now())
@@ -46,7 +46,7 @@ object NodeTemplatesTable : IntIdTable("node_templates") {
     val name = varchar("name", 255)
     val category = varchar("category", 100)
     val description = text("description").nullable()
-    val templateData = text("template_data") // JSON string
+    val templateData = text("template_data")
     val isDefault = bool("is_default").default(false)
     val version = varchar("version", 50).default("1.0.0")
     val createdAt = timestamp("created_at").default(Instant.now())
@@ -71,7 +71,7 @@ object SessionDataTable : IntIdTable("session_data") {
     val ipAddress = varchar("ip_address", 45).nullable()
     val userAgent = text("user_agent").nullable()
     val isActive = bool("is_active").default(true)
-    val data = text("data").default("{}") // JSON string for session-specific data
+    val data = text("data").default("{}")
     val createdAt = timestamp("created_at").default(Instant.now())
     val lastActivity = timestamp("last_activity").default(Instant.now())
 }

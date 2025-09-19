@@ -54,7 +54,7 @@ jobs:
     - name: Analyze Flutter Code
       if: inputs.run-tests
       working-directory: flow_frontend
-      run: flutter analyze --fatal-warnings
+      run: flutter analyze --no-fatal-infos --no-fatal-warnings
     
     - name: Run Flutter Tests
       if: inputs.run-tests

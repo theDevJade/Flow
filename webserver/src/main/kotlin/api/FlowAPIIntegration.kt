@@ -1,5 +1,6 @@
 package com.thedevjade.flow.webserver.api
 
+import com.thedevjade.flow.common.models.FlowLogger
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
@@ -28,7 +29,7 @@ class FlowAPIIntegration(
 
         flowAPI.addSessionEventListener(LoggingSessionListener())
 
-        println("FlowAPI Integration initialized")
+        FlowLogger.debug("FlowAPI Integration initialized")
     }
 
 
@@ -124,7 +125,7 @@ class FlowAPIIntegration(
         flowAPI.registerCommand(GetAPIStatusCommand())
         flowAPI.registerCommand(ListActiveSessionsCommand())
 
-        println("FlowAPI: Registered built-in commands")
+        FlowLogger.debug("FlowAPI: Registered built-in commands")
     }
 
 
@@ -132,13 +133,13 @@ class FlowAPIIntegration(
         override suspend fun onSessionEvent(event: SessionEvent) {
             when (event) {
                 is SessionEvent.Connected -> {
-                    println("FlowAPI Session: User ${event.userId ?: "anonymous"} connected (${event.sessionId})")
+                    FlowLogger.debug("FlowAPI Session: User ${event.userId ?: "anonymous"} connected (${event.sessionId})")
                 }
                 is SessionEvent.Disconnected -> {
-                    println("FlowAPI Session: User ${event.userId ?: "anonymous"} disconnected (${event.sessionId})")
+                    FlowLogger.debug("FlowAPI Session: User ${event.userId ?: "anonymous"} disconnected (${event.sessionId})")
                 }
                 is SessionEvent.Authenticated -> {
-                    println("FlowAPI Session: User ${event.userId} authenticated (${event.sessionId})")
+                    FlowLogger.debug("FlowAPI Session: User ${event.userId} authenticated (${event.sessionId})")
                 }
                 is SessionEvent.ActivityUpdate -> {
 
@@ -247,9 +248,7 @@ private class GetAPIStatusCommand : CustomCommandHandler {
     }
 }
 
-/**
- * Command to list active sessions
- */
+
 private class ListActiveSessionsCommand : CustomCommandHandler {
     override val commandId = "list_active_sessions"
     override val displayName = "List Active Sessions"

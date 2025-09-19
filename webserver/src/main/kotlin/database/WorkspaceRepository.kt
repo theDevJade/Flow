@@ -1,17 +1,18 @@
 package com.thedevjade.flow.webserver.database
 
+import com.thedevjade.flow.common.models.FlowLogger
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
 
 object WorkspaceRepository {
-    
-    fun saveWorkspace(workspaceId: String, userId: Int, name: String, data: String, currentPage: String?, settings: String = "{}"): Boolean = 
+
+    fun saveWorkspace(workspaceId: String, userId: Int, name: String, data: String, currentPage: String?, settings: String = "{}"): Boolean =
         transaction(DatabaseManager.getDatabase()) {
             try {
                 val existingWorkspace = WorkspaceDataTable.select { WorkspaceDataTable.workspaceId eq workspaceId }.singleOrNull()
-                
+
                 if (existingWorkspace != null) {
                     WorkspaceDataTable.update({ WorkspaceDataTable.workspaceId eq workspaceId }) {
                         it[WorkspaceDataTable.name] = name
@@ -33,11 +34,11 @@ object WorkspaceRepository {
                     }.insertedCount > 0
                 }
             } catch (e: Exception) {
-                println("Error saving workspace $workspaceId: ${e.message}")
+                FlowLogger.debug("Error saving workspace $workspaceId: ${e.message}")
                 false
             }
         }
-    
+
     fun loadWorkspace(workspaceId: String): WorkspaceData? = transaction(DatabaseManager.getDatabase()) {
         try {
             WorkspaceDataTable.select { WorkspaceDataTable.workspaceId eq workspaceId }
@@ -54,11 +55,11 @@ object WorkspaceRepository {
                     )
                 }
         } catch (e: Exception) {
-            println("Error loading workspace $workspaceId: ${e.message}")
+            FlowLogger.debug("Error loading workspace $workspaceId: ${e.message}")
             null
         }
     }
-    
+
     fun loadWorkspacesByUser(userId: Int): List<WorkspaceData> = transaction(DatabaseManager.getDatabase()) {
         try {
             WorkspaceDataTable.select { WorkspaceDataTable.userId eq userId }
@@ -76,23 +77,23 @@ object WorkspaceRepository {
                     )
                 }
         } catch (e: Exception) {
-            println("Error loading workspaces for user $userId: ${e.message}")
+            FlowLogger.debug("Error loading workspaces for user $userId: ${e.message}")
             emptyList()
         }
     }
-    
+
     fun deleteWorkspace(workspaceId: String): Boolean = transaction(DatabaseManager.getDatabase()) {
         try {
-            // Also delete all graphs in this workspace
+
             GraphDataRepository.deleteGraphsByWorkspace(workspaceId)
-            
+
             WorkspaceDataTable.deleteWhere { WorkspaceDataTable.workspaceId eq workspaceId } > 0
         } catch (e: Exception) {
-            println("Error deleting workspace $workspaceId: ${e.message}")
+            FlowLogger.debug("Error deleting workspace $workspaceId: ${e.message}")
             false
         }
     }
-    
+
     fun updateWorkspaceName(workspaceId: String, name: String): Boolean = transaction(DatabaseManager.getDatabase()) {
         try {
             WorkspaceDataTable.update({ WorkspaceDataTable.workspaceId eq workspaceId }) {
@@ -100,11 +101,11 @@ object WorkspaceRepository {
                 it[updatedAt] = Instant.now()
             } > 0
         } catch (e: Exception) {
-            println("Error updating workspace name $workspaceId: ${e.message}")
+            FlowLogger.debug("Error updating workspace name $workspaceId: ${e.message}")
             false
         }
     }
-    
+
     fun updateCurrentPage(workspaceId: String, currentPage: String): Boolean = transaction(DatabaseManager.getDatabase()) {
         try {
             WorkspaceDataTable.update({ WorkspaceDataTable.workspaceId eq workspaceId }) {
@@ -112,11 +113,11 @@ object WorkspaceRepository {
                 it[updatedAt] = Instant.now()
             } > 0
         } catch (e: Exception) {
-            println("Error updating current page for workspace $workspaceId: ${e.message}")
+            FlowLogger.debug("Error updating current page for workspace $workspaceId: ${e.message}")
             false
         }
     }
-    
+
     fun updateSettings(workspaceId: String, settings: String): Boolean = transaction(DatabaseManager.getDatabase()) {
         try {
             WorkspaceDataTable.update({ WorkspaceDataTable.workspaceId eq workspaceId }) {
@@ -124,11 +125,11 @@ object WorkspaceRepository {
                 it[updatedAt] = Instant.now()
             } > 0
         } catch (e: Exception) {
-            println("Error updating settings for workspace $workspaceId: ${e.message}")
+            FlowLogger.debug("Error updating settings for workspace $workspaceId: ${e.message}")
             false
         }
     }
-    
+
     fun getWorkspaceMetadata(workspaceId: String): WorkspaceMetadata? = transaction(DatabaseManager.getDatabase()) {
         try {
             WorkspaceDataTable.select { WorkspaceDataTable.workspaceId eq workspaceId }
@@ -142,13 +143,13 @@ object WorkspaceRepository {
                     )
                 }
         } catch (e: Exception) {
-            println("Error getting workspace metadata $workspaceId: ${e.message}")
+            FlowLogger.debug("Error getting workspace metadata $workspaceId: ${e.message}")
             null
         }
     }
 }
 
-// Extension for GraphDataRepository to support workspace-based operations
+
 fun GraphDataRepository.deleteGraphsByWorkspace(workspaceId: String): Boolean = transaction(DatabaseManager.getDatabase()) {
     try {
         GraphDataTable.update({ GraphDataTable.workspaceId eq workspaceId }) {
@@ -156,7 +157,7 @@ fun GraphDataRepository.deleteGraphsByWorkspace(workspaceId: String): Boolean = 
             it[updatedAt] = Instant.now()
         } >= 0
     } catch (e: Exception) {
-        println("Error deleting graphs for workspace $workspaceId: ${e.message}")
+        FlowLogger.debug("Error deleting graphs for workspace $workspaceId: ${e.message}")
         false
     }
 }

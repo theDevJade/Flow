@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
-import '../state/workspace_state.dart';
 import '../state/workspace_manager.dart';
 import '../services/websocket_service.dart';
 import '../services/persistence_service.dart';

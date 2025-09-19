@@ -1,6 +1,6 @@
 package com.thedevjade.flow.webserver.websocket
 
-import com.thedevjade.flow.webserver.logging.FlowLogger
+import com.thedevjade.flow.common.models.FlowLogger
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
@@ -278,9 +278,7 @@ class GraphSyncHandler(
         }
     }
 
-    /**
-     * Handle full graph synchronization
-     */
+
     private suspend fun handleFullGraphSync(
         graphId: String,
         syncData: JsonObject,
@@ -300,7 +298,7 @@ class GraphSyncHandler(
                 if (saveSuccess) {
                     sendSyncSuccessResponse(session, messageId, "Full graph sync completed", correlationId)
 
-                    // Notify other clients about the full sync
+
                     val broadcastMessage = WebSocketMessage(
                         type = "graph_full_sync",
                         data = buildJsonObject {
@@ -324,9 +322,7 @@ class GraphSyncHandler(
         }
     }
 
-    /**
-     * Broadcast graph updates to other sessions
-     */
+
     private suspend fun broadcastGraphUpdate(
         graphId: String,
         updateType: String,
@@ -364,9 +360,7 @@ class GraphSyncHandler(
         }
     }
 
-    /**
-     * Send sync success response
-     */
+
     private suspend fun sendSyncSuccessResponse(
         session: DefaultWebSocketSession,
         messageId: String?,
@@ -393,9 +387,7 @@ class GraphSyncHandler(
         }
     }
 
-    /**
-     * Send sync error response
-     */
+
     private suspend fun sendSyncErrorResponse(
         session: DefaultWebSocketSession,
         messageId: String?,

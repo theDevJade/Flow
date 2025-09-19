@@ -68,7 +68,7 @@ data class Size(
 @Serializable
 data class FileTreeNode(
     val name: String,
-    val type: String, // "file" or "directory"
+    val type: String,
     val path: String,
     val children: List<FileTreeNode>? = null,
     val size: Long? = null,
@@ -123,7 +123,7 @@ data class WorkspaceData(
 data class PageData(
     val id: String,
     val name: String,
-    val type: String, // "graph", "code", "terminal", etc.
+    val type: String,
     val data: JsonObject = JsonObject(emptyMap()),
     val lastModified: String = java.time.Instant.now().toString()
 )

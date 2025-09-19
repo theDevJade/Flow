@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../state/app_state.dart';
 import '../state/workspace_state.dart';
-import '../state/page_manager.dart';
 import '../widgets/workspace_topbar.dart';
 import '../widgets/workspace_sidebar.dart';
 import '../widgets/animated_loading_screen.dart';
@@ -12,7 +11,6 @@ import '../widgets/status_bar.dart';
 import '../screens/graph_editor_screen.dart';
 import '../screens/code_editor_screen.dart';
 import '../screens/terminal_screen.dart';
-import '../screens/connection_config_screen.dart';
 
 class MainAppShell extends StatefulWidget {
   const MainAppShell({super.key});

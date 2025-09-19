@@ -1,9 +1,12 @@
 package com.thedevjade.flow.webserver.websocket
 
-import com.thedevjade.flow.webserver.logging.FlowLogger
+import com.thedevjade.flow.common.models.FlowLogger
 import com.thedevjade.flow.webserver.database.WorkspaceRepository
 import com.thedevjade.flow.common.models.FileTreeNode
 import com.thedevjade.flow.webserver.api.FlowAPI
+import com.thedevjade.flow.webserver.terminal.TerminalInterpreter
+import com.thedevjade.flow.webserver.terminal.TerminalContext
+import com.thedevjade.flow.webserver.terminal.TerminalResult
 import flow.api.FileSystemAccess
 import flow.api.implementation.FileSystemAccessImpl
 import io.ktor.websocket.*
@@ -21,6 +24,7 @@ class WebSocketMessageHandler(
     private val graphSyncHandler: GraphSyncHandler,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 ) {
+    private val terminalInterpreter = TerminalInterpreter()
 
     companion object {
         private const val MAX_MESSAGE_SIZE = 1024 * 1024
@@ -155,6 +159,7 @@ class WebSocketMessageHandler(
             "delete_file" -> handleDeleteFile(sessionId, message, correlationId)
             "delete_directory" -> handleDeleteDirectory(sessionId, message, correlationId)
             "terminal_command" -> handleTerminalCommand(sessionId, message, correlationId)
+            "terminal_autocomplete" -> handleTerminalAutocomplete(sessionId, message, correlationId)
             "viewport_update" -> handleViewportUpdate(sessionId, message, correlationId)
 
             "node_templates" -> handleNodeTemplates(sessionId, message, correlationId)
@@ -198,7 +203,7 @@ class WebSocketMessageHandler(
             return
         }
 
-        // Update session with authentication info
+
         val sessionData = sessionManager.getSession(sessionId)
         if (sessionData != null) {
             sessionData.isAuthenticated = true
@@ -207,7 +212,7 @@ class WebSocketMessageHandler(
             FlowLogger.info("WebSocketMessageHandler",
                 "User authenticated - Username: $username, UserId: $userId, SessionId: $sessionId, CorrelationId: $correlationId")
 
-            // Send success response
+
             val response = WebSocketMessage(
                 type = "auth_response",
                 id = message.id,
@@ -230,9 +235,7 @@ class WebSocketMessageHandler(
         }
     }
 
-    /**
-     * Handle ping message with enhanced logging
-     */
+
     private suspend fun handlePingMessage(
         sessionId: String,
         message: WebSocketMessage,
@@ -244,7 +247,7 @@ class WebSocketMessageHandler(
         FlowLogger.debug("WebSocketMessageHandler",
             "Received ping - UserId: $userId, SessionId: $sessionId, CorrelationId: $correlationId")
 
-        // Update session activity
+
         sessionData?.lastActivity = System.currentTimeMillis()
 
         val pongResponse = WebSocketMessage(
@@ -262,9 +265,7 @@ class WebSocketMessageHandler(
         sessionManager.sendToSession(sessionId, pongResponse)
     }
 
-    /**
-     * Handle heartbeat message to keep connection alive
-     */
+
     private suspend fun handleHeartbeatMessage(
         sessionId: String,
         message: WebSocketMessage,
@@ -276,14 +277,14 @@ class WebSocketMessageHandler(
         FlowLogger.debug("WebSocketMessageHandler",
             "Received heartbeat - UserId: $userId, SessionId: $sessionId, CorrelationId: $correlationId")
 
-        // Update session activity and metadata
+
         sessionData?.let {
             it.lastActivity = System.currentTimeMillis()
             it.metadata["lastHeartbeat"] = System.currentTimeMillis()
             it.metadata["heartbeatCount"] = (it.metadata["heartbeatCount"] as? Int ?: 0) + 1
         }
 
-        // Send heartbeat acknowledgment
+
         val heartbeatResponse = WebSocketMessage(
             type = "heartbeat_ack",
             id = message.id,
@@ -300,9 +301,7 @@ class WebSocketMessageHandler(
         sessionManager.sendToSession(sessionId, heartbeatResponse)
     }
 
-    /**
-     * Handle graph update with validation and broadcasting
-     */
+
     private suspend fun handleGraphUpdate(
         sessionId: String,
         message: WebSocketMessage,
@@ -322,10 +321,10 @@ class WebSocketMessageHandler(
             "Processing graph update - GraphId: $graphId, UpdateType: $updateType, SessionId: $sessionId, CorrelationId: $correlationId")
 
         try {
-            // Process the graph update
+
             graphSyncHandler.handleGraphUpdate(sessionManager.getSession(sessionId)!!.session, message)
 
-            // Broadcast update to other sessions (excluding sender)
+
             val broadcastMessage = WebSocketMessage(
                 type = "graph_updated",
                 data = buildJsonObject {
@@ -338,7 +337,7 @@ class WebSocketMessageHandler(
 
             sessionManager.broadcast(broadcastMessage, excludeSessionId = sessionId)
 
-            // Send acknowledgment
+
             sendSuccessResponse(sessionId, message.id, "Graph updated successfully", correlationId)
 
         } catch (e: Exception) {
@@ -348,9 +347,7 @@ class WebSocketMessageHandler(
         }
     }
 
-    /**
-     * Handle graph save operation
-     */
+
     private suspend fun handleGraphSave(
         sessionId: String,
         message: WebSocketMessage,
@@ -373,7 +370,7 @@ class WebSocketMessageHandler(
             "Saving graph - GraphId: $graphId, SessionId: $sessionId, CorrelationId: $correlationId")
 
         try {
-            // Convert JsonObject to GraphData and save
+
             val graph = Json.decodeFromJsonElement<GraphData>(graphData)
             val success = dataManager.saveGraph(graphId, graph)
 
@@ -381,7 +378,7 @@ class WebSocketMessageHandler(
                 sendSuccessResponse(sessionId, message.id, "Graph saved successfully", correlationId,
                     mapOf("graphId" to JsonPrimitive(graphId)))
 
-                // Notify other sessions about the save
+
                 val notificationMessage = WebSocketMessage(
                     type = "graph_saved",
                     data = buildJsonObject {
@@ -403,9 +400,7 @@ class WebSocketMessageHandler(
         }
     }
 
-    /**
-     * Handle graph load operation
-     */
+
     private suspend fun handleGraphLoad(
         sessionId: String,
         message: WebSocketMessage,
@@ -469,7 +464,7 @@ class WebSocketMessageHandler(
                     graphIds.forEach { graphId ->
                         add(buildJsonObject {
                             put("id", JsonPrimitive(graphId))
-                            put("name", JsonPrimitive(graphId)) // Use ID as name for now
+                            put("name", JsonPrimitive(graphId))
                             put("description", JsonPrimitive("Graph: $graphId"))
                             put("createdAt", JsonPrimitive(java.time.Instant.now().toString()))
                             put("updatedAt", JsonPrimitive(java.time.Instant.now().toString()))
@@ -1545,8 +1540,9 @@ class WebSocketMessageHandler(
     ) {
         try {
             val command = message.data["command"]?.jsonPrimitive?.content
-            val cwd = message.data["cwd"]?.jsonPrimitive?.content ?: System.getProperty("user.dir")
+            val cwd = message.data["cwd"]?.jsonPrimitive?.content ?: "/"
             val pageId = message.data["pageId"]?.jsonPrimitive?.content
+            val session = sessionManager.getSession(sessionId)
 
             if (command.isNullOrBlank()) {
                 sendErrorResponse(sessionId, message.id, "Missing command", correlationId)
@@ -1554,44 +1550,134 @@ class WebSocketMessageHandler(
             }
 
             FlowLogger.info("WebSocketMessageHandler",
-                "Executing terminal command - Command: $command, CWD: $cwd, PageId: $pageId, SessionId: $sessionId, CorrelationId: $correlationId")
+                "Executing custom terminal command - Command: '$command', CWD: $cwd, PageId: $pageId, SessionId: $sessionId, CorrelationId: $correlationId")
 
-            // Execute the command
-            val processBuilder = ProcessBuilder()
-            processBuilder.command("bash", "-c", command)
-            processBuilder.directory(java.io.File(cwd))
-
-            val process = processBuilder.start()
-
-            // Read output
-            val output = process.inputStream.bufferedReader().readText()
-            val errorOutput = process.errorStream.bufferedReader().readText()
-            val exitCode = process.waitFor()
-
-            val allOutput = if (errorOutput.isNotEmpty()) {
-                "$output\n$errorOutput"
-            } else {
-                output
-            }
-
-            val outputLines = allOutput.split("\n").filter { it.isNotEmpty() }
-
-            val response = WebSocketMessage(
+            // Send start response immediately
+            val startResponse = WebSocketMessage(
                 type = "terminal_response",
                 id = message.id,
                 data = buildJsonObject {
-                    put("success", JsonPrimitive(exitCode == 0))
-                    put("output", Json.encodeToJsonElement(outputLines))
+                    put("type", JsonPrimitive("start"))
+                    put("success", JsonPrimitive(true))
                     put("cwd", JsonPrimitive(cwd))
-                    put("exitCode", JsonPrimitive(exitCode))
                     if (pageId != null) put("pageId", JsonPrimitive(pageId))
                     put("correlationId", JsonPrimitive(correlationId))
                 },
-                userId = sessionManager.getSession(sessionId)?.userId,
+                userId = session?.userId,
                 sessionId = sessionId
             )
+            sessionManager.sendToSession(sessionId, startResponse)
 
-            sessionManager.sendToSession(sessionId, response)
+            // Create terminal context
+            val context = TerminalContext(
+                sessionId = sessionId,
+                userId = session?.userId,
+                currentDirectory = cwd,
+                pageId = pageId
+            )
+
+            // Execute command using custom interpreter
+            val result = terminalInterpreter.executeCommand(command, context)
+
+            when (result) {
+                is TerminalResult.Success -> {
+                    // Send output lines as stream messages
+                    result.output.forEach { line ->
+                        val streamResponse = WebSocketMessage(
+                            type = "terminal_response",
+                            id = message.id,
+                            data = buildJsonObject {
+                                put("type", JsonPrimitive("stream"))
+                                put("stream", JsonPrimitive("stdout"))
+                                put("data", JsonPrimitive(line))
+                                put("cwd", JsonPrimitive(result.newDirectory ?: cwd))
+                                if (pageId != null) put("pageId", JsonPrimitive(pageId))
+                                put("correlationId", JsonPrimitive(correlationId))
+                            },
+                            userId = session?.userId,
+                            sessionId = sessionId
+                        )
+                        sessionManager.sendToSession(sessionId, streamResponse)
+                    }
+
+                    // Send end response with any data/actions
+                    val endResponse = WebSocketMessage(
+                        type = "terminal_response",
+                        id = message.id,
+                        data = buildJsonObject {
+                            put("type", JsonPrimitive("end"))
+                            put("success", JsonPrimitive(true))
+                            put("exitCode", JsonPrimitive(0))
+                            put("cwd", JsonPrimitive(result.newDirectory ?: cwd))
+                            if (pageId != null) put("pageId", JsonPrimitive(pageId))
+                            put("correlationId", JsonPrimitive(correlationId))
+
+                            // Include any custom data from command
+                            result.data.forEach { (key, value) ->
+                                put(key, value)
+                            }
+                        },
+                        userId = session?.userId,
+                        sessionId = sessionId
+                    )
+                    sessionManager.sendToSession(sessionId, endResponse)
+                }
+
+                is TerminalResult.Error -> {
+                    // Send error as stderr stream
+                    val errorStreamResponse = WebSocketMessage(
+                        type = "terminal_response",
+                        id = message.id,
+                        data = buildJsonObject {
+                            put("type", JsonPrimitive("stream"))
+                            put("stream", JsonPrimitive("stderr"))
+                            put("data", JsonPrimitive(result.message))
+                            put("cwd", JsonPrimitive(cwd))
+                            if (pageId != null) put("pageId", JsonPrimitive(pageId))
+                            put("correlationId", JsonPrimitive(correlationId))
+                        },
+                        userId = session?.userId,
+                        sessionId = sessionId
+                    )
+                    sessionManager.sendToSession(sessionId, errorStreamResponse)
+
+                    // Send end response with error
+                    val endResponse = WebSocketMessage(
+                        type = "terminal_response",
+                        id = message.id,
+                        data = buildJsonObject {
+                            put("type", JsonPrimitive("end"))
+                            put("success", JsonPrimitive(false))
+                            put("exitCode", JsonPrimitive(result.code))
+                            put("cwd", JsonPrimitive(cwd))
+                            if (pageId != null) put("pageId", JsonPrimitive(pageId))
+                            put("correlationId", JsonPrimitive(correlationId))
+                        },
+                        userId = session?.userId,
+                        sessionId = sessionId
+                    )
+                    sessionManager.sendToSession(sessionId, endResponse)
+                }
+
+                is TerminalResult.Stream -> {
+                    // Handle streaming result (for future async commands)
+                    val streamResponse = WebSocketMessage(
+                        type = "terminal_response",
+                        id = message.id,
+                        data = buildJsonObject {
+                            put("type", JsonPrimitive("stream"))
+                            put("stream", JsonPrimitive(result.stream))
+                            put("data", JsonPrimitive(result.output))
+                            put("cwd", JsonPrimitive(cwd))
+                            if (pageId != null) put("pageId", JsonPrimitive(pageId))
+                            put("correlationId", JsonPrimitive(correlationId))
+                        },
+                        userId = session?.userId,
+                        sessionId = sessionId
+                    )
+                    sessionManager.sendToSession(sessionId, streamResponse)
+                }
+            }
 
         } catch (e: Exception) {
             FlowLogger.error("WebSocketMessageHandler",
@@ -1601,10 +1687,90 @@ class WebSocketMessageHandler(
                 type = "terminal_response",
                 id = message.id,
                 data = buildJsonObject {
+                    put("type", JsonPrimitive("error"))
                     put("success", JsonPrimitive(false))
-                    put("output", Json.encodeToJsonElement(listOf("Error: ${e.message}")))
-                    put("cwd", JsonPrimitive(System.getProperty("user.dir")))
+                    put("error", JsonPrimitive("Internal error: ${e.message}"))
+                    put("cwd", JsonPrimitive("/"))
                     put("exitCode", JsonPrimitive(-1))
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = sessionManager.getSession(sessionId)?.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, errorResponse)
+        }
+    }
+
+    private suspend fun handleTerminalAutocomplete(
+        sessionId: String,
+        message: WebSocketMessage,
+        correlationId: String
+    ) {
+        try {
+            val input = message.data["input"]?.jsonPrimitive?.content
+            val cwd = message.data["cwd"]?.jsonPrimitive?.content ?: "/"
+            val pageId = message.data["pageId"]?.jsonPrimitive?.content
+            val cursorPosition = message.data["cursorPosition"]?.jsonPrimitive?.intOrNull ?: 0
+            val session = sessionManager.getSession(sessionId)
+
+            if (input.isNullOrBlank()) {
+                sendErrorResponse(sessionId, message.id, "Missing input", correlationId)
+                return
+            }
+
+            FlowLogger.info("WebSocketMessageHandler",
+                "Generating autocomplete - Input: '$input', CWD: $cwd, PageId: $pageId, SessionId: $sessionId, CorrelationId: $correlationId")
+
+            // Create terminal context
+            val context = TerminalContext(
+                sessionId = sessionId,
+                userId = session?.userId,
+                currentDirectory = cwd,
+                pageId = pageId
+            )
+
+            // Get suggestions from terminal interpreter
+            val suggestions = terminalInterpreter.getAutocompleteSuggestions(input, cursorPosition, context)
+
+            // Convert to the format expected by frontend
+            val suggestionData = suggestions.map { suggestion ->
+                mapOf(
+                    "text" to suggestion.text,
+                    "type" to suggestion.type,
+                    "description" to suggestion.description,
+                    "insertText" to suggestion.insertText
+                )
+            }
+
+            val response = WebSocketMessage(
+                type = "terminal_autocomplete_response",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(true))
+                    put("suggestions", Json.encodeToJsonElement(suggestionData))
+                    put("input", JsonPrimitive(input))
+                    put("cursorPosition", JsonPrimitive(cursorPosition))
+                    if (pageId != null) put("pageId", JsonPrimitive(pageId))
+                    put("correlationId", JsonPrimitive(correlationId))
+                },
+                userId = session?.userId,
+                sessionId = sessionId
+            )
+
+            sessionManager.sendToSession(sessionId, response)
+
+        } catch (e: Exception) {
+            FlowLogger.error("WebSocketMessageHandler",
+                "Error handling terminal_autocomplete - SessionId: $sessionId, CorrelationId: $correlationId: ${e.message}", e)
+
+            val errorResponse = WebSocketMessage(
+                type = "terminal_autocomplete_response",
+                id = message.id,
+                data = buildJsonObject {
+                    put("success", JsonPrimitive(false))
+                    put("suggestions", Json.encodeToJsonElement(emptyList<String>()))
+                    put("error", JsonPrimitive("Error: ${e.message}"))
                     put("correlationId", JsonPrimitive(correlationId))
                 },
                 userId = sessionManager.getSession(sessionId)?.userId,

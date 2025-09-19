@@ -1,5 +1,6 @@
 package com.thedevjade.flow.webserver.api
 
+import com.thedevjade.flow.common.models.FlowLogger
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
@@ -62,13 +63,13 @@ class FlowAPI private constructor(
 
     fun registerSession(sessionId: String, session: DefaultWebSocketSession) {
         activeSessions[sessionId] = session
-        println("FlowAPI: Registered session $sessionId")
+        FlowLogger.debug("FlowAPI: Registered session $sessionId")
     }
 
 
     fun unregisterSession(sessionId: String) {
         activeSessions.remove(sessionId)
-        println("FlowAPI: Unregistered session $sessionId")
+        FlowLogger.debug("FlowAPI: Unregistered session $sessionId")
     }
 
     fun getFileManager(): FileSystemAccessImpl {
@@ -84,7 +85,7 @@ class FlowAPI private constructor(
                 session.send(Json.encodeToString(WebSocketMessage.serializer(), message))
                 true
             } catch (e: Exception) {
-                println("FlowAPI: Failed to send message to session $sessionId: ${e.message}")
+                FlowLogger.debug("FlowAPI: Failed to send message to session $sessionId: ${e.message}")
                 false
             }
         } else {
@@ -102,7 +103,7 @@ class FlowAPI private constructor(
                     session.send(messageJson)
                 }
             } catch (e: Exception) {
-                println("FlowAPI: Failed to broadcast message: ${e.message}")
+                FlowLogger.debug("FlowAPI: Failed to broadcast message: ${e.message}")
             }
         }
     }
@@ -136,10 +137,10 @@ class FlowAPI private constructor(
         val directory = File(path)
         return if (directory.exists() && directory.isDirectory) {
             rootAccessDirectory = directory.absolutePath
-            println("FlowAPI: Set root access directory to: $path")
+            FlowLogger.debug("FlowAPI: Set root access directory to: $path")
             true
         } else {
-            println("FlowAPI: Invalid root directory: $path")
+            FlowLogger.debug("FlowAPI: Invalid root directory: $path")
             false
         }
     }
@@ -151,14 +152,14 @@ class FlowAPI private constructor(
             val absolutePath = directory.absolutePath
 
             if (rootAccessDirectory != null && !absolutePath.startsWith(rootAccessDirectory!!)) {
-                println("FlowAPI: Directory $path is outside root access directory")
+                FlowLogger.debug("FlowAPI: Directory $path is outside root access directory")
                 return false
             }
             allowedDirectories.add(absolutePath)
-            println("FlowAPI: Added allowed directory: $path")
+            FlowLogger.debug("FlowAPI: Added allowed directory: $path")
             true
         } else {
-            println("FlowAPI: Invalid directory: $path")
+            FlowLogger.debug("FlowAPI: Invalid directory: $path")
             false
         }
     }
@@ -167,7 +168,7 @@ class FlowAPI private constructor(
     fun removeAllowedDirectory(path: String) {
         val absolutePath = File(path).absolutePath
         allowedDirectories.remove(absolutePath)
-        println("FlowAPI: Removed allowed directory: $path")
+        FlowLogger.debug("FlowAPI: Removed allowed directory: $path")
     }
 
 
@@ -197,10 +198,10 @@ class FlowAPI private constructor(
     fun registerCommand(handler: CustomCommandHandler): Boolean {
         return if (!customCommands.containsKey(handler.commandId)) {
             customCommands[handler.commandId] = handler
-            println("FlowAPI: Registered command: ${handler.commandId} - ${handler.displayName}")
+            FlowLogger.debug("FlowAPI: Registered command: ${handler.commandId} - ${handler.displayName}")
             true
         } else {
-            println("FlowAPI: Command ${handler.commandId} already exists")
+            FlowLogger.debug("FlowAPI: Command ${handler.commandId} already exists")
             false
         }
     }
@@ -210,9 +211,7 @@ class FlowAPI private constructor(
         return customCommands.remove(commandId) != null
     }
 
-    /**
-     * Execute a custom command
-     */
+
     suspend fun executeCommand(
         commandId: String,
         sessionId: String,
@@ -229,7 +228,7 @@ class FlowAPI private constructor(
                     try {
                         handler.execute(sessionId, userId, data)
                     } catch (e: Exception) {
-                        println("FlowAPI: Error executing command $commandId: ${e.message}")
+                        FlowLogger.debug("FlowAPI: Error executing command $commandId: ${e.message}")
                         CommandResult.failure("Command execution failed: ${e.message}", "EXECUTION_ERROR")
                     }
                 } else {
@@ -251,9 +250,7 @@ class FlowAPI private constructor(
         }
     }
 
-    /**
-     * Get list of registered commands
-     */
+
     fun getRegisteredCommands(): List<CustomCommandInfo> {
         return customCommands.values.map { handler ->
             CustomCommandInfo(
@@ -265,13 +262,9 @@ class FlowAPI private constructor(
         }
     }
 
-    /**
-     * User Session Management API
-     */
 
-    /**
-     * Create or update a user session
-     */
+
+
     suspend fun updateUserSession(
         sessionId: String,
         userId: String?,
@@ -301,7 +294,7 @@ class FlowAPI private constructor(
 
         userSessions[sessionId] = session
 
-        // Fire appropriate events
+
         val event = if (existingSession == null) {
             SessionEvent.Connected(sessionId, userId)
         } else if (!existingSession.isAuthenticated && isAuthenticated) {
@@ -313,9 +306,7 @@ class FlowAPI private constructor(
         notifySessionEvent(event)
     }
 
-    /**
-     * Remove a user session
-     */
+
     suspend fun removeUserSession(sessionId: String) {
         val session = userSessions.remove(sessionId)
         if (session != null) {
@@ -323,57 +314,41 @@ class FlowAPI private constructor(
         }
     }
 
-    /**
-     * Get user session information
-     */
+
     fun getUserSession(sessionId: String): UserSession? = userSessions[sessionId]
 
-    /**
-     * Get all active user sessions
-     */
+
     fun getAllUserSessions(): List<UserSession> = userSessions.values.toList()
 
-    /**
-     * Get sessions for a specific user
-     */
+
     fun getUserSessions(userId: String): List<UserSession> {
         return userSessions.values.filter { it.userId == userId }
     }
 
-    /**
-     * Register a session event listener
-     */
+
     fun addSessionEventListener(listener: SessionEventListener) {
         sessionListeners.add(listener)
     }
 
-    /**
-     * Remove a session event listener
-     */
+
     fun removeSessionEventListener(listener: SessionEventListener) {
         sessionListeners.remove(listener)
     }
 
-    /**
-     * Internal method to notify all session event listeners
-     */
+
     private suspend fun notifySessionEvent(event: SessionEvent) {
         sessionListeners.forEach { listener ->
             try {
                 listener.onSessionEvent(event)
             } catch (e: Exception) {
-                println("FlowAPI: Error notifying session event listener: ${e.message}")
+                FlowLogger.debug("FlowAPI: Error notifying session event listener: ${e.message}")
             }
         }
     }
 
-    /**
-     * Utility API
-     */
 
-    /**
-     * Get API statistics and status
-     */
+
+
     fun getAPIStatus(): FlowAPIStatus {
         return FlowAPIStatus(
             activeSessions = activeSessions.size,
@@ -385,9 +360,7 @@ class FlowAPI private constructor(
         )
     }
 
-    /**
-     * Cleanup resources
-     */
+
     fun cleanup() {
         activeSessions.clear()
         customCommands.clear()
@@ -395,6 +368,6 @@ class FlowAPI private constructor(
         sessionListeners.clear()
         allowedDirectories.clear()
         rootAccessDirectory = null
-        println("FlowAPI: Cleaned up all resources")
+        FlowLogger.debug("FlowAPI: Cleaned up all resources")
     }
 }

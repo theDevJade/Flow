@@ -1,17 +1,18 @@
 package com.thedevjade.flow.webserver.database
 
+import com.thedevjade.flow.common.models.FlowLogger
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
 
 object GraphDataRepository {
-    
-    fun saveGraph(graphId: String, userId: Int, workspaceId: String, name: String, data: String, version: String = "1.0.0"): Boolean = 
+
+    fun saveGraph(graphId: String, userId: Int, workspaceId: String, name: String, data: String, version: String = "1.0.0"): Boolean =
         transaction(DatabaseManager.getDatabase()) {
             try {
                 val existingGraph = GraphDataTable.select { GraphDataTable.graphId eq graphId }.singleOrNull()
-                
+
                 if (existingGraph != null) {
                     GraphDataTable.update({ GraphDataTable.graphId eq graphId }) {
                         it[GraphDataTable.name] = name
@@ -33,11 +34,11 @@ object GraphDataRepository {
                     }.insertedCount > 0
                 }
             } catch (e: Exception) {
-                println("Error saving graph $graphId: ${e.message}")
+                FlowLogger.debug("Error saving graph $graphId: ${e.message}")
                 false
             }
         }
-    
+
     fun loadGraph(graphId: String): GraphData? = transaction(DatabaseManager.getDatabase()) {
         try {
             GraphDataTable.select { (GraphDataTable.graphId eq graphId) and (GraphDataTable.isActive eq true) }
@@ -55,11 +56,11 @@ object GraphDataRepository {
                     )
                 }
         } catch (e: Exception) {
-            println("Error loading graph $graphId: ${e.message}")
+            FlowLogger.debug("Error loading graph $graphId: ${e.message}")
             null
         }
     }
-    
+
     fun loadGraphsByWorkspace(workspaceId: String): List<GraphData> = transaction(DatabaseManager.getDatabase()) {
         try {
             GraphDataTable.select { (GraphDataTable.workspaceId eq workspaceId) and (GraphDataTable.isActive eq true) }
@@ -78,11 +79,11 @@ object GraphDataRepository {
                     )
                 }
         } catch (e: Exception) {
-            println("Error loading graphs for workspace $workspaceId: ${e.message}")
+            FlowLogger.debug("Error loading graphs for workspace $workspaceId: ${e.message}")
             emptyList()
         }
     }
-    
+
     fun loadGraphsByUser(userId: Int): List<GraphData> = transaction(DatabaseManager.getDatabase()) {
         try {
             GraphDataTable.select { (GraphDataTable.userId eq userId) and (GraphDataTable.isActive eq true) }
@@ -101,33 +102,33 @@ object GraphDataRepository {
                     )
                 }
         } catch (e: Exception) {
-            println("Error loading graphs for user $userId: ${e.message}")
+            FlowLogger.debug("Error loading graphs for user $userId: ${e.message}")
             emptyList()
         }
     }
-    
+
     fun deleteGraph(graphId: String): Boolean = transaction(DatabaseManager.getDatabase()) {
         try {
-            // Soft delete by setting isActive to false
+
             GraphDataTable.update({ GraphDataTable.graphId eq graphId }) {
                 it[isActive] = false
                 it[updatedAt] = Instant.now()
             } > 0
         } catch (e: Exception) {
-            println("Error deleting graph $graphId: ${e.message}")
+            FlowLogger.debug("Error deleting graph $graphId: ${e.message}")
             false
         }
     }
-    
+
     fun hardDeleteGraph(graphId: String): Boolean = transaction(DatabaseManager.getDatabase()) {
         try {
             GraphDataTable.deleteWhere { GraphDataTable.graphId eq graphId } > 0
         } catch (e: Exception) {
-            println("Error hard deleting graph $graphId: ${e.message}")
+            FlowLogger.debug("Error hard deleting graph $graphId: ${e.message}")
             false
         }
     }
-    
+
     fun updateGraphName(graphId: String, name: String): Boolean = transaction(DatabaseManager.getDatabase()) {
         try {
             GraphDataTable.update({ GraphDataTable.graphId eq graphId }) {
@@ -135,11 +136,11 @@ object GraphDataRepository {
                 it[updatedAt] = Instant.now()
             } > 0
         } catch (e: Exception) {
-            println("Error updating graph name $graphId: ${e.message}")
+            FlowLogger.debug("Error updating graph name $graphId: ${e.message}")
             false
         }
     }
-    
+
     fun getGraphMetadata(graphId: String): GraphMetadata? = transaction(DatabaseManager.getDatabase()) {
         try {
             GraphDataTable.select { GraphDataTable.graphId eq graphId }
@@ -155,7 +156,7 @@ object GraphDataRepository {
                     )
                 }
         } catch (e: Exception) {
-            println("Error getting graph metadata $graphId: ${e.message}")
+            FlowLogger.debug("Error getting graph metadata $graphId: ${e.message}")
             null
         }
     }

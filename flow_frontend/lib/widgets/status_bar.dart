@@ -5,7 +5,6 @@ import '../state/app_state.dart';
 import '../state/workspace_state.dart';
 import '../state/file_system_state.dart' as fs;
 import '../services/websocket_service.dart';
-import '../screens/login_screen.dart';
 
 class StatusBar extends StatelessWidget {
   const StatusBar({super.key});

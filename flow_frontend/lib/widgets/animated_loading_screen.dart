@@ -30,7 +30,6 @@ class _AnimatedLoadingScreenState extends State<AnimatedLoadingScreen>
 
   ProjectStats? _projectStats;
   UpdateInfo? _updateInfo;
-  String _greeting = '';
   bool _showStats = false;
 
   final List<LoadingStep> _steps = [

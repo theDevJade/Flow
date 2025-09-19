@@ -1,21 +1,29 @@
 package com.thedevjade.flow.webserver
 
+import com.thedevjade.flow.common.config.FlowConfiguration
+import com.thedevjade.flow.common.models.FlowLogger
 import com.thedevjade.flow.webserver.database.DatabaseManager
-import config.FlowConfiguration
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
-import io.ktor.server.engine.EngineConnectorBuilder
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
+import io.ktor.server.engine.*
+import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
 import kotlinx.serialization.json.Json
 
 object FlowWebserver {
+    var mainServer: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
+    var socketServer: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
+
+    fun killAll() {
+        mainServer?.stop()
+        socketServer?.stop()
+    }
+
     fun run() {
-        // Initialize database first
+
         DatabaseManager.initialize()
-        
-        embeddedServer(Netty, configure = {
+
+        mainServer = embeddedServer(Netty, configure = {
             connectors.add(EngineConnectorBuilder().apply {
                 host = FlowConfiguration.webserverConfig.hostName!!
                 port = FlowConfiguration.webserverConfig.webserverPort!!
@@ -31,10 +39,10 @@ object FlowWebserver {
     }
 
     fun runSockets() {
-        // Initialize database first
+
         DatabaseManager.initialize()
-        
-        embeddedServer(Netty, configure = {
+
+        socketServer = embeddedServer(Netty, configure = {
             connectors.add(EngineConnectorBuilder().apply {
                 host = FlowConfiguration.webserverConfig.hostName!!
                 port = FlowConfiguration.webserverConfig.websocketPort!!
@@ -62,18 +70,18 @@ fun Application.moduleSocket() {
             isLenient = true
         })
     }
-    
-    // Initialize database first
-    println("Initializing database...")
-    com.thedevjade.flow.webserver.database.DatabaseManager.initialize()
-    
-    // Initialize auth service after database is ready
+
+
+    FlowLogger.debug("Initializing database...")
+    DatabaseManager.initialize()
+
+
     val authService = AuthService()
     attributes.put(authServiceKey, authService)
-    
-    // Configure auth routes
+
+
     configureAuthRoutes(authService)
-    
-    // Configure sockets with auth service
+
+
     configureSockets(authService)
 }

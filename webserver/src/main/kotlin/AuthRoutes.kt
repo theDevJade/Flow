@@ -15,7 +15,7 @@ fun Application.configureAuthRoutes(authService: AuthService) {
                 try {
                     val loginRequest = call.receive<LoginRequest>()
                     val loginResponse = authService.authenticate(loginRequest.username, loginRequest.password)
-                    
+
                     if (loginResponse.success) {
                         call.respond(HttpStatusCode.OK, loginResponse)
                     } else {
@@ -28,7 +28,7 @@ fun Application.configureAuthRoutes(authService: AuthService) {
                     ))
                 }
             }
-            
+
             post("/logout") {
                 val token = call.request.header("Authorization")?.removePrefix("Bearer ")
                 if (token != null) {
@@ -38,14 +38,14 @@ fun Application.configureAuthRoutes(authService: AuthService) {
                     call.respond(HttpStatusCode.BadRequest, mapOf("message" to "No token provided"))
                 }
             }
-            
+
             get("/validate") {
                 val token = call.request.header("Authorization")?.removePrefix("Bearer ")
                 if (token == null) {
                     call.respond(HttpStatusCode.Unauthorized, mapOf("valid" to false, "message" to "No token provided"))
                     return@get
                 }
-                
+
                 val authToken = authService.validateToken(token)
                 if (authToken != null) {
                     call.respond(HttpStatusCode.OK, mapOf(
@@ -58,7 +58,7 @@ fun Application.configureAuthRoutes(authService: AuthService) {
                     call.respond(HttpStatusCode.Unauthorized, mapOf("valid" to false, "message" to "Invalid or expired token"))
                 }
             }
-            
+
             get("/stats") {
                 call.respond(HttpStatusCode.OK, mapOf(
                     "activeTokens" to authService.getActiveTokensCount(),
@@ -70,27 +70,27 @@ fun Application.configureAuthRoutes(authService: AuthService) {
     }
 }
 
-// Key for storing auth service in application attributes
+
 val authServiceKey = AttributeKey<AuthService>("authService")
 
-// Helper function to get auth service from application
+
 fun Application.getAuthService(): AuthService {
     return attributes[authServiceKey]
 }
 
-// Helper function to extract and validate auth token from call
+
 suspend fun ApplicationCall.getAuthenticatedUser(authService: AuthService): AuthToken? {
     val token = request.header("Authorization")?.removePrefix("Bearer ")
     if (token == null) {
         respond(HttpStatusCode.Unauthorized, mapOf("error" to "No authentication token provided"))
         return null
     }
-    
+
     val authToken = authService.validateToken(token)
     if (authToken == null) {
         respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid or expired token"))
         return null
     }
-    
+
     return authToken
 }

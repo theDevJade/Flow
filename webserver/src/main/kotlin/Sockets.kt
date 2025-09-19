@@ -1,5 +1,6 @@
 package com.thedevjade.flow.webserver
 
+import com.thedevjade.flow.common.models.FlowLogger
 import com.thedevjade.flow.webserver.websocket.*
 import flow.api.implementation.FlowApiImpl
 import io.ktor.http.*
@@ -23,7 +24,7 @@ fun Application.configureSockets(authService: AuthService) {
         masking = false
     }
 
-    // Initialize managers with new Flow API
+
     val flowCore = com.thedevjade.flow.api.FlowCore.initialize(
         com.thedevjade.flow.api.FlowConfig(
             dataDirectory = "data",
@@ -35,20 +36,20 @@ fun Application.configureSockets(authService: AuthService) {
         )
     )
 
-    // Initialize file system access with project root directory
+
     val flowApi = flow.api.implementation.FlowApiImpl()
     val fileSystemAccess = flowApi.fileSystemAccess
-    
-    // Set the root directory to the project root (where data directory is located)
+
+
     val currentWorkingDir = java.io.File("").absolutePath
     val projectDataDir = java.io.File("data").absolutePath
-    
-    // Set root directory to current working directory (allowing access to all project files)
+
+
     if (fileSystemAccess.setRootDirectory(java.nio.file.Paths.get(currentWorkingDir))) {
-        println("FlowAPI: File system root directory set to: $currentWorkingDir")
-        println("FlowAPI: All files under root directory are now accessible")
+        FlowLogger.debug("FlowAPI: File system root directory set to: $currentWorkingDir")
+        FlowLogger.debug("FlowAPI: All files under root directory are now accessible")
     } else {
-        println("FlowAPI: Warning - Failed to set root directory: $currentWorkingDir")
+        FlowLogger.debug("FlowAPI: Warning - Failed to set root directory: $currentWorkingDir")
     }
 
     val sessionManager = WebSocketSessionManager()
@@ -56,18 +57,26 @@ fun Application.configureSockets(authService: AuthService) {
     val graphSyncHandler = GraphSyncHandler(sessionManager, dataManager)
     val messageHandler = WebSocketMessageHandler(sessionManager, dataManager, graphSyncHandler)
 
-    // Debug logging helper
+    // Initialize FlowAPI with all dependencies
+    val flowAPIInstance = com.thedevjade.flow.webserver.api.FlowAPI.getInstance(
+        sessionManager,
+        dataManager,
+        graphSyncHandler,
+        flow.api.implementation.FileSystemAccessImpl()
+    )
+
+
     fun debugLog(message: String) {
         val timestamp = java.time.Instant.now().toString()
-        println("[$timestamp] WS-DEBUG: $message")
+        FlowLogger.debug("[$timestamp] WS-DEBUG: $message")
     }
 
-    // Get auth service from parameter
-    // val authService = this.getAuthService()
+
+
 
     routing {
         webSocket("/ws") {
-            // Extract token from query parameters or headers
+
             val token = call.request.queryParameters["token"]
                 ?: call.request.headers["Authorization"]?.removePrefix("Bearer ")
 
@@ -88,7 +97,7 @@ fun Application.configureSockets(authService: AuthService) {
                 debugLog("New WebSocket connection established - SessionID: $sessionId, User: ${authToken.username} (${authToken.userId})")
                 debugLog("Active sessions count: ${sessionManager.getActiveSessions().size}")
 
-                // Send welcome message
+
                 val welcomeMessage = WebSocketMessage(
                     type = "connection_established",
                     data = buildJsonObject {
@@ -104,7 +113,7 @@ fun Application.configureSockets(authService: AuthService) {
                 send(Frame.Text(Json.encodeToString(WebSocketMessage.serializer(), welcomeMessage)))
                 debugLog("Welcome message sent to session: $sessionId")
 
-                // Handle incoming messages
+
                 for (frame in incoming) {
                     when (frame) {
                         is Frame.Text -> {
@@ -117,10 +126,10 @@ fun Application.configureSockets(authService: AuthService) {
 
                                 val startTime = System.currentTimeMillis()
 
-                                // Process message using enhanced handler
+
                                 messageHandler.handleMessage(sessionId, message)
 
-                                // Also register with Flow API if it's a connection event
+
                                 if (message.type == "auth" && message.data["userId"] != null) {
                                     val userId = message.data["userId"]?.jsonPrimitive?.content
                                     if (userId != null) {
@@ -138,7 +147,7 @@ fun Application.configureSockets(authService: AuthService) {
                             } catch (e: JsonConvertException) {
                                 debugLog("JSON decoding error for session $sessionId: ${e.message}")
 
-                                // Send detailed error response for JSON parsing errors
+
                                 val errorMessage = WebSocketMessage(
                                     type = "parse_error",
                                     data = buildJsonObject {
@@ -182,7 +191,7 @@ fun Application.configureSockets(authService: AuthService) {
                 debugLog("WebSocket connection error - SessionID: $sessionId, Error: ${e.message}")
                 debugLog("Stack trace: ${e.stackTraceToString()}")
             } finally {
-                // Clean up session
+
                 sessionManager.getSession(sessionId)?.let { sessionData ->
                     debugLog("Cleaning up session: $sessionId for user: ${sessionData.username} (${sessionData.userId})")
 
