@@ -148,7 +148,8 @@ jobs:
     - name: Create Windows Archive
       run: |
         cd flow_frontend/build/windows/x64/runner/Release
-        Compress-Archive -Path * -DestinationPath ../../../../../Flow-Windows-${{ github.run_id }}.zip
+        Compress-Archive -Path * -DestinationPath "Flow-Windows-${{ github.run_id }}.zip"
+        Move-Item "Flow-Windows-${{ github.run_id }}.zip" -Destination "../../../../../"
     
     - name: Find Windows Archive
       if: inputs.upload-artifacts
