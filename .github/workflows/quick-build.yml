@@ -108,16 +108,16 @@ jobs:
           touch ../../../../../Flow-macOS-${{ github.run_id }}.zip
         fi
     
-    - name: Copy macOS Archive to Root
+    - name: Find macOS Archive
       run: |
-        cp Flow-macOS-${{ github.run_id }}.zip ./
-        ls -la Flow-macOS-${{ github.run_id }}.zip
+        echo "Searching for macOS archive:"
+        find . -name "Flow-macOS-${{ github.run_id }}.zip" -type f
     
     - name: Upload macOS Build
       uses: actions/upload-artifact@v4
       with:
         name: macos-build-${{ github.run_id }}
-        path: Flow-macOS-${{ github.run_id }}.zip
+        path: **/Flow-macOS-${{ github.run_id }}.zip
         retention-days: 30
 
   # Frontend Windows Build
@@ -142,16 +142,16 @@ jobs:
         cd flow_frontend/build/windows/x64/runner/Release
         Compress-Archive -Path * -DestinationPath ../../../../../Flow-Windows-${{ github.run_id }}.zip
     
-    - name: Copy Windows Archive to Root
+    - name: Find Windows Archive
       run: |
-        Copy-Item "Flow-Windows-${{ github.run_id }}.zip" -Destination "."
-        Get-ChildItem "Flow-Windows-${{ github.run_id }}.zip" | Format-List
+        echo "Searching for Windows archive:"
+        Get-ChildItem -Recurse -Name "Flow-Windows-${{ github.run_id }}.zip"
     
     - name: Upload Windows Build
       uses: actions/upload-artifact@v4
       with:
         name: windows-build-${{ github.run_id }}
-        path: Flow-Windows-${{ github.run_id }}.zip
+        path: **/Flow-Windows-${{ github.run_id }}.zip
         retention-days: 30
 
   # Frontend Linux Build
@@ -179,16 +179,16 @@ jobs:
         cd flow_frontend/build/linux/x64/release
         tar -czf ../../../../../Flow-Linux-${{ github.run_id }}.tar.gz bundle/
     
-    - name: Copy Linux Archive to Root
+    - name: Find Linux Archive
       run: |
-        cp Flow-Linux-${{ github.run_id }}.tar.gz ./
-        ls -la Flow-Linux-${{ github.run_id }}.tar.gz
+        echo "Searching for Linux archive:"
+        find . -name "Flow-Linux-${{ github.run_id }}.tar.gz" -type f
     
     - name: Upload Linux Build
       uses: actions/upload-artifact@v4
       with:
         name: linux-build-${{ github.run_id }}
-        path: Flow-Linux-${{ github.run_id }}.tar.gz
+        path: **/Flow-Linux-${{ github.run_id }}.tar.gz
         retention-days: 30
 
   # Build Summary
