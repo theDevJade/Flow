@@ -1,0 +1,7 @@
+# Debug default parameters
+function test(a, b = 10) {
+    return a + b
+}
+
+print("Test with default: " + test(5))
+print("Test without default: " + test(5, 3))

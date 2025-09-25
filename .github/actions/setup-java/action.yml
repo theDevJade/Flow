@@ -1,0 +1,37 @@
+name: 'Setup Java Environment'
+description: 'Sets up Java with caching and gradle permissions for Flow project'
+
+inputs:
+  java-version:
+    description: 'Java version to setup'
+    required: false
+    default: '23'
+  distribution:
+    description: 'Java distribution'
+    required: false
+    default: 'corretto'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up JDK ${{ inputs.java-version }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: ${{ inputs.distribution }}
+        cache: gradle
+    
+    - name: Cache Gradle Dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+    
+    - name: Grant execute permission for gradlew
+      shell: bash
+      run: |
+        find . -name "gradlew" -exec chmod +x {} \;

@@ -1,0 +1,18 @@
+# Test FlowLang Script 1
+print("Hello from test1.flowlang!")
+
+var x = 10
+var y = 20
+print("x + y = " + (x + y))
+
+if (x > 5) {
+    print("x is greater than 5")
+} else {
+    print("x is not greater than 5")
+}
+
+function greet(name) {
+    return "Hello, " + name + "!"
+}
+
+print(greet("FlowLang"))

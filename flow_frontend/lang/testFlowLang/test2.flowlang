@@ -1,0 +1,15 @@
+# Test FlowLang Script 2 - Natural Language Processing
+print("Testing natural language processing...")
+
+# This should be converted to: var total = price + tax
+set total to price plus tax
+
+# This should be converted to: if score > 50
+if score is greater than 50 then
+    print("Score is high!")
+end if
+
+# This should be converted to: var result = a * b
+set result to a times b
+
+print("Natural language processing test completed!")

@@ -1,0 +1,55 @@
+# FlowLang Error Demonstration Script
+# This script demonstrates various error scenarios and their enhanced error reporting
+
+# 1. Valid code - should work without errors
+var x = 5
+var y = 10
+var sum = x + y
+print("Sum: " + sum)
+
+# 2. Function definition with error handling
+function divide(a, b) {
+    if (b == 0) {
+        print("Error: Division by zero!")
+        return 0
+    }
+    return a / b
+}
+
+var result = divide(10, 2)
+print("Division result: " + result)
+
+# 3. Class definition
+class Calculator {
+    var value = 0
+    
+    function add(n) {
+        this.value = this.value + n
+        return this.value
+    }
+    
+    function getValue() {
+        return this.value
+    }
+}
+
+var calc = new Calculator()
+calc.add(5)
+calc.add(3)
+print("Calculator value: " + calc.getValue())
+
+# 4. Error handling example
+function safeDivide(a, b) {
+    if (b == 0) {
+        print("Warning: Attempted division by zero")
+        return null
+    }
+    return a / b
+}
+
+var safeResult = safeDivide(10, 0)
+if (safeResult != null) {
+    print("Safe division result: " + safeResult)
+} else {
+    print("Division was not performed due to zero divisor")
+}

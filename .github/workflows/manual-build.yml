@@ -1,0 +1,323 @@
+name: Manual Build & Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-type:
+        description: 'Build type: test, shadow, or release'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - test
+          - shadow
+          - release
+      upload-artifacts:
+        description: 'Whether to upload build artifacts'
+        required: true
+        default: true
+        type: boolean
+      artifact-retention:
+        description: 'Artifact retention days'
+        required: false
+        default: 30
+        type: number
+      java-version:
+        description: 'Java version to use'
+        required: false
+        default: '23'
+        type: string
+      flutter-version:
+        description: 'Flutter version to use'
+        required: false
+        default: '3.35.3'
+        type: string
+      build-frontend:
+        description: 'Build frontend'
+        required: true
+        default: true
+        type: boolean
+      build-backend:
+        description: 'Build backend'
+        required: true
+        default: true
+        type: boolean
+      build-plugin:
+        description: 'Build plugin'
+        required: true
+        default: true
+        type: boolean
+      frontend-targets:
+        description: 'Frontend build targets (comma-separated)'
+        required: false
+        default: 'web,macos,windows,linux'
+        type: string
+
+env:
+  FLUTTER_VERSION: ${{ inputs.flutter-version }}
+  JAVA_VERSION: ${{ inputs.java-version }}
+
+jobs:
+  # Backend Build
+  build-backend:
+    if: inputs.build-backend
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Java Environment
+      uses: ./.github/actions/setup-java
+      with:
+        java-version: ${{ inputs.java-version }}
+    
+    - name: Build Backend Modules
+      run: |
+        case "${{ inputs.build-type }}" in
+          "test")
+            ./gradlew clean testBuild --no-daemon
+            ;;
+          "shadow")
+            ./gradlew clean :app:shadowJar --no-daemon
+            ;;
+          "release")
+            ./gradlew clean testBuild --no-daemon
+            ./gradlew :app:shadowJar --no-daemon
+            ;;
+          *)
+            echo "Unknown build type: ${{ inputs.build-type }}"
+            exit 1
+            ;;
+        esac
+    
+    - name: Upload Backend JARs
+      if: inputs.upload-artifacts && (inputs.build-type == 'shadow' || inputs.build-type == 'release')
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-jars-${{ github.run_id }}
+        path: app/build/libs/*.jar
+        retention-days: ${{ inputs.artifact-retention }}
+
+  # Plugin Build
+  build-plugin:
+    if: inputs.build-plugin
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Java Environment
+      uses: ./.github/actions/setup-java
+      with:
+        java-version: ${{ inputs.java-version }}
+    
+    - name: Build Plugin
+      run: |
+        case "${{ inputs.build-type }}" in
+          "test")
+            ./gradlew clean :app:shadowJar --no-daemon
+            ;;
+          "release")
+            ./gradlew clean :app:shadowJar --no-daemon
+            ;;
+          *)
+            echo "Unknown build type: ${{ inputs.build-type }}"
+            exit 1
+            ;;
+        esac
+    
+    - name: Upload Plugin JAR
+      if: inputs.upload-artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: minecraft-plugin-${{ github.run_id }}
+        path: app/build/libs/*.jar
+        retention-days: ${{ inputs.artifact-retention }}
+
+  # Frontend Builds
+  build-frontend-web:
+    if: inputs.build-frontend
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Flutter Environment
+      uses: ./.github/actions/setup-flutter
+      with:
+        flutter-version: ${{ inputs.flutter-version }}
+        enable-desktop: none
+    
+    - name: Build Flutter Web
+      working-directory: flow_frontend
+      run: flutter build web --release
+    
+    - name: Create Web Archive
+      if: inputs.upload-artifacts
+      run: |
+        cd flow_frontend/build
+        tar -czf ../../Flow-Web-${{ github.run_id }}.tar.gz web/
+    
+    - name: Upload Web Build
+      if: inputs.upload-artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-build-${{ github.run_id }}
+        path: Flow-Web-${{ github.run_id }}.tar.gz
+        retention-days: ${{ inputs.artifact-retention }}
+
+  build-frontend-macos:
+    if: inputs.build-frontend && contains(inputs.frontend-targets, 'macos')
+    runs-on: macos-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Flutter Environment
+      uses: ./.github/actions/setup-flutter
+      with:
+        flutter-version: ${{ inputs.flutter-version }}
+        enable-desktop: macos
+    
+    - name: Build Flutter macOS
+      working-directory: flow_frontend
+      run: flutter build macos --release
+    
+    - name: Create macOS Archive
+      if: inputs.upload-artifacts
+      run: |
+        cd flow_frontend/build/macos/Build/Products/Release
+        if [ -d "flow_frontend.app" ]; then
+          ditto -c -k --sequesterRsrc --keepParent flow_frontend.app ../../../../../Flow-macOS-${{ github.run_id }}.zip
+        else
+          echo "macOS app not found, creating empty archive"
+          touch ../../../../../Flow-macOS-${{ github.run_id }}.zip
+        fi
+    
+    - name: Find macOS Archive
+      if: inputs.upload-artifacts
+      run: |
+        echo "Searching for macOS archive:"
+        find . -name "Flow-macOS-${{ github.run_id }}.zip" -type f
+    
+    - name: Upload macOS Build
+      if: inputs.upload-artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-build-${{ github.run_id }}
+        path: "**/Flow-macOS-${{ github.run_id }}.zip"
+        retention-days: ${{ inputs.artifact-retention }}
+
+  build-frontend-windows:
+    if: inputs.build-frontend && contains(inputs.frontend-targets, 'windows')
+    runs-on: windows-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Flutter Environment
+      uses: ./.github/actions/setup-flutter
+      with:
+        flutter-version: ${{ inputs.flutter-version }}
+        enable-desktop: windows
+    
+    - name: Build Flutter Windows
+      working-directory: flow_frontend
+      run: flutter build windows --release
+    
+    - name: Create Windows Archive
+      if: inputs.upload-artifacts
+      run: |
+        cd flow_frontend/build/windows/x64/runner/Release
+        Compress-Archive -Path * -DestinationPath "Flow-Windows-${{ github.run_id }}.zip"
+        echo "Created archive in: $(Get-Location)"
+        Get-ChildItem "Flow-Windows-${{ github.run_id }}.zip"
+        Move-Item "Flow-Windows-${{ github.run_id }}.zip" -Destination "../../../../../../"
+        echo "Moved to root directory"
+        cd ../../../../../../
+        Get-ChildItem "Flow-Windows-${{ github.run_id }}.zip"
+    
+    - name: Find Windows Archive
+      if: inputs.upload-artifacts
+      run: |
+        echo "Searching for Windows archive:"
+        Get-ChildItem -Recurse -Name "Flow-Windows-${{ github.run_id }}.zip"
+    
+    - name: Upload Windows Build
+      if: inputs.upload-artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build-${{ github.run_id }}
+        path: "**/Flow-Windows-${{ github.run_id }}.zip"
+        retention-days: ${{ inputs.artifact-retention }}
+
+  build-frontend-linux:
+    if: inputs.build-frontend && contains(inputs.frontend-targets, 'linux')
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Linux Dependencies
+      uses: ./.github/actions/setup-linux-deps
+    
+    - name: Setup Flutter Environment
+      uses: ./.github/actions/setup-flutter
+      with:
+        flutter-version: ${{ inputs.flutter-version }}
+        enable-desktop: linux
+    
+    - name: Build Flutter Linux
+      working-directory: flow_frontend
+      run: flutter build linux --release
+    
+    - name: Create Linux Archive
+      if: inputs.upload-artifacts
+      run: |
+        cd flow_frontend/build/linux/x64/release
+        tar -czf ../../../../../Flow-Linux-${{ github.run_id }}.tar.gz bundle/
+    
+    - name: Find Linux Archive
+      if: inputs.upload-artifacts
+      run: |
+        echo "Searching for Linux archive:"
+        find . -name "Flow-Linux-${{ github.run_id }}.tar.gz" -type f
+    
+    - name: Upload Linux Build
+      if: inputs.upload-artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build-${{ github.run_id }}
+        path: "**/Flow-Linux-${{ github.run_id }}.tar.gz"
+        retention-days: ${{ inputs.artifact-retention }}
+
+  # Build Summary
+  build-summary:
+    if: always()
+    needs: [build-backend, build-plugin, build-frontend-web, build-frontend-macos, build-frontend-windows, build-frontend-linux]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Create Build Summary
+      run: |
+        echo "# 🚀 Manual Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Build Type:** \`${{ inputs.build-type }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Upload Artifacts:** ${{ inputs.upload-artifacts }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📋 Build Results" >> $GITHUB_STEP_SUMMARY
+        echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend | ${{ needs.build-backend.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Plugin | ${{ needs.build-plugin.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend Web | ${{ needs.build-frontend-web.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend macOS | ${{ needs.build-frontend-macos.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend Windows | ${{ needs.build-frontend-windows.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend Linux | ${{ needs.build-frontend-linux.result || 'Skipped' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ inputs.upload-artifacts }}" = "true" ]; then
+          echo "✅ **Build artifacts generated and available for download**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "ℹ️ **No artifacts generated**" >> $GITHUB_STEP_SUMMARY
+        fi

@@ -1,0 +1,7 @@
+# Simple type test
+var name: String = "Hello"
+var age: Number = 25
+var flag: Boolean = true
+print("Name: " + name)
+print("Age: " + age)
+print("Flag: " + flag)

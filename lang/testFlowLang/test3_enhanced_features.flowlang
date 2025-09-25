@@ -1,0 +1,173 @@
+# Test FlowLang Script 3 - Enhanced Features Demo
+print("Testing FlowLang Enhanced Features...")
+
+# Test 1: Event Parameter Information
+print("=== Event Parameter Information ===")
+
+# Register some events with detailed parameters
+# (This would normally be done by the engine, but we'll test the functions)
+
+print("Available events: " + listEvents())
+print("Event info for 'playerJoin': " + getEventInfo("playerJoin"))
+print("Event parameters for 'playerDamage': " + getEventParameters("playerDamage"))
+
+# Test 2: Class Definitions and Inheritance
+print("\n=== Class Definitions and Inheritance ===")
+
+# Define a base class
+class Animal {
+    var name: text
+    var species: text
+    
+    function makeSound() {
+        return "Some generic sound"
+    }
+}
+
+# Define a derived class
+class Dog extends Animal {
+    var breed: text
+    var isGoodBoy: boolean = true
+    
+    function makeSound() {
+        return "Woof!"
+    }
+    
+    function fetch() {
+        return name + " is fetching the ball!"
+    }
+}
+
+# Define another derived class
+class Cat extends Animal {
+    var lives: number = 9
+    var isIndoor: boolean = true
+    
+    function makeSound() {
+        return "Meow!"
+    }
+    
+    function purr() {
+        return name + " is purring contentedly"
+    }
+}
+
+# Test class information
+print("Available classes: " + listClasses())
+print("Animal class info: " + getClassInfo("Animal"))
+print("Dog class info: " + getClassInfo("Dog"))
+print("Cat class info: " + getClassInfo("Cat"))
+
+# Test 3: Object Creation and Method Calls
+print("\n=== Object Creation and Method Calls ===")
+
+# Create instances
+var myDog = new Dog()
+var myCat = new Cat()
+
+# Set properties
+myDog.name = "Buddy"
+myDog.species = "Canine"
+myDog.breed = "Golden Retriever"
+
+myCat.name = "Whiskers"
+myCat.species = "Feline"
+myCat.lives = 8
+
+# Call methods
+print("Dog sound: " + myDog.makeSound())
+print("Cat sound: " + myCat.makeSound())
+print("Dog fetch: " + myDog.fetch())
+print("Cat purr: " + myCat.purr())
+
+# Test 4: Complex Class Hierarchy
+print("\n=== Complex Class Hierarchy ===")
+
+# Define a vehicle hierarchy
+class Vehicle {
+    var maxSpeed: number
+    var fuelType: text
+    var isRunning: boolean = false
+    
+    function start() {
+        isRunning = true
+        return "Vehicle started"
+    }
+    
+    function stop() {
+        isRunning = false
+        return "Vehicle stopped"
+    }
+}
+
+class Car extends Vehicle {
+    var doors: number
+    var isElectric: boolean = false
+    
+    function honk() {
+        return "Beep beep!"
+    }
+}
+
+class ElectricCar extends Car {
+    var batteryCapacity: number
+    var chargingTime: number
+    
+    function charge() {
+        return "Charging the electric car..."
+    }
+    
+    function honk() {
+        return "Electric beep!"
+    }
+}
+
+# Create and test instances
+var myCar = new Car()
+myCar.maxSpeed = 120
+myCar.fuelType = "Gasoline"
+myCar.doors = 4
+
+var myElectricCar = new ElectricCar()
+myElectricCar.maxSpeed = 150
+myElectricCar.fuelType = "Electric"
+myElectricCar.doors = 2
+myElectricCar.batteryCapacity = 100
+myElectricCar.chargingTime = 8
+
+print("Car honk: " + myCar.honk())
+print("Electric car honk: " + myElectricCar.honk())
+print("Electric car charge: " + myElectricCar.charge())
+
+# Test 5: Event Handling with Classes
+print("\n=== Event Handling with Classes ===")
+
+# Set up event handlers
+on playerJoin {
+    print("Welcome, " + player.name + "! You have " + player.health + " health.")
+}
+
+on playerDamage {
+    print("Player " + player.name + " took " + damage + " " + damageType + " damage!")
+    player.health = player.health - damage
+    print("Remaining health: " + player.health)
+}
+
+# Test 6: Property Access and Modification
+print("\n=== Property Access and Modification ===")
+
+var point = new Point()
+point.x = 10
+point.y = 20
+
+print("Point coordinates: (" + point.x + ", " + point.y + ")")
+
+# Test distance calculation
+var otherPoint = new Point()
+otherPoint.x = 0
+otherPoint.y = 0
+
+var distance = point.distance(otherPoint)
+print("Distance from origin: " + distance)
+
+print("\nEnhanced Features Test Completed!")

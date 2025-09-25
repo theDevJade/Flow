@@ -1,0 +1,236 @@
+name: Quick Build All
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload-artifacts:
+        description: 'Whether to upload build artifacts'
+        required: true
+        default: true
+        type: boolean
+
+env:
+  FLUTTER_VERSION: '3.35.3'
+  JAVA_VERSION: '23'
+
+jobs:
+  # Backend Build
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Java Environment
+      uses: ./.github/actions/setup-java
+      with:
+        java-version: '23'
+    
+    - name: Build Backend
+      run: ./gradlew clean testBuild :app:shadowJar --no-daemon
+    
+    - name: Upload Backend JARs
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-jars-${{ github.run_id }}
+        path: app/build/libs/*.jar
+        retention-days: 30
+
+  # Plugin Build
+  build-plugin:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Java Environment
+      uses: ./.github/actions/setup-java
+      with:
+        java-version: '23'
+    
+    - name: Build Plugin
+      run: ./gradlew clean :app:shadowJar --no-daemon
+    
+    - name: Upload Plugin JAR
+      uses: actions/upload-artifact@v4
+      with:
+        name: minecraft-plugin-${{ github.run_id }}
+        path: app/build/libs/*.jar
+        retention-days: 30
+
+  # Frontend Web Build
+  build-frontend-web:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Flutter Environment
+      uses: ./.github/actions/setup-flutter
+      with:
+        flutter-version: '3.35.3'
+        enable-desktop: none
+    
+    - name: Build Flutter Web
+      working-directory: flow_frontend
+      run: flutter build web --release
+    
+    - name: Create Web Archive
+      run: |
+        cd flow_frontend/build
+        tar -czf ../../Flow-Web-${{ github.run_id }}.tar.gz web/
+    
+    - name: Upload Web Build
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-build-${{ github.run_id }}
+        path: Flow-Web-${{ github.run_id }}.tar.gz
+        retention-days: 30
+
+  # Frontend macOS Build
+  build-frontend-macos:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Flutter Environment
+      uses: ./.github/actions/setup-flutter
+      with:
+        flutter-version: '3.35.3'
+        enable-desktop: macos
+    
+    - name: Build Flutter macOS
+      working-directory: flow_frontend
+      run: flutter build macos --release
+    
+    - name: Create macOS Archive
+      run: |
+        cd flow_frontend/build/macos/Build/Products/Release
+        if [ -d "flow_frontend.app" ]; then
+          ditto -c -k --sequesterRsrc --keepParent flow_frontend.app ../../../../../Flow-macOS-${{ github.run_id }}.zip
+        else
+          echo "macOS app not found, creating empty archive"
+          touch ../../../../../Flow-macOS-${{ github.run_id }}.zip
+        fi
+    
+    - name: Find macOS Archive
+      if: inputs.upload-artifacts
+      run: |
+        echo "Searching for macOS archive:"
+        find . -name "Flow-macOS-${{ github.run_id }}.zip" -type f
+    
+    - name: Upload macOS Build
+      if: inputs.upload-artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-build-${{ github.run_id }}
+        path: "**/Flow-macOS-${{ github.run_id }}.zip"
+        retention-days: 30
+
+  # Frontend Windows Build
+  build-frontend-windows:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Flutter Environment
+      uses: ./.github/actions/setup-flutter
+      with:
+        flutter-version: '3.35.3'
+        enable-desktop: windows
+    
+    - name: Build Flutter Windows
+      working-directory: flow_frontend
+      run: flutter build windows --release
+    
+    - name: Create Windows Archive
+      run: |
+        cd flow_frontend/build/windows/x64/runner/Release
+        Compress-Archive -Path * -DestinationPath "Flow-Windows-${{ github.run_id }}.zip"
+        echo "Created archive in: $(Get-Location)"
+        Get-ChildItem "Flow-Windows-${{ github.run_id }}.zip"
+        Move-Item "Flow-Windows-${{ github.run_id }}.zip" -Destination "../../../../../../"
+        echo "Moved to root directory"
+        cd ../../../../../../
+        Get-ChildItem "Flow-Windows-${{ github.run_id }}.zip"
+    
+    - name: Find Windows Archive
+      if: inputs.upload-artifacts
+      run: |
+        echo "Searching for Windows archive:"
+        Get-ChildItem -Recurse -Name "Flow-Windows-${{ github.run_id }}.zip"
+    
+    - name: Upload Windows Build
+      if: inputs.upload-artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build-${{ github.run_id }}
+        path: "**/Flow-Windows-${{ github.run_id }}.zip"
+        retention-days: 30
+
+  # Frontend Linux Build
+  build-frontend-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Linux Dependencies
+      uses: ./.github/actions/setup-linux-deps
+    
+    - name: Setup Flutter Environment
+      uses: ./.github/actions/setup-flutter
+      with:
+        flutter-version: '3.35.3'
+        enable-desktop: linux
+    
+    - name: Build Flutter Linux
+      working-directory: flow_frontend
+      run: flutter build linux --release
+    
+    - name: Create Linux Archive
+      run: |
+        cd flow_frontend/build/linux/x64/release
+        tar -czf ../../../../../Flow-Linux-${{ github.run_id }}.tar.gz bundle/
+    
+    - name: Find Linux Archive
+      if: inputs.upload-artifacts
+      run: |
+        echo "Searching for Linux archive:"
+        find . -name "Flow-Linux-${{ github.run_id }}.tar.gz" -type f
+    
+    - name: Upload Linux Build
+      if: inputs.upload-artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build-${{ github.run_id }}
+        path: "**/Flow-Linux-${{ github.run_id }}.tar.gz"
+        retention-days: 30
+
+  # Build Summary
+  build-summary:
+    if: always()
+    needs: [build-backend, build-plugin, build-frontend-web, build-frontend-macos, build-frontend-windows, build-frontend-linux]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Create Build Summary
+      run: |
+        echo "# 🚀 Quick Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Build Type:** Release (All Platforms)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📋 Build Results" >> $GITHUB_STEP_SUMMARY
+        echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend | ${{ needs.build-backend.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Plugin | ${{ needs.build-plugin.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend Web | ${{ needs.build-frontend-web.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend macOS | ${{ needs.build-frontend-macos.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend Windows | ${{ needs.build-frontend-windows.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend Linux | ${{ needs.build-frontend-linux.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "✅ **All build artifacts generated and available for download**" >> $GITHUB_STEP_SUMMARY

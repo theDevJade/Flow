@@ -1,0 +1,194 @@
+# Test FlowLang Script 4 - Advanced Features Demo
+print("Testing FlowLang Advanced Features...")
+
+# Test 1: Explicit Type Declarations
+print("\n=== Explicit Type Declarations ===")
+
+# Explicit type declarations
+var name: String = "FlowLang"
+var version: Number = 2.0
+var isAwesome: Boolean = true
+var features: List = ["overloading", "types", "defaults"]
+
+print("Name: " + name)
+print("Version: " + version)
+print("Awesome: " + isAwesome)
+print("Features: " + features)
+
+# Mix explicit and implicit types
+var implicitString = "This is inferred as String"
+var explicitString: String = "This is explicitly typed"
+
+print("Implicit: " + implicitString)
+print("Explicit: " + explicitString)
+
+# Test 2: Function Overloading
+print("\n=== Function Overloading ===")
+
+# Define overloaded functions
+function greet() {
+    return "Hello!"
+}
+
+function greet(name: String) {
+    return "Hello, " + name + "!"
+}
+
+function greet(name: String, age: Number) {
+    return "Hello, " + name + "! You are " + age + " years old."
+}
+
+function greet(name: String, age: Number, city: String) {
+    return "Hello, " + name + "! You are " + age + " years old and live in " + city + "."
+}
+
+# Test different overloads
+print(greet())
+print(greet("Alice"))
+print(greet("Bob", 25))
+print(greet("Charlie", 30, "New York"))
+
+# Test 3: Default Parameter Values
+print("\n=== Default Parameter Values ===")
+
+# Function with default parameters
+function createUser(name: String, age: Number = 18, isActive: Boolean = true, role: String = "user") {
+    return "User: " + name + ", Age: " + age + ", Active: " + isActive + ", Role: " + role
+}
+
+# Test with different parameter combinations
+print(createUser("Alice"))
+print(createUser("Bob", 25))
+print(createUser("Charlie", 30, true))
+print(createUser("David", 35, false, "admin"))
+
+# Test 4: Complex Function Overloading
+print("\n=== Complex Function Overloading ===")
+
+# Mathematical operations with overloading
+function calculate(a: Number) {
+    return a * a  # Square
+}
+
+function calculate(a: Number, b: Number) {
+    return a + b  # Addition
+}
+
+function calculate(a: Number, b: Number, operation: String = "add") {
+    if (operation == "add") {
+        return a + b
+    } else if (operation == "multiply") {
+        return a * b
+    } else if (operation == "subtract") {
+        return a - b
+    } else if (operation == "divide") {
+        return a / b
+    } else {
+        return 0
+    }
+}
+
+# Test different mathematical operations
+print("Square of 5: " + calculate(5))
+print("5 + 3: " + calculate(5, 3))
+print("5 + 3 (explicit): " + calculate(5, 3, "add"))
+print("5 * 3: " + calculate(5, 3, "multiply"))
+print("5 - 3: " + calculate(5, 3, "subtract"))
+print("15 / 3: " + calculate(15, 3, "divide"))
+
+# Test 5: Type Validation and Mixed Declarations
+print("\n=== Type Validation and Mixed Declarations ===")
+
+# Mix different type declarations
+var text: String = "Hello World"
+var number: Number = 42
+var flag: Boolean = true
+var list: List = [1, 2, 3, 4, 5]
+
+# Implicit types
+var implicitText = "Inferred as String"
+var implicitNumber = 3.14159
+var implicitFlag = false
+
+print("Explicit text: " + text)
+print("Explicit number: " + number)
+print("Explicit flag: " + flag)
+print("Explicit list: " + list)
+print("Implicit text: " + implicitText)
+print("Implicit number: " + implicitNumber)
+print("Implicit flag: " + implicitFlag)
+
+# Test 6: Advanced Default Values
+print("\n=== Advanced Default Values ===")
+
+# Function with complex default values
+function formatMessage(greeting: String = "Hello", name: String = "World", punctuation: String = "!", emphasis: Boolean = false) {
+    var message = greeting + ", " + name + punctuation
+    if (emphasis) {
+        message = message + " (EMPHASIS!)"
+    }
+    return message
+}
+
+# Test different combinations
+print(formatMessage())
+print(formatMessage("Hi"))
+print(formatMessage("Hi", "Alice"))
+print(formatMessage("Hi", "Alice", "?"))
+print(formatMessage("Hi", "Alice", "?", true))
+
+# Test 7: Utility Functions with Overloading
+print("\n=== Utility Functions with Overloading ===")
+
+# String manipulation functions
+function repeat(text: String) {
+    return text + text
+}
+
+function repeat(text: String, count: Number) {
+    var result = ""
+    var i = 0
+    while (i < count) {
+        result = result + text
+        i = i + 1
+    }
+    return result
+}
+
+function repeat(text: String, count: Number, separator: String = "") {
+    var result = ""
+    var i = 0
+    while (i < count) {
+        if (i > 0) {
+            result = result + separator
+        }
+        result = result + text
+        i = i + 1
+    }
+    return result
+}
+
+# Test string repetition
+print("Repeat 'Hi': " + repeat("Hi"))
+print("Repeat 'Hi' 3 times: " + repeat("Hi", 3))
+print("Repeat 'Hi' 3 times with separator: " + repeat("Hi", 3, ", "))
+
+# Test 8: Data Processing Functions
+print("\n=== Data Processing Functions ===")
+
+# Function to process data with different parameter combinations
+function processData(data: String, count: Number = 1, verbose: Boolean = false, prefix: String = "Data") {
+    var result = prefix + ": " + data
+    if (verbose) {
+        result = result + " (processed " + count + " times)"
+    }
+    return result
+}
+
+# Test data processing
+print(processData("test"))
+print(processData("test", 5))
+print(processData("test", 5, true))
+print(processData("test", 5, true, "Result"))
+
+print("\nAdvanced Features Test Completed!")
