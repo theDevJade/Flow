@@ -16,6 +16,13 @@ class GraphSyncHandler(
         private const val SYNC_TIMEOUT_SECONDS = 30L
     }
 
+    // Configured JSON instance to handle unknown keys gracefully
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        prettyPrint = false
+    }
+
 
     suspend fun handleGraphUpdate(session: DefaultWebSocketSession, message: WebSocketMessage) {
         val correlationId = "sync_${System.currentTimeMillis()}_${(1000..9999).random()}"
@@ -86,7 +93,7 @@ class GraphSyncHandler(
         correlationId: String
     ) = withTimeout(SYNC_TIMEOUT_SECONDS * 1000L) {
         try {
-            val node = Json.decodeFromJsonElement<GraphNode>(nodeJson)
+            val node = json.decodeFromJsonElement<GraphNode>(nodeJson)
 
             FlowLogger.info("GraphSyncHandler",
                 "Processing node update - GraphId: $graphId, NodeId: ${node.id}, Type: $updateType, CorrelationId: $correlationId")
@@ -142,7 +149,7 @@ class GraphSyncHandler(
         correlationId: String
     ) = withTimeout(SYNC_TIMEOUT_SECONDS * 1000L) {
         try {
-            val connection = Json.decodeFromJsonElement<GraphConnection>(connectionJson)
+            val connection = json.decodeFromJsonElement<GraphConnection>(connectionJson)
 
             FlowLogger.info("GraphSyncHandler",
                 "Processing connection update - GraphId: $graphId, ConnectionId: ${connection.id}, Type: $updateType, CorrelationId: $correlationId")
@@ -215,7 +222,7 @@ class GraphSyncHandler(
                 when (updateType) {
                     "node_add", "node_update" -> {
                         if (nodeJson != null) {
-                            val node = Json.decodeFromJsonElement<GraphNode>(nodeJson)
+                            val node = json.decodeFromJsonElement<GraphNode>(nodeJson)
                             if (updateType == "node_add") {
                                 updatedNodes.add(node)
                             } else {
@@ -229,7 +236,7 @@ class GraphSyncHandler(
                     }
                     "connection_add", "connection_update" -> {
                         if (connectionJson != null) {
-                            val connection = Json.decodeFromJsonElement<GraphConnection>(connectionJson)
+                            val connection = json.decodeFromJsonElement<GraphConnection>(connectionJson)
                             if (updateType == "connection_add") {
                                 updatedConnections.add(connection)
                             } else {
@@ -292,7 +299,7 @@ class GraphSyncHandler(
 
             val graphData = syncData["graphData"]?.jsonObject
             if (graphData != null) {
-                val graph = Json.decodeFromJsonElement<GraphData>(graphData)
+                val graph = json.decodeFromJsonElement<GraphData>(graphData)
                 val saveSuccess = dataManager.saveGraph(graphId, graph)
 
                 if (saveSuccess) {
@@ -379,7 +386,7 @@ class GraphSyncHandler(
         )
 
         try {
-            val jsonMessage = Json.encodeToString(WebSocketMessage.serializer(), response)
+            val jsonMessage = json.encodeToString(WebSocketMessage.serializer(), response)
             session.send(Frame.Text(jsonMessage))
         } catch (e: Exception) {
             FlowLogger.error("GraphSyncHandler",
@@ -406,7 +413,7 @@ class GraphSyncHandler(
         )
 
         try {
-            val jsonMessage = Json.encodeToString(WebSocketMessage.serializer(), response)
+            val jsonMessage = json.encodeToString(WebSocketMessage.serializer(), response)
             session.send(Frame.Text(jsonMessage))
         } catch (e: Exception) {
             FlowLogger.error("GraphSyncHandler",

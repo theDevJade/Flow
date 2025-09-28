@@ -16,6 +16,13 @@ class GraphDataManager {
     private val workspacesDir = "$baseDataDir/workspaces"
     private val filesDir = "$baseDataDir/files"
 
+    // Configured JSON instance to handle unknown keys gracefully
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        prettyPrint = false
+    }
+
     init {
 
         File(graphsDir).mkdirs()
@@ -30,7 +37,7 @@ class GraphDataManager {
 
 
             val file = File("$graphsDir/$graphId.json")
-            val jsonString = Json.encodeToString(GraphData.serializer(), graphData)
+            val jsonString = json.encodeToString(GraphData.serializer(), graphData)
             file.writeText(jsonString)
 
             FlowLogger.debug("Saved graph: $graphId")
@@ -50,7 +57,7 @@ class GraphDataManager {
             val file = File("$graphsDir/$graphId.json")
             if (file.exists()) {
                 val jsonString = file.readText()
-                val graphData = Json.decodeFromString(GraphData.serializer(), jsonString)
+                val graphData = json.decodeFromString(GraphData.serializer(), jsonString)
                 graphs[graphId] = graphData
                 graphData
             } else {
@@ -238,7 +245,7 @@ class GraphDataManager {
 
 
             val file = File("$workspacesDir/$workspaceId.json")
-            val jsonString = Json.encodeToString(WorkspaceData.serializer(), workspaceData)
+            val jsonString = json.encodeToString(WorkspaceData.serializer(), workspaceData)
             file.writeText(jsonString)
 
             FlowLogger.debug("Saved workspace: $workspaceId")
@@ -258,7 +265,7 @@ class GraphDataManager {
             val file = File("$workspacesDir/$workspaceId.json")
             if (file.exists()) {
                 val jsonString = file.readText()
-                val workspaceData = Json.decodeFromString(WorkspaceData.serializer(), jsonString)
+                val workspaceData = json.decodeFromString(WorkspaceData.serializer(), jsonString)
                 workspaces[workspaceId] = workspaceData
                 workspaceData
             } else {

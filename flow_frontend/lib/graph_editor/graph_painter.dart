@@ -18,9 +18,6 @@ class GraphPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw grid background
-    _drawGrid(canvas, size);
-
     // Apply transform
     canvas.save();
     canvas.translate(offset.dx, offset.dy);
@@ -44,27 +41,6 @@ class GraphPainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _drawGrid(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.grey.withOpacity(0.2)
-      ..strokeWidth = 1;
-
-    const gridSize = 20.0;
-
-    // Calculate grid offset based on transform
-    final gridOffsetX = (offset.dx * scale) % gridSize;
-    final gridOffsetY = (offset.dy * scale) % gridSize;
-
-    // Draw vertical lines
-    for (double x = gridOffsetX; x < size.width; x += gridSize) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-
-    // Draw horizontal lines
-    for (double y = gridOffsetY; y < size.height; y += gridSize) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
 
   void _drawNode(Canvas canvas, GraphNode node) {
     final nodeSize = node.size ?? const Size(150, 80);
@@ -121,7 +97,7 @@ class GraphPainter extends CustomPainter {
     for (int i = 0; i < node.inputs.length; i++) {
       final port = node.inputs[i];
       final portCenter = Offset(
-        node.position.dx - 8, // Fixed to match models.dart hit detection
+        node.position.dx - 8, // Left side of node
         node.position.dy + headerHeight + (i * portHeight) + portHeight / 2,
       );
 
@@ -162,9 +138,7 @@ class GraphPainter extends CustomPainter {
     for (int i = 0; i < node.outputs.length; i++) {
       final port = node.outputs[i];
       final portCenter = Offset(
-        node.position.dx +
-            nodeSize.width +
-            8, // Fixed to match models.dart hit detection
+        node.position.dx + nodeSize.width + 8, // Right side of node
         node.position.dy + headerHeight + (i * portHeight) + portHeight / 2,
       );
 

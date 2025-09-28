@@ -213,24 +213,16 @@ class GraphNode {
     final nodeSize = size ?? const Size(150, 80);
     final portHeight = 20.0;
     final headerHeight = 30.0;
-    const portRadius = 20.0; // Larger hit detection radius for easier clicking
-
-    print('🎯 Port detection: localPos=$localPosition in node ${this.id}');
+    const portRadius = 30.0; // Even larger hit detection radius for easier clicking
 
     // Check input ports (left side)
     for (int i = 0; i < inputs.length; i++) {
       final portCenter = Offset(
-        -8, // Left side offset (matches painter: node.position.dx - 8)
-        headerHeight + (i * portHeight) + portHeight / 2,
+        position.dx - 8, // Left side offset (matches painter)
+        position.dy + headerHeight + (i * portHeight) + portHeight / 2,
       );
       final distance = (localPosition - portCenter).distance;
-      print(
-        '  📍 Input ${inputs[i].id}: center=$portCenter, distance=${distance.toStringAsFixed(1)}',
-      );
       if (distance <= portRadius) {
-        print(
-          '  ✅ HIT INPUT PORT: ${inputs[i].id} (distance: ${distance.toStringAsFixed(1)})',
-        );
         return inputs[i].id;
       }
     }
@@ -238,23 +230,15 @@ class GraphNode {
     // Check output ports (right side)
     for (int i = 0; i < outputs.length; i++) {
       final portCenter = Offset(
-        nodeSize.width +
-            8, // Right side offset (matches painter: node.position.dx + nodeSize.width + 8)
-        headerHeight + (i * portHeight) + portHeight / 2,
+        position.dx + nodeSize.width + 8, // Right side offset (matches painter)
+        position.dy + headerHeight + (i * portHeight) + portHeight / 2,
       );
       final distance = (localPosition - portCenter).distance;
-      print(
-        '  📍 Output ${outputs[i].id}: center=$portCenter, distance=${distance.toStringAsFixed(1)}',
-      );
       if (distance <= portRadius) {
-        print(
-          '  ✅ HIT OUTPUT PORT: ${outputs[i].id} (distance: ${distance.toStringAsFixed(1)})',
-        );
         return outputs[i].id;
       }
     }
 
-    print('  ❌ No port hit within ${portRadius}px radius');
     return null;
   }
 

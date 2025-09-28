@@ -27,6 +27,13 @@ class WebSocketMessageHandler(
 ) {
     private val terminalInterpreter = TerminalInterpreter()
 
+    // Configured JSON instance to handle unknown keys gracefully
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        prettyPrint = false
+    }
+
     companion object {
         private const val MAX_MESSAGE_SIZE = 1024 * 1024
         private const val RATE_LIMIT_WINDOW_SECONDS = 60
@@ -372,7 +379,7 @@ class WebSocketMessageHandler(
 
         try {
 
-            val graph = Json.decodeFromJsonElement<GraphData>(graphData)
+            val graph = json.decodeFromJsonElement<GraphData>(graphData)
             val success = dataManager.saveGraph(graphId, graph)
 
             if (success) {
@@ -424,7 +431,7 @@ class WebSocketMessageHandler(
                 val responseData = buildJsonObject {
                     put("success", JsonPrimitive(true))
                     put("graphId", JsonPrimitive(graphId))
-                    put("graphData", Json.encodeToJsonElement(graph))
+                    put("graphData", json.encodeToJsonElement(graph))
                     put("correlationId", JsonPrimitive(correlationId))
                 }
 
@@ -621,7 +628,7 @@ class WebSocketMessageHandler(
 
     private fun validateMessageSize(message: WebSocketMessage): Boolean {
         return try {
-            val messageSize = Json.encodeToString(WebSocketMessage.serializer(), message).toByteArray().size
+            val messageSize = json.encodeToString(WebSocketMessage.serializer(), message).toByteArray().size
             messageSize <= MAX_MESSAGE_SIZE
         } catch (e: Exception) {
             false
@@ -729,7 +736,7 @@ class WebSocketMessageHandler(
                 id = message.id,
                 data = buildJsonObject {
                     put("success", JsonPrimitive(true))
-                    put("workspaces", Json.encodeToJsonElement(workspaceData))
+                    put("workspaces", json.encodeToJsonElement(workspaceData))
                     put("correlationId", JsonPrimitive(correlationId))
                 },
                 userId = session.userId,
@@ -786,7 +793,7 @@ class WebSocketMessageHandler(
                 data = if (success) {
                     buildJsonObject {
                         put("success", JsonPrimitive(true))
-                        put("workspace", Json.encodeToJsonElement(mapOf(
+                        put("workspace", json.encodeToJsonElement(mapOf(
                             "workspaceId" to workspaceId,
                             "name" to name,
                             "data" to data,
@@ -864,7 +871,7 @@ class WebSocketMessageHandler(
                 data = if (success) {
                     buildJsonObject {
                         put("success", JsonPrimitive(true))
-                        put("workspace", Json.encodeToJsonElement(mapOf(
+                        put("workspace", json.encodeToJsonElement(mapOf(
                             "workspaceId" to workspaceId,
                             "name" to (name ?: existingWorkspace.name),
                             "data" to (data?.toString() ?: existingWorkspace.data),
@@ -1640,7 +1647,7 @@ class WebSocketMessageHandler(
                 id = message.id,
                 data = buildJsonObject {
                     put("success", JsonPrimitive(true))
-                    put("suggestions", Json.encodeToJsonElement(suggestionData))
+                    put("suggestions", json.encodeToJsonElement(suggestionData))
                     put("input", JsonPrimitive(input))
                     put("cursorPosition", JsonPrimitive(cursorPosition))
                     if (pageId != null) put("pageId", JsonPrimitive(pageId))
@@ -1661,7 +1668,7 @@ class WebSocketMessageHandler(
                 id = message.id,
                 data = buildJsonObject {
                     put("success", JsonPrimitive(false))
-                    put("suggestions", Json.encodeToJsonElement(emptyList<String>()))
+                    put("suggestions", json.encodeToJsonElement(emptyList<String>()))
                     put("error", JsonPrimitive("Error: ${e.message}"))
                     put("correlationId", JsonPrimitive(correlationId))
                 },

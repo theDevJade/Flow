@@ -327,8 +327,12 @@ class _GraphEditorScreenState extends State<GraphEditorScreen> {
           .toList(),
       color: Color(data['color'] ?? Colors.grey.value),
       position: Offset(
-        (data['position']?['dx'] ?? 0.0).toDouble(),
-        (data['position']?['dy'] ?? 0.0).toDouble(),
+        (data['position']?['x'] as double?) ??
+            (data['position']?['dx'] as double?) ??
+            0.0,
+        (data['position']?['y'] as double?) ??
+            (data['position']?['dy'] as double?) ??
+            0.0,
       ),
       size: Size(
         (data['size']?['width'] ?? 150.0).toDouble(),
@@ -373,7 +377,7 @@ class _GraphEditorScreenState extends State<GraphEditorScreen> {
           )
           .toList(),
       'color': node.color.value,
-      'position': {'dx': node.position.dx, 'dy': node.position.dy},
+      'position': {'x': node.position.dx, 'y': node.position.dy},
       'size': {
         'width': node.size?.width ?? 150.0,
         'height': node.size?.height ?? 80.0,

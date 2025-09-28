@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'dart:async';
 import 'models.dart';
 import 'graph_painter.dart';
+import 'grid_painter.dart';
 import 'context_menu.dart';
 import 'command_palette.dart';
 import 'keyboard_shortcuts.dart';
@@ -89,6 +90,11 @@ class _GraphEditorState extends State<GraphEditor>
   // Connection system state
   bool isConnecting = false;
   String? connectingFromNodeId;
+
+  // Mouse drag panning state
+  bool isMouseDragging = false;
+  Offset? mouseDragStartPosition;
+  bool isPointerDown = false;
   String? connectingFromPortId;
   Offset? currentMousePosition;
 
@@ -783,37 +789,55 @@ class _GraphEditorState extends State<GraphEditor>
                         constraints.maxHeight,
                       );
 
-                      return Stack(
-                        children: [
-                          // Graph canvas
-                          GestureDetector(
-                            onPanStart: _handlePanStart,
-                            onPanUpdate: _handlePanUpdate,
-                            onPanEnd: _handlePanEnd,
-                            child: Listener(
-                              onPointerDown: _handlePointerDown,
-                              onPointerMove: _handlePointerMove,
-                              onPointerUp: _handlePointerUp,
-                              onPointerSignal: _handlePointerSignal,
-                              child: GestureDetector(
-                                onTapDown: _handleTapDown,
-                                onTapUp: _handleTapUp,
-                                onScaleStart: _handleScaleStart,
-                                onScaleUpdate: _handleScaleUpdate,
-                                onScaleEnd: _handleScaleEnd,
-                                child: CustomPaint(
-                                  painter: GraphPainter(
-                                    nodes: nodes,
-                                    connections: connections,
-                                    pendingConnection: pendingConnection,
-                                    scale: scale,
-                                    offset: panOffset,
+                      return ClipRect(
+                        child: SizedBox(
+                          width: constraints.maxWidth,
+                          height: constraints.maxHeight,
+                          child: Stack(
+                          children: [
+                            // Grid background (bottom layer)
+                            CustomPaint(
+                              painter: GridPainter(
+                                scale: scale,
+                                offset: panOffset,
+                              ),
+                              size: Size(constraints.maxWidth, constraints.maxHeight),
+                            ),
+
+                            // Graph canvas (nodes and connections) - behind UI elements
+                            CustomPaint(
+                              painter: GraphPainter(
+                                nodes: nodes,
+                                connections: connections,
+                                pendingConnection: pendingConnection,
+                                scale: scale,
+                                offset: panOffset,
+                              ),
+                              size: Size(constraints.maxWidth, constraints.maxHeight),
+                            ),
+
+                            // Gesture detection layer (invisible, captures all interactions)
+                            GestureDetector(
+                              onPanStart: _handlePanStart,
+                              onPanUpdate: _handlePanUpdate,
+                              onPanEnd: _handlePanEnd,
+                              child: Listener(
+                                onPointerDown: _handlePointerDown,
+                                onPointerMove: _handlePointerMove,
+                                onPointerUp: _handlePointerUp,
+                                onPointerSignal: _handlePointerSignal,
+                                child: GestureDetector(
+                                  onTapDown: _handleTapDown,
+                                  onTapUp: _handleTapUp,
+                                  onScaleStart: _handleScaleStart,
+                                  onScaleUpdate: _handleScaleUpdate,
+                                  onScaleEnd: _handleScaleEnd,
+                                  child: Container(
+                                    color: Colors.transparent,
                                   ),
-                                  size: Size.infinite,
                                 ),
                               ),
                             ),
-                          ),
 
                           // Context menu
                           if (showContextMenu)
@@ -840,6 +864,8 @@ class _GraphEditorState extends State<GraphEditor>
                             child: _buildInfoPanel(),
                           ),
                         ],
+                      ),
+                        ),
                       );
                     },
                   ),
@@ -1065,6 +1091,8 @@ class _GraphEditorState extends State<GraphEditor>
   }
 
   void _handlePointerDown(PointerDownEvent event) {
+    isPointerDown = true;
+    
     // Right click detection - button 2 is right mouse button
     if (event.buttons == 2) {
       if (showContextMenu) {
@@ -1077,11 +1105,66 @@ class _GraphEditorState extends State<GraphEditor>
         _showContextMenuAt(event.localPosition);
       }
     }
+    // Left click detection - button 1 is left mouse button
+    else if (event.buttons == 1) {
+      // Check if clicking on empty space (not on a node)
+      final clickedNode = _getNodeAtPosition(event.localPosition);
+      if (clickedNode == null && !isDraggingNode && !isConnecting) {
+        // Start mouse drag panning
+        isMouseDragging = true;
+        mouseDragStartPosition = event.localPosition;
+      }
+    }
   }
 
   void _handlePointerMove(PointerMoveEvent event) {
     // Update current mouse position for connection preview without setState
     currentMousePosition = event.localPosition;
+
+    // Handle mouse drag panning
+    if (isMouseDragging && mouseDragStartPosition != null) {
+      final delta = event.localPosition - mouseDragStartPosition!;
+      
+      // Validate delta before using it
+      if (delta.dx.isFinite && delta.dy.isFinite) {
+        final uncConstrainedPanOffset = panOffset + delta;
+        final constrainedPanOffset = _constrainPanOffset(uncConstrainedPanOffset);
+
+        // Update pan offset for smooth panning
+        if ((constrainedPanOffset - panOffset).distance > 0.1) {
+          setState(() {
+            panOffset = constrainedPanOffset;
+          });
+        }
+
+        // Update the start position for next frame
+        mouseDragStartPosition = event.localPosition;
+      }
+      return;
+    }
+
+    // Alternative mouse drag detection - if pointer is down and we're not doing anything else
+    if (isPointerDown && !isDraggingNode && !isConnecting && mouseDragStartPosition != null) {
+      final delta = event.localPosition - mouseDragStartPosition!;
+      
+      // Only start dragging if we've moved a significant distance
+      if (delta.distance > 5.0) {
+        isMouseDragging = true;
+        final uncConstrainedPanOffset = panOffset + delta;
+        final constrainedPanOffset = _constrainPanOffset(uncConstrainedPanOffset);
+
+        // Update pan offset for smooth panning
+        if ((constrainedPanOffset - panOffset).distance > 0.1) {
+          setState(() {
+            panOffset = constrainedPanOffset;
+          });
+        }
+
+        // Update the start position for next frame
+        mouseDragStartPosition = event.localPosition;
+      }
+      return;
+    }
 
     // Update pending connection if we're connecting
     if (isConnecting &&
@@ -1100,7 +1183,15 @@ class _GraphEditorState extends State<GraphEditor>
   }
 
   void _handlePointerUp(PointerUpEvent event) {
-    // Clean up any temporary states
+    isPointerDown = false;
+    
+    // Clean up mouse drag panning state
+    if (isMouseDragging) {
+      isMouseDragging = false;
+      mouseDragStartPosition = null;
+      // Save view state when panning ends
+      _saveViewState();
+    }
   }
 
   void _handlePointerSignal(PointerSignalEvent event) {
@@ -1684,6 +1775,17 @@ class _GraphEditorState extends State<GraphEditor>
     _saveViewState();
   }
 
+  // Node hit testing
+  GraphNode? _getNodeAtPosition(Offset screenPosition) {
+    final graphPosition = _screenToGraph(screenPosition);
+    for (final node in nodes) {
+      if (node.rect.contains(graphPosition)) {
+        return node;
+      }
+    }
+    return null;
+  }
+
   // Bounds constraint methods
   Offset _constrainPanOffset(Offset newPanOffset) {
     if (_canvasSize == null) return newPanOffset;
@@ -1745,41 +1847,7 @@ class _GraphEditorState extends State<GraphEditor>
     double constrainedX = newPanOffset.dx;
     double constrainedY = newPanOffset.dy;
 
-    // Horizontal constraints
-    if (contentWidth > visibleWidth) {
-      // Content is larger than canvas, allow panning within bounds
-      final maxPanX = (minX * scale) + _boundsPadding;
-      final minPanX = visibleWidth - (maxX * scale) - _boundsPadding;
-
-      // Validate clamp values before using them
-      if (minPanX.isFinite && maxPanX.isFinite && minPanX <= maxPanX) {
-        constrainedX = constrainedX.clamp(minPanX, maxPanX);
-      }
-    } else {
-      // Content fits in canvas, center it
-      final centeredX = (visibleWidth - contentWidth) / 2 - (minX * scale);
-      if (centeredX.isFinite) {
-        constrainedX = centeredX;
-      }
-    }
-
-    // Vertical constraints
-    if (contentHeight > visibleHeight) {
-      // Content is larger than canvas, allow panning within bounds
-      final maxPanY = (minY * scale) + _boundsPadding;
-      final minPanY = visibleHeight - (maxY * scale) - _boundsPadding;
-
-      // Validate clamp values before using them
-      if (minPanY.isFinite && maxPanY.isFinite && minPanY <= maxPanY) {
-        constrainedY = constrainedY.clamp(minPanY, maxPanY);
-      }
-    } else {
-      // Content fits in canvas, center it
-      final centeredY = (visibleHeight - contentHeight) / 2 - (minY * scale);
-      if (centeredY.isFinite) {
-        constrainedY = centeredY;
-      }
-    }
+    // Horizontal and vertical constraints disabled to allow free panning
 
     // Validate the constrained values before creating Offset
     final validX = constrainedX.isFinite ? constrainedX : 0.0;
