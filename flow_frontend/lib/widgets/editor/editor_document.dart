@@ -46,7 +46,15 @@ class EditorDocument {
 
   /// Initialize document with content
   void setContent(String content) {
-    lines = content.isEmpty ? [''] : content.split('\n');
+    if (content.isEmpty) {
+      lines = [''];
+    } else {
+      lines = content.split('\n');
+      // Ensure we always have at least one line
+      if (lines.isEmpty) {
+        lines = [''];
+      }
+    }
     moveCursorToStartOfDocument();
   }
 
@@ -139,19 +147,39 @@ class EditorDocument {
 
   void insertText(String text) {
     deleteSelectedText();
-    String l = lines[cursor.line];
-    String left = l.substring(0, cursor.column);
-    String right = l.substring(cursor.column);
-
-    // Handle new line
-    if (text == '\n') {
-      lines[cursor.line] = left;
-      lines.insert(cursor.line + 1, right);
-      moveCursorDown();
-      moveCursorToStartOfLine();
+    
+    // Handle multiple lines in text (e.g., from paste)
+    if (text.contains('\n')) {
+      List<String> textLines = text.split('\n');
+      String currentLine = lines[cursor.line];
+      String left = currentLine.substring(0, cursor.column);
+      String right = currentLine.substring(cursor.column);
+      
+      // Replace current line with first part + first text line
+      lines[cursor.line] = left + textLines[0];
+      
+      // Insert middle lines
+      for (int i = 1; i < textLines.length - 1; i++) {
+        lines.insert(cursor.line + i, textLines[i]);
+      }
+      
+      // Insert last line + remaining text
+      if (textLines.length > 1) {
+        lines.insert(cursor.line + textLines.length - 1, textLines.last + right);
+        cursor.line = cursor.line + textLines.length - 1;
+        cursor.column = textLines.last.length;
+      } else {
+        cursor.column = cursor.column + textLines[0].length;
+      }
+      
+      _validateCursor(false);
       return;
     }
 
+    // Handle single line text
+    String l = lines[cursor.line];
+    String left = l.substring(0, cursor.column);
+    String right = l.substring(cursor.column);
     lines[cursor.line] = left + text + right;
     moveCursorRight(count: text.length);
   }

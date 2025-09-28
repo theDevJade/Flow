@@ -11,7 +11,7 @@ class GridPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw grid background
+
     _drawGrid(canvas, size);
   }
 
@@ -21,13 +21,13 @@ class GridPainter extends CustomPainter {
       ..color = Colors.grey.withOpacity(0.3)
       ..strokeWidth = 0.5;
 
-    // Calculate grid bounds
+
     final startX = (offset.dx % gridSize) - gridSize;
     final startY = (offset.dy % gridSize) - gridSize;
     final endX = size.width + gridSize;
     final endY = size.height + gridSize;
 
-    // Draw vertical lines
+
     for (double x = startX; x < endX; x += gridSize) {
       canvas.drawLine(
         Offset(x, 0),
@@ -36,7 +36,7 @@ class GridPainter extends CustomPainter {
       );
     }
 
-    // Draw horizontal lines
+
     for (double y = startY; y < endY; y += gridSize) {
       canvas.drawLine(
         Offset(0, y),

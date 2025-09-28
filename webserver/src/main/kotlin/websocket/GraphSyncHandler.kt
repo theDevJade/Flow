@@ -16,7 +16,7 @@ class GraphSyncHandler(
         private const val SYNC_TIMEOUT_SECONDS = 30L
     }
 
-    // Configured JSON instance to handle unknown keys gracefully
+
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true

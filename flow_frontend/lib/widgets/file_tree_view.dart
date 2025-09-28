@@ -518,6 +518,8 @@ class _FileTreeViewState extends State<FileTreeView> {
     switch (extension) {
       case 'dart':
         return Icons.code;
+      case 'flowlang':
+        return Icons.auto_fix_high; // Special icon for FlowLang
       case 'json':
         return Icons.data_object;
       case 'yaml':
@@ -532,6 +534,11 @@ class _FileTreeViewState extends State<FileTreeView> {
       case 'js':
         return Icons.javascript;
       case 'ts':
+        return Icons.code;
+      case 'kt':
+      case 'kts':
+        return Icons.code;
+      case 'py':
         return Icons.code;
       case 'png':
       case 'jpg':

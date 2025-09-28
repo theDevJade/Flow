@@ -15,8 +15,19 @@ object FlowWebserver {
     var socketServer: EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration>? = null
 
     fun killAll() {
-        mainServer?.stop()
-        socketServer?.stop()
+        try {
+            mainServer?.stop(2000, 3000)
+            mainServer = null
+        } catch (e: Exception) {
+
+        }
+
+        try {
+            socketServer?.stop(2000, 3000)
+            socketServer = null
+        } catch (e: Exception) {
+
+        }
     }
 
     fun run() {

@@ -32,12 +32,18 @@ class _AdvancedCodeEditorState extends State<AdvancedCodeEditor> {
     super.initState();
     document = EditorDocument();
     highlighter = EditorSyntaxHighlighter();
+    highlighter.setLanguage(widget.language);
     document.setContent(widget.content);
   }
 
   @override
   void didUpdateWidget(AdvancedCodeEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // Update language if it changed
+    if (oldWidget.language != widget.language) {
+      highlighter.setLanguage(widget.language);
+    }
 
     // Update content if it changed from outside
     if (oldWidget.content != widget.content &&

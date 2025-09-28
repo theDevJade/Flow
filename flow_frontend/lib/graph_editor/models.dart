@@ -165,14 +165,14 @@ class GraphNode {
           .toList(),
       color: template.color.toColor(),
       position: position ?? Offset.zero,
-      size: null, // Let autoScaleHeight set the size
+      size: null,
       templateId: template.id,
       properties: initialProperties,
     );
   }
 
   Rect get rect {
-    final nodeSize = size ?? const Size(150, 80);
+    final nodeSize = size ?? const Size(150, 100);
     return Rect.fromLTWH(
       position.dx,
       position.dy,
@@ -182,25 +182,25 @@ class GraphNode {
   }
 
   Offset getPortPosition(String portId) {
-    final nodeSize = size ?? const Size(150, 80);
+    final nodeSize = size ?? const Size(150, 100);
     final portHeight = 20.0;
     final headerHeight = 30.0;
 
-    // Find input port position
+
     for (int i = 0; i < inputs.length; i++) {
       if (inputs[i].id == portId) {
         return Offset(
-          position.dx - 8, // Left side of node
+          position.dx - 8,
           position.dy + headerHeight + (i * portHeight) + portHeight / 2,
         );
       }
     }
 
-    // Find output port position
+
     for (int i = 0; i < outputs.length; i++) {
       if (outputs[i].id == portId) {
         return Offset(
-          position.dx + nodeSize.width + 8, // Right side of node
+          position.dx + nodeSize.width + 8,
           position.dy + headerHeight + (i * portHeight) + portHeight / 2,
         );
       }
@@ -210,31 +210,46 @@ class GraphNode {
   }
 
   String? getPortAt(Offset localPosition) {
-    final nodeSize = size ?? const Size(150, 80);
+    final nodeSize = size ?? const Size(150, 100);
     final portHeight = 20.0;
     final headerHeight = 30.0;
-    const portRadius = 30.0; // Even larger hit detection radius for easier clicking
+    const portHitboxWidth = 60.0;
+    const portHitboxHeight = 20.0;
 
-    // Check input ports (left side)
+
     for (int i = 0; i < inputs.length; i++) {
       final portCenter = Offset(
-        position.dx - 8, // Left side offset (matches painter)
-        position.dy + headerHeight + (i * portHeight) + portHeight / 2,
+        -30,
+        headerHeight + (i * portHeight) + portHeight / 2,
       );
-      final distance = (localPosition - portCenter).distance;
-      if (distance <= portRadius) {
+
+
+      final portHitboxRect = Rect.fromCenter(
+        center: portCenter,
+        width: portHitboxWidth,
+        height: portHitboxHeight,
+      );
+
+      if (portHitboxRect.contains(localPosition)) {
         return inputs[i].id;
       }
     }
 
-    // Check output ports (right side)
+
     for (int i = 0; i < outputs.length; i++) {
       final portCenter = Offset(
-        position.dx + nodeSize.width + 8, // Right side offset (matches painter)
-        position.dy + headerHeight + (i * portHeight) + portHeight / 2,
+        nodeSize.width + 30,
+        headerHeight + (i * portHeight) + portHeight / 2,
       );
-      final distance = (localPosition - portCenter).distance;
-      if (distance <= portRadius) {
+
+
+      final portHitboxRect = Rect.fromCenter(
+        center: portCenter,
+        width: portHitboxWidth,
+        height: portHitboxHeight,
+      );
+
+      if (portHitboxRect.contains(localPosition)) {
         return outputs[i].id;
       }
     }
@@ -242,27 +257,125 @@ class GraphNode {
     return null;
   }
 
-  /// Auto-scales the node height based on the number of input and output ports
+
+  bool containsWithPorts(Offset localPosition) {
+    final nodeSize = size ?? const Size(150, 100);
+    const portHitboxWidth = 60.0;
+    const portHitboxHeight = 20.0;
+    final portHeight = 20.0;
+    final headerHeight = 30.0;
+
+
+    final nodeRect = Rect.fromLTWH(0, 0, nodeSize.width, nodeSize.height);
+    if (nodeRect.contains(localPosition)) {
+      return true;
+    }
+
+
+    for (int i = 0; i < inputs.length; i++) {
+      final portCenter = Offset(
+        -30,
+        headerHeight + (i * portHeight) + portHeight / 2,
+      );
+
+      final portHitboxRect = Rect.fromCenter(
+        center: portCenter,
+        width: portHitboxWidth,
+        height: portHitboxHeight,
+      );
+
+      if (portHitboxRect.contains(localPosition)) {
+        return true;
+      }
+    }
+
+
+    for (int i = 0; i < outputs.length; i++) {
+      final portCenter = Offset(
+        nodeSize.width + 30,
+        headerHeight + (i * portHeight) + portHeight / 2,
+      );
+
+      final portHitboxRect = Rect.fromCenter(
+        center: portCenter,
+        width: portHitboxWidth,
+        height: portHitboxHeight,
+      );
+
+      if (portHitboxRect.contains(localPosition)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+
+  bool? getPortType(String portId) {
+
+    for (final port in inputs) {
+      if (port.id == portId) return true;
+    }
+
+    for (final port in outputs) {
+      if (port.id == portId) return false;
+    }
+    return null;
+  }
+
+
+  bool canAcceptConnection(String portId) {
+    final portType = getPortType(portId);
+    return portType == true;
+  }
+
+  /// Auto-scales the node to be rectangular with consistent height but flexible width
   void autoScaleHeight() {
     const portHeight = 20.0;
     const headerHeight = 30.0;
-    const minHeight = 80.0;
+    const standardHeight = 100.0; // Fixed height for all nodes
+    const minWidth = 120.0;
+    const maxWidth = 300.0;
     const padding = 16.0;
 
-    // Calculate required height based on ports
+    // Calculate required height based on ports (but use standard height)
     final maxPorts = math.max(inputs.length, outputs.length);
     final calculatedHeight = headerHeight + (maxPorts * portHeight) + padding;
-    final newHeight = math.max(calculatedHeight, minHeight);
+    final newHeight = math.max(calculatedHeight, standardHeight);
+
+    // Calculate width based on content
+    double calculatedWidth = minWidth;
+
+    // Consider node name length
+    final nameLength = name.length;
+    if (nameLength > 10) {
+      calculatedWidth = math.min(minWidth + (nameLength - 10) * 8, maxWidth);
+    }
+
+    // Consider number of ports (more ports = wider node)
+    final totalPorts = inputs.length + outputs.length;
+    if (totalPorts > 2) {
+      calculatedWidth = math.min(calculatedWidth + (totalPorts - 2) * 15, maxWidth);
+    }
+
+    // Ensure minimum width for port labels
+    final maxPortNameLength = math.max(
+      inputs.map((p) => p.name.length).fold(0, math.max),
+      outputs.map((p) => p.name.length).fold(0, math.max),
+    );
+    if (maxPortNameLength > 5) {
+      calculatedWidth = math.min(calculatedWidth + (maxPortNameLength - 5) * 6, maxWidth);
+    }
 
     // Update size if it changed
     final currentSize = size ?? const Size(150, 80);
-    print('🔧 Auto-scaling node "$name": inputs=${inputs.length}, outputs=${outputs.length}, maxPorts=$maxPorts, calculatedHeight=$calculatedHeight, newHeight=$newHeight, currentHeight=${currentSize.height}');
+    print('🔧 Auto-scaling node "$name": inputs=${inputs.length}, outputs=${outputs.length}, calculatedWidth=$calculatedWidth, calculatedHeight=$calculatedHeight, newHeight=$newHeight, currentSize=${currentSize.width}x${currentSize.height}');
 
-    if ((currentSize.height - newHeight).abs() > 1.0) {
-      size = Size(currentSize.width, newHeight);
+    if ((currentSize.height - newHeight).abs() > 1.0 || (currentSize.width - calculatedWidth).abs() > 1.0) {
+      size = Size(calculatedWidth, newHeight);
       print('✅ Node "$name" resized to: ${size!.width}x${size!.height}');
     } else {
-      print('⏭️ Node "$name" height unchanged: ${currentSize.height}');
+      print('⏭️ Node "$name" size unchanged: ${currentSize.width}x${currentSize.height}');
     }
   }
 }

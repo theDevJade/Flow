@@ -41,36 +41,206 @@ class CustomWidgetSpan extends WidgetSpan {
 
 class EditorSyntaxHighlighter {
   HashMap<String, Color> colorMap = HashMap<String, Color>();
+  String currentLanguage = 'plaintext';
 
   EditorSyntaxHighlighter() {
+    _initializeColorMap();
+  }
+
+  void setLanguage(String language) {
+    currentLanguage = language.toLowerCase();
     _initializeColorMap();
   }
 
   void _initializeColorMap() {
     colorMap.clear();
 
-    // Functions and classes
-    colorMap['\\b(class|struct|function|def|func)\\b'] = function;
+    switch (currentLanguage) {
+      case 'flowlang':
+        _setupFlowLangHighlighting();
+        break;
+      case 'dart':
+        _setupDartHighlighting();
+        break;
+      case 'kotlin':
+        _setupKotlinHighlighting();
+        break;
+      case 'javascript':
+      case 'js':
+        _setupJavaScriptHighlighting();
+        break;
+      case 'python':
+        _setupPythonHighlighting();
+        break;
+      case 'java':
+        _setupJavaHighlighting();
+        break;
+      default:
+        _setupGenericHighlighting();
+    }
+  }
 
+  void _setupFlowLangHighlighting() {
+    // FlowLang keywords - control flow
+    colorMap[r'\b(if|else|while|for|do|break|continue|return)\b'] = keyword;
+    
+    // FlowLang keywords - declarations
+    colorMap[r'\b(function|var|event|on|trigger|class|extends|new|this|super)\b'] = keyword;
+    
+    // FlowLang keywords - access modifiers
+    colorMap[r'\b(public|private|protected)\b'] = keyword;
+    
+    // FlowLang keywords - logical operators
+    colorMap[r'\b(and|or|not)\b'] = keyword;
+    
+    // FlowLang keywords - literals
+    colorMap[r'\b(true|false|null)\b'] = keyword;
+    
+    // FlowLang types
+    colorMap[r'\b(String|Number|Boolean|Object|List|Array)\b'] = function;
+    
+    // Comments (lines starting with #)
+    colorMap[r'^#.*$'] = comment;
+    colorMap[r'#.*$'] = comment; // Also match # comments anywhere on line
+    
+    // String literals - double quotes
+    colorMap[r'"[^"\\]*(\\.[^"\\]*)*"'] = string;
+    colorMap[r'"[^"]*"'] = string; // Fallback for simple strings
+    
+    // String literals - single quotes
+    colorMap[r"'[^'\\]*(\\.[^'\\]*)*'"] = string;
+    colorMap[r"'[^']*'"] = string; // Fallback for simple strings
+    
+    // Numbers - integers and decimals
+    colorMap[r'\b\d+\.?\d*\b'] = const Color(0xffbd93f9); // Purple for numbers
+    
+    // Operators - arithmetic
+    colorMap[r'[+\-*/%]'] = const Color(0xff50fa7b); // Green for arithmetic operators
+    
+    // Operators - comparison
+    colorMap[r'[=<>!]=?'] = const Color(0xff50fa7b); // Green for comparison operators
+    
+    // Operators - logical
+    colorMap[r'[&|]'] = const Color(0xff50fa7b); // Green for logical operators
+    
+    // Assignment operator
+    colorMap[r'='] = const Color(0xff50fa7b); // Green for assignment
+    
+    // Function calls - identifier followed by (
+    colorMap[r'\b\w+(?=\()'] = function;
+    
+    // Built-in functions
+    colorMap[r'\b(print|println|input|length|toString|parseInt|parseFloat|parseBoolean)\b'] = function;
+    
+    // Function definitions - function keyword followed by identifier
+    colorMap[r'\bfunction\s+(\w+)'] = function;
+    
+    // Class definitions - class keyword followed by identifier
+    colorMap[r'\bclass\s+(\w+)'] = function;
+    
+    // Event handlers - on keyword followed by identifier
+    colorMap[r'\bon\s+(\w+)'] = function;
+    
+    // Brackets and parentheses
+    colorMap[r'[{}()\[\]]'] = const Color(0xfff8f8f2); // Foreground color for brackets
+    
+    // Semicolons and commas
+    colorMap[r'[;,.]'] = const Color(0xff88846f); // Comment color for punctuation
+  }
+
+  void _setupDartHighlighting() {
+    // Dart keywords
+    colorMap[r'\b(abstract|as|assert|async|await|break|case|catch|class|const|continue|covariant|default|deferred|do|dynamic|else|enum|export|extends|extension|external|factory|final|finally|for|Function|get|hide|if|implements|import|in|interface|is|late|library|mixin|new|on|operator|part|required|rethrow|return|set|show|static|super|switch|sync|this|throw|try|typedef|var|void|while|with|yield)\b'] = keyword;
+    
     // Strings
-    colorMap[r'("|<){1}\b(.*)\b("|>){1}'] = string;
-    colorMap[r"'[^']*'"] = string;
     colorMap[r'"[^"]*"'] = string;
-
+    colorMap[r"'[^']*'"] = string;
+    colorMap[r'`[^`]*`'] = string;
+    
     // Comments
     colorMap[r'//.*$'] = comment;
     colorMap[r'/\*.*?\*/'] = comment;
-    colorMap[r'#.*$'] = comment;
-
-    // Keywords (common across many languages)
-    colorMap[r'\b(if|else|elif|endif|while|for|do|switch|case|default|break|continue|return|try|catch|finally|throw|import|export|from|as|with|in|is|not|and|or|const|var|let|final|static|public|private|protected|abstract|override|virtual|async|await|yield|true|false|null|undefined|void|int|double|float|bool|string|char|long|short)\b'] =
-        keyword;
-
-    // Dart-specific
-    colorMap[r'\b(class|extends|implements|mixin|with|abstract|factory|operator|typedef|enum|library|part|show|hide|deferred|covariant|late|required|external)\b'] =
-        keyword;
-
+    
     // Numbers
+    colorMap[r'\b\d+\.?\d*\b'] = const Color(0xffae81ff);
+  }
+
+  void _setupKotlinHighlighting() {
+    // Kotlin keywords
+    colorMap[r'\b(abstract|actual|annotation|as|break|by|catch|class|companion|const|constructor|continue|crossinline|data|do|dynamic|else|enum|expect|external|final|finally|for|fun|get|if|import|in|infix|init|inline|inner|interface|internal|is|lateinit|noinline|null|object|open|operator|out|override|package|private|protected|public|reified|return|sealed|set|super|suspend|tailrec|this|throw|try|typealias|typeof|val|var|vararg|when|where|while)\b'] = keyword;
+    
+    // Strings
+    colorMap[r'"[^"]*"'] = string;
+    colorMap[r"'[^']*'"] = string;
+    colorMap[r'"""[\s\S]*?"""'] = string;
+    
+    // Comments
+    colorMap[r'//.*$'] = comment;
+    colorMap[r'/\*.*?\*/'] = comment;
+    
+    // Numbers
+    colorMap[r'\b\d+\.?\d*\b'] = const Color(0xffae81ff);
+  }
+
+  void _setupJavaScriptHighlighting() {
+    // JavaScript keywords
+    colorMap[r'\b(break|case|catch|class|const|continue|debugger|default|delete|do|else|export|extends|finally|for|function|if|import|in|instanceof|let|new|return|super|switch|this|throw|try|typeof|var|void|while|with|yield|true|false|null|undefined)\b'] = keyword;
+    
+    // Strings
+    colorMap[r'"[^"]*"'] = string;
+    colorMap[r"'[^']*'"] = string;
+    colorMap[r'`[^`]*`'] = string;
+    
+    // Comments
+    colorMap[r'//.*$'] = comment;
+    colorMap[r'/\*.*?\*/'] = comment;
+    
+    // Numbers
+    colorMap[r'\b\d+\.?\d*\b'] = const Color(0xffae81ff);
+  }
+
+  void _setupPythonHighlighting() {
+    // Python keywords
+    colorMap[r'\b(and|as|assert|break|class|continue|def|del|elif|else|except|exec|finally|for|from|global|if|import|in|is|lambda|not|or|pass|print|raise|return|try|while|with|yield|True|False|None)\b'] = keyword;
+    
+    // Strings
+    colorMap[r'"[^"]*"'] = string;
+    colorMap[r"'[^']*'"] = string;
+    colorMap[r'"""[^"]*"""'] = string;
+    colorMap[r"'''[^']*'''"] = string;
+    
+    // Comments
+    colorMap[r'#.*$'] = comment;
+    
+    // Numbers
+    colorMap[r'\b\d+\.?\d*\b'] = const Color(0xffae81ff);
+  }
+
+  void _setupJavaHighlighting() {
+    // Java keywords
+    colorMap[r'\b(abstract|assert|boolean|break|byte|case|catch|char|class|const|continue|default|do|double|else|enum|extends|final|finally|float|for|goto|if|implements|import|instanceof|int|interface|long|native|new|package|private|protected|public|return|short|static|strictfp|super|switch|synchronized|this|throw|throws|transient|try|void|volatile|while|true|false|null)\b'] = keyword;
+    
+    // Strings
+    colorMap[r'"[^"]*"'] = string;
+    colorMap[r"'[^']*'"] = string;
+    
+    // Comments
+    colorMap[r'//.*$'] = comment;
+    colorMap[r'/\*.*?\*/'] = comment;
+    
+    // Numbers
+    colorMap[r'\b\d+\.?\d*\b'] = const Color(0xffae81ff);
+  }
+
+  void _setupGenericHighlighting() {
+    // Generic highlighting for unknown languages
+    colorMap[r'\b(class|struct|function|def|func)\b'] = function;
+    colorMap[r'"[^"]*"'] = string;
+    colorMap[r"'[^']*'"] = string;
+    colorMap[r'//.*$'] = comment;
+    colorMap[r'/\*.*?\*/'] = comment;
+    colorMap[r'#.*$'] = comment;
+    colorMap[r'\b(if|else|while|for|do|switch|case|default|break|continue|return|try|catch|finally|throw|import|export|from|as|with|in|is|not|and|or|const|var|let|final|static|public|private|protected|abstract|override|virtual|async|await|yield|true|false|null|undefined|void|int|double|float|bool|string|char|long|short)\b'] = keyword;
     colorMap[r'\b\d+\.?\d*\b'] = const Color(0xffae81ff);
   }
 

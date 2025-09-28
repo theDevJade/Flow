@@ -1,0 +1,16 @@
+# Simple FlowLang Test
+print("Hello from FlowLang!")
+
+var x = 10
+var y = 20
+var sum = x + y
+
+print("Sum: " + sum)
+
+if (sum > 25) {
+    print("Sum is greater than 25")
+} else {
+    print("Sum is not greater than 25")
+}
+
+print("Test completed!")

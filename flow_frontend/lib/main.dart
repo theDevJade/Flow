@@ -1,6 +1,7 @@
 import 'package:flow_frontend/services/file_system_service.dart';
 import 'package:flow_frontend/services/websocket_service.dart';
 import 'package:flow_frontend/services/flutter_log_service.dart';
+import 'package:flow_frontend/services/flowlang_execution_service.dart';
 import 'package:flow_frontend/state/file_system_state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -36,6 +37,9 @@ class FlowApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<FlutterLogService>(
           create: (_) => FlutterLogService.instance,
+        ),
+        ChangeNotifierProvider<FlowLangExecutionService>(
+          create: (_) => FlowLangExecutionService.instance,
         ),
         ChangeNotifierProvider(create: (_) => AppState()),
         ChangeNotifierProxyProvider<AppState, WorkspaceState>(

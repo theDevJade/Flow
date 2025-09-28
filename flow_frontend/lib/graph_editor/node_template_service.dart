@@ -319,6 +319,75 @@ class NodeTemplateService {
             ],
           ),
 
+          // OUTPUT BLOCKS
+          NodeTemplate(
+            id: 'output_string',
+            name: 'String Output',
+            description: 'Output a string value',
+            category: 'OUTPUT',
+            color: const NodeColor(r: 0.2, g: 0.6, b: 0.8, a: 1.0),
+            size: const NodeSize(width: 140, height: 80),
+            inputs: const [
+              NodePort(
+                id: 'trigger',
+                name: 'Trigger',
+                type: 'trigger',
+                color: NodeColor(r: 0.8, g: 0.8, b: 0.8, a: 1.0),
+              ),
+            ],
+            outputs: const [
+              NodePort(
+                id: 'output',
+                name: 'Out',
+                type: 'flow',
+                color: NodeColor(r: 0.8, g: 0.8, b: 0.8, a: 1.0),
+              ),
+            ],
+            properties: const [
+              NodeProperty(
+                name: 'value',
+                type: 'string',
+                label: 'String Value',
+                defaultValue: 'Hello World',
+                description: 'The string value to output',
+              ),
+            ],
+          ),
+
+          NodeTemplate(
+            id: 'output_number',
+            name: 'Number Output',
+            description: 'Output a number value',
+            category: 'OUTPUT',
+            color: const NodeColor(r: 0.8, g: 0.2, b: 0.6, a: 1.0),
+            size: const NodeSize(width: 140, height: 80),
+            inputs: const [
+              NodePort(
+                id: 'trigger',
+                name: 'Trigger',
+                type: 'trigger',
+                color: NodeColor(r: 0.8, g: 0.8, b: 0.8, a: 1.0),
+              ),
+            ],
+            outputs: const [
+              NodePort(
+                id: 'output',
+                name: 'Out',
+                type: 'flow',
+                color: NodeColor(r: 0.8, g: 0.8, b: 0.8, a: 1.0),
+              ),
+            ],
+            properties: const [
+              NodeProperty(
+                name: 'value',
+                type: 'number',
+                label: 'Number Value',
+                defaultValue: 42,
+                description: 'The number value to output',
+              ),
+            ],
+          ),
+
           // END BLOCKS
           NodeTemplate(
             id: 'end_complete',
@@ -414,6 +483,75 @@ class NodeTemplateService {
               label: 'Message',
               defaultValue: 'Hello, World!',
               description: 'Message to print',
+            ),
+          ],
+        ),
+
+        // OUTPUT BLOCKS
+        NodeTemplate(
+          id: 'output_string',
+          name: 'String Output',
+          description: 'Output a string value',
+          category: 'OUTPUT',
+          color: const NodeColor(r: 0.2, g: 0.6, b: 0.8, a: 1.0),
+          size: const NodeSize(width: 140, height: 80),
+          inputs: const [
+            NodePort(
+              id: 'trigger',
+              name: 'Trigger',
+              type: 'trigger',
+              color: NodeColor(r: 0.8, g: 0.8, b: 0.8, a: 1.0),
+            ),
+          ],
+          outputs: const [
+            NodePort(
+              id: 'output',
+              name: 'Out',
+              type: 'flow',
+              color: NodeColor(r: 0.8, g: 0.8, b: 0.8, a: 1.0),
+            ),
+          ],
+          properties: const [
+            NodeProperty(
+              name: 'value',
+              type: 'string',
+              label: 'String Value',
+              defaultValue: 'Hello World',
+              description: 'The string value to output',
+            ),
+          ],
+        ),
+
+        NodeTemplate(
+          id: 'output_number',
+          name: 'Number Output',
+          description: 'Output a number value',
+          category: 'OUTPUT',
+          color: const NodeColor(r: 0.8, g: 0.2, b: 0.6, a: 1.0),
+          size: const NodeSize(width: 140, height: 80),
+          inputs: const [
+            NodePort(
+              id: 'trigger',
+              name: 'Trigger',
+              type: 'trigger',
+              color: NodeColor(r: 0.8, g: 0.8, b: 0.8, a: 1.0),
+            ),
+          ],
+          outputs: const [
+            NodePort(
+              id: 'output',
+              name: 'Out',
+              type: 'flow',
+              color: NodeColor(r: 0.8, g: 0.8, b: 0.8, a: 1.0),
+            ),
+          ],
+          properties: const [
+            NodeProperty(
+              name: 'value',
+              type: 'number',
+              label: 'Number Value',
+              defaultValue: 42,
+              description: 'The number value to output',
             ),
           ],
         ),

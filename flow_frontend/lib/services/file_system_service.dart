@@ -98,6 +98,28 @@ class FileSystemService {
           _saveCompleters[filePath]!.complete(false);
           _saveCompleters.remove(filePath);
         }
+      } else if (message.type == 'file_created') {
+        final success = message.data['success'] as bool? ?? false;
+        final filePath = message.data['path'] as String?;
+        debugPrint(
+          '📄 FileSystemService: Received file_created - path: $filePath, success: $success',
+        );
+
+        if (success && filePath != null) {
+
+          requestFileTree();
+        }
+      } else if (message.type == 'directory_created') {
+        final success = message.data['success'] as bool? ?? false;
+        final dirPath = message.data['path'] as String?;
+        debugPrint(
+          '📁 FileSystemService: Received directory_created - path: $dirPath, success: $success',
+        );
+
+        if (success && dirPath != null) {
+
+          requestFileTree();
+        }
       }
     });
   }
@@ -218,6 +240,8 @@ class FileSystemService {
     switch (extension) {
       case '.dart':
         return Icons.code;
+      case '.flowlang':
+        return Icons.auto_fix_high;
       case '.json':
         return Icons.data_object;
       case '.yaml':
@@ -233,6 +257,11 @@ class FileSystemService {
         return Icons.style;
       case '.js':
         return Icons.javascript;
+      case '.kt':
+      case '.kts':
+        return Icons.code;
+      case '.py':
+        return Icons.code;
       default:
         return Icons.insert_drive_file;
     }

@@ -6,11 +6,15 @@ import 'node_template_service.dart';
 class PropertyInspector extends StatefulWidget {
   final GraphNode? selectedNode;
   final Function(GraphNode)? onNodeUpdated;
+  final VoidCallback? onPanelClosed;
+  final Function(bool)? onEditingChanged;
 
   const PropertyInspector({
     super.key,
     required this.selectedNode,
     this.onNodeUpdated,
+    this.onPanelClosed,
+    this.onEditingChanged,
   });
 
   @override
@@ -63,6 +67,8 @@ class _PropertyInspectorState extends State<PropertyInspector>
       } else if (widget.selectedNode == null &&
           oldWidget.selectedNode != null) {
         _animationController?.reverse();
+        // Call the panel closed callback when selection is cleared
+        widget.onPanelClosed?.call();
       }
     }
   }
@@ -89,14 +95,31 @@ class _PropertyInspectorState extends State<PropertyInspector>
 
     for (final property in _nodeTemplate!.properties) {
       if (property.type == 'string' ||
+          property.type == 'number' ||
           property.type == 'float' ||
           property.type == 'int') {
         final currentValue =
             widget.selectedNode!.properties[property.name] ??
             property.defaultValue;
-        _textControllers[property.name] = TextEditingController(
-          text: currentValue.toString(),
-        );
+        
+        // Only create controller if it doesn't exist, or update text if value changed
+        if (!_textControllers.containsKey(property.name)) {
+          _textControllers[property.name] = TextEditingController(
+            text: currentValue.toString(),
+          );
+        } else {
+          // Update text only if it's different to avoid cursor jumping
+          final controller = _textControllers[property.name]!;
+          if (controller.text != currentValue.toString()) {
+            final selection = controller.selection;
+            controller.text = currentValue.toString();
+            // Restore cursor position if it was at the end
+            if (selection.baseOffset == selection.extentOffset && 
+                selection.baseOffset == controller.text.length) {
+              controller.selection = TextSelection.collapsed(offset: controller.text.length);
+            }
+          }
+        }
       }
     }
   }
@@ -161,6 +184,7 @@ class _PropertyInspectorState extends State<PropertyInspector>
         ),
         const SizedBox(height: 6),
         TextFormField(
+          key: ValueKey('${widget.selectedNode?.id}_${property.name}'),
           controller: _textControllers[property.name],
           decoration: InputDecoration(
             hintText: property.defaultValue?.toString(),
@@ -182,6 +206,27 @@ class _PropertyInspectorState extends State<PropertyInspector>
           style: const TextStyle(color: Colors.white, fontSize: 12),
           onChanged: (value) {
             _updateNodeProperty(property.name, value);
+          },
+          onTap: () {
+            // Notify that editing has started
+            widget.onEditingChanged?.call(true);
+            // Ensure cursor is at the end when tapping
+            final controller = _textControllers[property.name];
+            if (controller != null) {
+              controller.selection = TextSelection.collapsed(offset: controller.text.length);
+            }
+          },
+          onTapOutside: (event) {
+            // Notify that editing has stopped
+            widget.onEditingChanged?.call(false);
+          },
+          onFieldSubmitted: (value) {
+            // Notify that editing has stopped
+            widget.onEditingChanged?.call(false);
+          },
+          onEditingComplete: () {
+            // Notify that editing has stopped
+            widget.onEditingChanged?.call(false);
           },
         ),
         if (property.description.isNotEmpty)
@@ -210,6 +255,7 @@ class _PropertyInspectorState extends State<PropertyInspector>
         ),
         const SizedBox(height: 6),
         TextFormField(
+          key: ValueKey('${widget.selectedNode?.id}_${property.name}'),
           controller: _textControllers[property.name],
           decoration: InputDecoration(
             hintText: property.defaultValue?.toString(),
@@ -237,6 +283,27 @@ class _PropertyInspectorState extends State<PropertyInspector>
           ),
           style: const TextStyle(color: Colors.white, fontSize: 12),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          onTap: () {
+            // Notify that editing has started
+            widget.onEditingChanged?.call(true);
+            // Ensure cursor is at the end when tapping
+            final controller = _textControllers[property.name];
+            if (controller != null) {
+              controller.selection = TextSelection.collapsed(offset: controller.text.length);
+            }
+          },
+          onTapOutside: (event) {
+            // Notify that editing has stopped
+            widget.onEditingChanged?.call(false);
+          },
+          onFieldSubmitted: (value) {
+            // Notify that editing has stopped
+            widget.onEditingChanged?.call(false);
+          },
+          onEditingComplete: () {
+            // Notify that editing has stopped
+            widget.onEditingChanged?.call(false);
+          },
           onChanged: (value) {
             // Try to parse as int first, then as double
             final intValue = int.tryParse(value);
@@ -304,6 +371,7 @@ class _PropertyInspectorState extends State<PropertyInspector>
         ),
         const SizedBox(height: 6),
         TextFormField(
+          key: ValueKey('${widget.selectedNode?.id}_${property.name}'),
           controller: _textControllers[property.name],
           decoration: InputDecoration(
             hintText: property.defaultValue?.toString(),
@@ -331,6 +399,27 @@ class _PropertyInspectorState extends State<PropertyInspector>
           ),
           style: const TextStyle(color: Colors.white, fontSize: 12),
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          onTap: () {
+            // Notify that editing has started
+            widget.onEditingChanged?.call(true);
+            // Ensure cursor is at the end when tapping
+            final controller = _textControllers[property.name];
+            if (controller != null) {
+              controller.selection = TextSelection.collapsed(offset: controller.text.length);
+            }
+          },
+          onTapOutside: (event) {
+            // Notify that editing has stopped
+            widget.onEditingChanged?.call(false);
+          },
+          onFieldSubmitted: (value) {
+            // Notify that editing has stopped
+            widget.onEditingChanged?.call(false);
+          },
+          onEditingComplete: () {
+            // Notify that editing has stopped
+            widget.onEditingChanged?.call(false);
+          },
           onChanged: (value) {
             final doubleValue = double.tryParse(value);
             if (doubleValue != null) {
@@ -377,6 +466,7 @@ class _PropertyInspectorState extends State<PropertyInspector>
         ),
         const SizedBox(height: 6),
         TextFormField(
+          key: ValueKey('${widget.selectedNode?.id}_${property.name}'),
           controller: _textControllers[property.name],
           decoration: InputDecoration(
             hintText: property.defaultValue?.toString(),
@@ -397,6 +487,27 @@ class _PropertyInspectorState extends State<PropertyInspector>
           ),
           style: const TextStyle(color: Colors.white, fontSize: 12),
           keyboardType: TextInputType.number,
+          onTap: () {
+            // Notify that editing has started
+            widget.onEditingChanged?.call(true);
+            // Ensure cursor is at the end when tapping
+            final controller = _textControllers[property.name];
+            if (controller != null) {
+              controller.selection = TextSelection.collapsed(offset: controller.text.length);
+            }
+          },
+          onTapOutside: (event) {
+            // Notify that editing has stopped
+            widget.onEditingChanged?.call(false);
+          },
+          onFieldSubmitted: (value) {
+            // Notify that editing has stopped
+            widget.onEditingChanged?.call(false);
+          },
+          onEditingComplete: () {
+            // Notify that editing has stopped
+            widget.onEditingChanged?.call(false);
+          },
           onChanged: (value) {
             final intValue = int.tryParse(value);
             if (intValue != null) {

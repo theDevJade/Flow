@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/websocket_service.dart';
 
-/// Service responsible for persisting graph state including position, status,
+
 /// and node data when moving between tabs or making changes
 class GraphPersistenceService with ChangeNotifier {
   static GraphPersistenceService? _instance;
@@ -133,13 +133,13 @@ class GraphPersistenceService with ChangeNotifier {
 
     if (graphId != null && graphId == _currentGraphId && nodeId != null && nodeData != null) {
       debugPrint('Node $nodeId updated in graph $graphId');
-      
+
       // Update the cached graph data
       final cachedData = _graphDataCache[graphId];
       if (cachedData != null) {
         final nodes = List<Map<String, dynamic>>.from(cachedData['nodes'] ?? []);
         final nodeIndex = nodes.indexWhere((node) => node['id'] == nodeId);
-        
+
         if (nodeIndex != -1) {
           // Update existing node
           nodes[nodeIndex] = Map<String, dynamic>.from(nodeData);
@@ -147,10 +147,10 @@ class GraphPersistenceService with ChangeNotifier {
           // Add new node if it doesn't exist
           nodes.add(Map<String, dynamic>.from(nodeData));
         }
-        
+
         cachedData['nodes'] = nodes;
         _graphDataCache[graphId] = cachedData;
-        
+
         // Notify listeners that the graph data has been updated
         notifyListeners();
       }
@@ -164,13 +164,13 @@ class GraphPersistenceService with ChangeNotifier {
 
     if (graphId != null && graphId == _currentGraphId && connectionId != null && connectionData != null) {
       debugPrint('Connection $connectionId updated in graph $graphId');
-      
+
       // Update the cached graph data
       final cachedData = _graphDataCache[graphId];
       if (cachedData != null) {
         final connections = List<Map<String, dynamic>>.from(cachedData['connections'] ?? []);
         final connectionIndex = connections.indexWhere((conn) => conn['id'] == connectionId);
-        
+
         if (connectionIndex != -1) {
           // Update existing connection
           connections[connectionIndex] = Map<String, dynamic>.from(connectionData);
@@ -178,10 +178,10 @@ class GraphPersistenceService with ChangeNotifier {
           // Add new connection if it doesn't exist
           connections.add(Map<String, dynamic>.from(connectionData));
         }
-        
+
         cachedData['connections'] = connections;
         _graphDataCache[graphId] = cachedData;
-        
+
         // Notify listeners that the graph data has been updated
         notifyListeners();
       }
@@ -196,19 +196,19 @@ class GraphPersistenceService with ChangeNotifier {
 
     if (graphId != null && graphId == _currentGraphId) {
       debugPrint('Graph update broadcast received for $graphId: $updateType');
-      
+
       // Update the cached graph data based on the update type
       final cachedData = _graphDataCache[graphId];
       if (cachedData != null) {
         bool updated = false;
-        
+
         if (nodeData != null) {
           final nodes = List<Map<String, dynamic>>.from(cachedData['nodes'] ?? []);
           final nodeId = nodeData['id'] as String?;
-          
+
           if (nodeId != null) {
             final nodeIndex = nodes.indexWhere((node) => node['id'] == nodeId);
-            
+
             if (updateType == 'node_add' || nodeIndex == -1) {
               // Add new node
               nodes.add(Map<String, dynamic>.from(nodeData));
@@ -218,18 +218,18 @@ class GraphPersistenceService with ChangeNotifier {
               nodes[nodeIndex] = Map<String, dynamic>.from(nodeData);
               updated = true;
             }
-            
+
             cachedData['nodes'] = nodes;
           }
         }
-        
+
         if (connectionData != null) {
           final connections = List<Map<String, dynamic>>.from(cachedData['connections'] ?? []);
           final connectionId = connectionData['id'] as String?;
-          
+
           if (connectionId != null) {
             final connectionIndex = connections.indexWhere((conn) => conn['id'] == connectionId);
-            
+
             if (updateType == 'connection_add' || connectionIndex == -1) {
               // Add new connection
               connections.add(Map<String, dynamic>.from(connectionData));
@@ -239,11 +239,11 @@ class GraphPersistenceService with ChangeNotifier {
               connections[connectionIndex] = Map<String, dynamic>.from(connectionData);
               updated = true;
             }
-            
+
             cachedData['connections'] = connections;
           }
         }
-        
+
         if (updated) {
           _graphDataCache[graphId] = cachedData;
           // Notify listeners that the graph data has been updated

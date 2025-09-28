@@ -6,7 +6,7 @@ class ProjectStatsService {
   ProjectStatsService._internal();
 
   Future<ProjectStats> getProjectStats({String? projectPath}) async {
-    // For Flutter app, use the project root directory
+
     projectPath ??= _getProjectRoot();
 
     int totalFiles = 0;
@@ -27,13 +27,13 @@ class ProjectStatsService {
         );
       }
 
-      // Get all relevant files
+
       final files = await _getAllFiles(directory);
       totalFiles = files.length;
 
       print('Found $totalFiles files to analyze in $projectPath');
 
-      // Process each file
+
       for (final file in files) {
         final extension = _getFileExtension(file.path);
         final language = _getLanguageFromExtension(extension);
@@ -53,13 +53,13 @@ class ProjectStatsService {
             languageBreakdown[language] =
                 (languageBreakdown[language] ?? 0) + codeLines;
           } catch (e) {
-            // Skip files that can't be read
+
             continue;
           }
         }
       }
 
-      // Get recently modified files
+
       if (files.isNotEmpty) {
         files.sort(
           (a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()),
@@ -82,10 +82,10 @@ class ProjectStatsService {
   }
 
   String _getProjectRoot() {
-    // Try to find the project root by looking for key files
+
     String currentPath = Directory.current.path;
 
-    // Look for Flow project root indicators first (multi-module Gradle project)
+
     final flowIndicators = [
       'settings.gradle.kts',
       'flow_frontend/',
@@ -106,7 +106,7 @@ class ProjectStatsService {
       }
 
       if (foundFlowIndicator) {
-        // Verify this is the Flow project by checking for at least 2 key directories
+
         final keyDirs = ['flow_frontend', 'webserver', 'flow', 'common'];
         int foundDirs = 0;
         for (final keyDir in keyDirs) {
@@ -124,7 +124,7 @@ class ProjectStatsService {
       dir = dir.parent;
     }
 
-    // Fall back to Flutter project indicators if not in Flow project structure
+
     dir = Directory(currentPath);
     final flutterIndicators = ['pubspec.yaml', 'android/', 'ios/', 'lib/'];
 
@@ -146,7 +146,7 @@ class ProjectStatsService {
       dir = dir.parent;
     }
 
-    // Fallback to current directory
+
     print('Using fallback project root: $currentPath');
     return currentPath;
   }
@@ -161,7 +161,7 @@ class ProjectStatsService {
         }
       }
     } catch (e) {
-      // Ignore directories we can't access
+
     }
 
     return files;
@@ -184,7 +184,7 @@ class ProjectStatsService {
       '.cache/',
       'tmp/',
       '.tmp/',
-      // Flow project specific ignores
+
       'webserver/build/',
       'flow/build/',
       'common/build/',
@@ -235,12 +235,12 @@ class ProjectStatsService {
       '.tmp',
     ];
 
-    // Check ignored patterns
+
     for (final pattern in ignoredPatterns) {
       if (path.contains(pattern)) return true;
     }
 
-    // Check ignored extensions
+
     final extension = _getFileExtension(path).toLowerCase();
     if (ignoredExtensions.contains(extension)) return true;
 

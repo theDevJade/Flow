@@ -164,8 +164,8 @@ class WebSocketService with ChangeNotifier {
 
 
     if (_currentStatus == WebSocketConnectionStatus.connected) {
-      if (_token == token) return; // Same token, no need to reconnect
-      // Token changed, disconnect first
+      if (_token == token) return;
+
       disconnect();
     }
 
@@ -176,7 +176,7 @@ class WebSocketService with ChangeNotifier {
 
     try {
       await _connectToRealServer();
-      _reconnectAttempts = 0; // Reset on successful connection
+      _reconnectAttempts = 0;
     } catch (e) {
       _addLog('CONNECTION', 'Connection failed: $e', isError: true);
       debugPrint('WebSocket connection error: $e');

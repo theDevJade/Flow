@@ -81,7 +81,16 @@ class _GraphEditorState extends State<GraphEditor>
   String? selectedNodeId;
   String? selectedConnectionId;
   String? hoveredNodeId;
+  String? hoveredPortNodeId;
+  String? hoveredPortId;
   Offset? lastFocalPoint;
+  
+  
+  // Debug state
+  bool showDebugHitboxes = false; // Disabled by default
+  
+  // Property editing state
+  bool isEditingProperties = false;
 
   bool isDraggingNode = false;
   String? draggingNodeId;
@@ -112,6 +121,9 @@ class _GraphEditorState extends State<GraphEditor>
   Animation<double>? _scaleAnimation;
   AnimationController? _panAnimationController;
   Animation<Offset>? _panAnimation;
+  AnimationController? _connectionAnimationController;
+  Animation<double>? _connectionAnimation;
+  String? _animatingConnectionId;
 
   // Performance tracking
   DateTime? _lastPanUpdate;
@@ -119,6 +131,7 @@ class _GraphEditorState extends State<GraphEditor>
   // Keyboard state
   final Set<LogicalKeyboardKey> _pressedKeys = {};
   final FocusNode _focusNode = FocusNode();
+  final FocusNode _keyboardFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -137,6 +150,12 @@ class _GraphEditorState extends State<GraphEditor>
       duration: const Duration(
         milliseconds: 150,
       ), // Reduced from 300ms for snappier feel
+      vsync: this,
+    );
+    _connectionAnimationController = AnimationController(
+      duration: const Duration(
+        milliseconds: 800,
+      ), // Connection drawing animation
       vsync: this,
     );
 
@@ -188,6 +207,7 @@ class _GraphEditorState extends State<GraphEditor>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
+      _keyboardFocusNode.requestFocus();
       // Auto-fit to show all nodes if we have any
       if (nodes.isNotEmpty) {
         _frameAll();
@@ -670,7 +690,9 @@ class _GraphEditorState extends State<GraphEditor>
   void dispose() {
     _scaleAnimationController?.dispose();
     _panAnimationController?.dispose();
+    _connectionAnimationController?.dispose();
     _focusNode.dispose();
+    _keyboardFocusNode.dispose();
     // Don't dispose the singleton WebSocket service - it should persist across workspace switches
     // _webSocketService?.dispose();
     super.dispose();
@@ -771,10 +793,14 @@ class _GraphEditorState extends State<GraphEditor>
       focusNode: _focusNode,
       autofocus: true,
       child: KeyboardListener(
-        focusNode: FocusNode(),
+        focusNode: _keyboardFocusNode,
         onKeyEvent: _handleKeyEvent,
         child: GestureDetector(
-          onTap: () => _focusNode.requestFocus(),
+          onTap: () {
+            _focusNode.requestFocus();
+            _keyboardFocusNode.requestFocus();
+            print('Focus requested on tap');
+          },
           child: Container(
             color: const Color(0xFF1A1A1A), // Darker background like Blender
             child: Row(
@@ -812,6 +838,13 @@ class _GraphEditorState extends State<GraphEditor>
                                 pendingConnection: pendingConnection,
                                 scale: scale,
                                 offset: panOffset,
+                                hoveredPortNodeId: hoveredPortNodeId,
+                                hoveredPortId: hoveredPortId,
+                                hoveredNodeId: hoveredNodeId,
+                                selectedNodeId: selectedNodeId,
+                                connectionAnimation: _connectionAnimation?.value ?? 1.0,
+                                animatingConnectionId: _animatingConnectionId,
+                                showDebugHitboxes: showDebugHitboxes,
                               ),
                               size: Size(constraints.maxWidth, constraints.maxHeight),
                             ),
@@ -852,12 +885,42 @@ class _GraphEditorState extends State<GraphEditor>
                           if (showCommandPalette)
                             CommandPalette(
                               onNodeSelected: _addNodeFromTemplate,
-                              onDismiss: () =>
-                                  setState(() => showCommandPalette = false),
+                              onDismiss: () {
+                                setState(() => showCommandPalette = false);
+                                print('Command palette dismissed - restoring shortcuts');
+                                // Restore focus for keyboard shortcuts
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  _focusNode.requestFocus();
+                                  _keyboardFocusNode.requestFocus();
+                                });
+                              },
                               spawnPosition: _getSpawnPosition(),
                             ),
 
                           // Info overlay (shortcuts, etc.)
+                          // Debug mode indicator
+                          if (showDebugHitboxes)
+                            Positioned(
+                              top: 16,
+                              right: 16,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.8),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: Colors.red, width: 2),
+                                ),
+                                child: const Text(
+                                  'DEBUG MODE',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+
                           Positioned(
                             bottom: 16,
                             right: 16,
@@ -881,6 +944,8 @@ class _GraphEditorState extends State<GraphEditor>
                               .firstOrNull
                         : null,
                     onNodeUpdated: _updateNode,
+                    onPanelClosed: _handleInspectorPanelClosed,
+                    onEditingChanged: _setEditingProperties,
                   ),
                 ),
               ],
@@ -1032,6 +1097,7 @@ class _GraphEditorState extends State<GraphEditor>
   }
 
   void _handleKeyEvent(KeyEvent event) {
+    print('Key event received: ${event.runtimeType} - ${event.logicalKey.keyLabel}');
     if (event is KeyDownEvent) {
       _pressedKeys.add(event.logicalKey);
       _processKeyboardShortcuts();
@@ -1041,9 +1107,22 @@ class _GraphEditorState extends State<GraphEditor>
   }
 
   void _processKeyboardShortcuts() {
+    // Skip keyboard shortcuts if editing properties
+    if (isEditingProperties) {
+      print('Skipping shortcuts - editing properties');
+      return;
+    }
+    
+    // Skip keyboard shortcuts if command palette is open
+    if (showCommandPalette) {
+      print('Skipping shortcuts - command palette open');
+      return;
+    }
+    
     // Debug print to see what keys are pressed
     if (_pressedKeys.isNotEmpty) {
       print('Pressed keys: ${_pressedKeys.map((k) => k.keyLabel).join(', ')}');
+      print('Keyboard focus has focus: ${_keyboardFocusNode.hasFocus}');
     }
 
     if (KeyboardShortcuts.isPressed('delete', _pressedKeys)) {
@@ -1087,6 +1166,11 @@ class _GraphEditorState extends State<GraphEditor>
     } else if (KeyboardShortcuts.isPressed('selectAll', _pressedKeys)) {
       print('Select all shortcut detected');
       _selectAll();
+    } else if (KeyboardShortcuts.isPressed('debug', _pressedKeys)) {
+      print('Debug toggle shortcut detected');
+      setState(() {
+        showDebugHitboxes = !showDebugHitboxes;
+      });
     }
   }
 
@@ -1107,21 +1191,49 @@ class _GraphEditorState extends State<GraphEditor>
     }
     // Left click detection - button 1 is left mouse button
     else if (event.buttons == 1) {
-      // Check if clicking on empty space (not on a node)
-      final clickedNode = _getNodeAtPosition(event.localPosition);
-      if (clickedNode == null && !isDraggingNode && !isConnecting) {
-        // Start mouse drag panning
-        isMouseDragging = true;
-        mouseDragStartPosition = event.localPosition;
+      // Only start panning if clicking on empty space and not already doing something else
+      // Let the tap handler deal with all node/port interactions
+      if (!isDraggingNode && !isConnecting) {
+        // Check if clicking on empty space (not on a node)
+        final clickedNode = _getNodeAtPosition(event.localPosition);
+        if (clickedNode == null) {
+          // Start mouse drag panning only for empty space
+          isMouseDragging = true;
+          mouseDragStartPosition = event.localPosition;
+        }
       }
     }
   }
 
   void _handlePointerMove(PointerMoveEvent event) {
+    // Ensure focus for keyboard shortcuts
+    if (!_keyboardFocusNode.hasFocus) {
+      _keyboardFocusNode.requestFocus();
+    }
+    
     // Update current mouse position for connection preview without setState
     currentMousePosition = event.localPosition;
 
-    // Handle mouse drag panning
+    // Update hover state for ports
+    _updatePortHoverState(event.localPosition);
+
+    // PRIORITY 1: Update pending connection if we're connecting
+    if (isConnecting &&
+        connectingFromNodeId != null &&
+        connectingFromPortId != null) {
+      final graphPosition = _screenToGraph(event.localPosition);
+      pendingConnection = PendingConnection(
+        fromNodeId: connectingFromNodeId!,
+        fromPortId: connectingFromPortId!,
+        currentPosition: graphPosition,
+      );
+
+      // Only call setState for connection updates to trigger repaint
+      setState(() {});
+      return; // Exit early to prevent panning interference
+    }
+
+    // PRIORITY 2: Handle mouse drag panning
     if (isMouseDragging && mouseDragStartPosition != null) {
       final delta = event.localPosition - mouseDragStartPosition!;
       
@@ -1143,7 +1255,7 @@ class _GraphEditorState extends State<GraphEditor>
       return;
     }
 
-    // Alternative mouse drag detection - if pointer is down and we're not doing anything else
+    // PRIORITY 3: Alternative mouse drag detection - if pointer is down and we're not doing anything else
     if (isPointerDown && !isDraggingNode && !isConnecting && mouseDragStartPosition != null) {
       final delta = event.localPosition - mouseDragStartPosition!;
       
@@ -1164,21 +1276,6 @@ class _GraphEditorState extends State<GraphEditor>
         mouseDragStartPosition = event.localPosition;
       }
       return;
-    }
-
-    // Update pending connection if we're connecting
-    if (isConnecting &&
-        connectingFromNodeId != null &&
-        connectingFromPortId != null) {
-      final graphPosition = _screenToGraph(event.localPosition);
-      pendingConnection = PendingConnection(
-        fromNodeId: connectingFromNodeId!,
-        fromPortId: connectingFromPortId!,
-        currentPosition: graphPosition,
-      );
-
-      // Only call setState for connection updates to trigger repaint
-      setState(() {});
     }
   }
 
@@ -1262,6 +1359,7 @@ class _GraphEditorState extends State<GraphEditor>
       showCommandPalette = true;
       showContextMenu = false;
     });
+    print('Command palette opened - shortcuts disabled');
   }
 
   Offset _getSpawnPosition() {
@@ -1284,6 +1382,13 @@ class _GraphEditorState extends State<GraphEditor>
       nodes.add(newNode);
       showCommandPalette = false;
     });
+    
+    print('Node added from palette - restoring shortcuts');
+    // Restore focus for keyboard shortcuts after adding node
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+      _keyboardFocusNode.requestFocus();
+    });
 
     widget.onNodeAdded?.call(newNode);
 
@@ -1301,6 +1406,25 @@ class _GraphEditorState extends State<GraphEditor>
         nodes[index] = updatedNode;
       }
     });
+  }
+
+  void _handleInspectorPanelClosed() {
+    // Auto-save when the inspector panel is closed
+    _autoSaveGraph();
+  }
+
+  void _setEditingProperties(bool editing) {
+    setState(() {
+      isEditingProperties = editing;
+    });
+    
+    // If we're not editing properties, ensure the main widget has focus for keyboard shortcuts
+    if (!editing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _focusNode.requestFocus();
+        _keyboardFocusNode.requestFocus();
+      });
+    }
   }
 
   void _duplicateSelectedNode() {
@@ -1338,6 +1462,8 @@ class _GraphEditorState extends State<GraphEditor>
     setState(() {
       selectedNodeId = null;
       hoveredNodeId = null;
+      hoveredPortNodeId = null;
+      hoveredPortId = null;
       // Also clear connection state if deselecting
       if (isConnecting) {
         isConnecting = false;
@@ -1346,6 +1472,54 @@ class _GraphEditorState extends State<GraphEditor>
         pendingConnection = null;
       }
     });
+  }
+
+  void _updatePortHoverState(Offset screenPosition) {
+    final graphPosition = _screenToGraph(screenPosition);
+    
+    // Check if hovering over any port
+    for (final node in nodes) {
+      if (node.containsWithPorts(graphPosition - node.position)) {
+        final nodeLocalPos = graphPosition - node.position;
+        final portId = node.getPortAt(nodeLocalPos);
+        
+        if (portId != null) {
+          // Update hover state
+          if (hoveredPortNodeId != node.id || hoveredPortId != portId) {
+            setState(() {
+              hoveredPortNodeId = node.id;
+              hoveredPortId = portId;
+              hoveredNodeId = null; // Clear node hover when hovering port
+            });
+          }
+          return;
+        }
+      }
+    }
+    
+    // Check if hovering over any node (but not a port)
+    for (final node in nodes) {
+      if (node.rect.contains(graphPosition)) {
+        // Update node hover state
+        if (hoveredNodeId != node.id) {
+          setState(() {
+            hoveredNodeId = node.id;
+            hoveredPortNodeId = null;
+            hoveredPortId = null;
+          });
+        }
+        return;
+      }
+    }
+    
+    // Clear all hover states if not over any node or port
+    if (hoveredNodeId != null || hoveredPortNodeId != null || hoveredPortId != null) {
+      setState(() {
+        hoveredNodeId = null;
+        hoveredPortNodeId = null;
+        hoveredPortId = null;
+      });
+    }
   }
 
   void _resetView() {
@@ -1362,10 +1536,10 @@ class _GraphEditorState extends State<GraphEditor>
     double minX = nodes.first.position.dx;
     double minY = nodes.first.position.dy;
     double maxX = nodes.first.position.dx + 150;
-    double maxY = nodes.first.position.dy + 80;
+    double maxY = nodes.first.position.dy + 100;
 
     for (final node in nodes) {
-      final nodeSize = node.size ?? const Size(150, 80);
+      final nodeSize = node.size ?? const Size(150, 100);
       minX = math.min(minX, node.position.dx);
       minY = math.min(minY, node.position.dy);
       maxX = math.max(maxX, node.position.dx + nodeSize.width);
@@ -1398,6 +1572,50 @@ class _GraphEditorState extends State<GraphEditor>
         canvasSize.width / 2 - centerX * scale,
         canvasSize.height / 2 - centerY * scale,
       );
+    });
+  }
+
+  bool _isValidConnection(String toNodeId, String toPortId) {
+    if (!isConnecting ||
+        connectingFromNodeId == null ||
+        connectingFromPortId == null) {
+      return false;
+    }
+
+    // Can't connect to the same node
+    if (connectingFromNodeId == toNodeId) return false;
+
+    final fromNode = nodes
+        .where((n) => n.id == connectingFromNodeId)
+        .firstOrNull;
+    final toNode = nodes.where((n) => n.id == toNodeId).firstOrNull;
+
+    if (fromNode == null || toNode == null) return false;
+
+    final fromPortType = fromNode.getPortType(connectingFromPortId!);
+    final toPortType = toNode.getPortType(toPortId);
+
+    // Source must be output, target must be input
+    if (fromPortType != false || toPortType != true) return false;
+
+    // Check if connection already exists
+    final existingConnection = connections.any(
+      (c) =>
+          c.fromNodeId == fromNode.id &&
+          c.fromPortId == connectingFromPortId &&
+          c.toNodeId == toNode.id &&
+          c.toPortId == toPortId,
+    );
+
+    return !existingConnection;
+  }
+
+  void _cancelConnection() {
+    setState(() {
+      isConnecting = false;
+      connectingFromNodeId = null;
+      connectingFromPortId = null;
+      pendingConnection = null;
     });
   }
 
@@ -1437,30 +1655,59 @@ class _GraphEditorState extends State<GraphEditor>
             c.toPortId == toPort.id,
       );
 
-      if (!existingConnection) {
-        setState(() {
-          connections.add(
-            GraphConnection(
-              id: 'connection_${DateTime.now().millisecondsSinceEpoch}',
-              fromNodeId: fromNode.id,
-              fromPortId: fromPort.id,
-              toNodeId: toNode.id,
-              toPortId: toPort.id,
-            ),
+        if (!existingConnection) {
+          final newConnection = GraphConnection(
+            id: 'connection_${DateTime.now().millisecondsSinceEpoch}',
+            fromNodeId: fromNode.id,
+            fromPortId: fromPort.id,
+            toNodeId: toNode.id,
+            toPortId: toPort.id,
           );
-        });
 
-        // Auto-save after creating connection
-        _autoSaveGraph();
-      }
+          setState(() {
+            connections.add(newConnection);
+          });
+
+          // Animate the connection drawing
+          _animateConnectionDrawing(newConnection);
+
+          // Auto-save after creating connection
+          _autoSaveGraph();
+        }
     }
 
-    // Reset connection state
+    // Reset connection state and clear selection
     setState(() {
       isConnecting = false;
       connectingFromNodeId = null;
       connectingFromPortId = null;
       pendingConnection = null;
+      selectedNodeId = null; // Clear selection after connecting
+      hoveredPortNodeId = null;
+      hoveredPortId = null;
+    });
+  }
+
+  void _animateConnectionDrawing(GraphConnection connection) {
+    _animatingConnectionId = connection.id;
+    
+    _connectionAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _connectionAnimationController!,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    _connectionAnimation!.addListener(() {
+      setState(() {
+        // Trigger repaint for animation
+      });
+    });
+
+    _connectionAnimationController!.forward().then((_) {
+      // Animation completed
+      _animatingConnectionId = null;
+      _connectionAnimation = null;
     });
   }
 
@@ -1469,90 +1716,96 @@ class _GraphEditorState extends State<GraphEditor>
     print(
       '🔍 Tap: screen=${details.localPosition} → graph=$localPosition (connecting: $isConnecting)',
     );
+    print('Scale: $scale, PanOffset: $panOffset');
 
-    // Check if tapping on a node
+    // Check if tapping on a node (including extended port areas)
     for (final node in nodes.reversed) {
       print('\nChecking node: ${node.name} (${node.id})');
       print('Node rect: ${node.rect}');
       print('Node position: ${node.position}');
       print('Contains point: ${node.rect.contains(localPosition)}');
+      print('Contains with ports: ${node.containsWithPorts(localPosition - node.position)}');
 
-      if (node.rect.contains(localPosition)) {
-        final nodeLocalPos = localPosition - node.position;
-        print('Node local position: $nodeLocalPos');
+        if (node.containsWithPorts(localPosition - node.position)) {
+          final nodeLocalPos = localPosition - node.position;
+          print('Node local position: $nodeLocalPos');
 
-        final portId = node.getPortAt(nodeLocalPos);
-        print('Port ID found: $portId');
+          // Check if clicking on a port first
+          final portId = node.getPortAt(nodeLocalPos);
+          print('Port ID found: $portId');
 
-        // Debug all ports
-        print(
-          'Input ports: ${node.inputs.map((p) => '${p.id}(${p.name})').join(', ')}',
-        );
-        print(
-          'Output ports: ${node.outputs.map((p) => '${p.id}(${p.name})').join(', ')}',
-        );
+          if (portId != null) {
+            // Find the port and check if it's input or output
+            GraphPort? foundPort;
+            bool isInputPort = false;
 
-        if (portId != null) {
-          // Find the port and check if it's input or output
-          GraphPort? foundPort;
-          bool isInputPort = false;
-
-          // Check in inputs first
-          for (final port in node.inputs) {
-            if (port.id == portId) {
-              foundPort = port;
-              isInputPort = true;
-              break;
-            }
-          }
-
-          // If not found in inputs, check outputs
-          if (foundPort == null) {
-            for (final port in node.outputs) {
+            // Check in inputs first
+            for (final port in node.inputs) {
               if (port.id == portId) {
                 foundPort = port;
-                isInputPort = false;
+                isInputPort = true;
                 break;
               }
             }
-          }
 
-          print('Found port: ${foundPort?.name} (ID: ${foundPort?.id})');
-          print('Is input port: $isInputPort');
+            // If not found in inputs, check outputs
+            if (foundPort == null) {
+              for (final port in node.outputs) {
+                if (port.id == portId) {
+                  foundPort = port;
+                  isInputPort = false;
+                  break;
+                }
+              }
+            }
 
-          if (foundPort != null) {
-            if (!isInputPort) {
-              // Starting a connection from output port
-              print('STARTING CONNECTION from output port');
-              setState(() {
-                isConnecting = true;
-                connectingFromNodeId = node.id;
-                connectingFromPortId = portId;
-                currentMousePosition = details.localPosition;
+            print('Found port: ${foundPort?.name} (ID: ${foundPort?.id})');
+            print('Is input port: $isInputPort');
 
-                pendingConnection = PendingConnection(
-                  fromNodeId: node.id,
-                  fromPortId: portId,
-                  currentPosition: localPosition,
-                );
-              });
-              print('Connection state set - isConnecting: $isConnecting');
-              return;
-            } else {
-              // If we're already connecting and clicked on input port, try to complete connection
-              print('Clicked on input port - isConnecting: $isConnecting');
-              if (isConnecting &&
-                  connectingFromNodeId != null &&
-                  connectingFromPortId != null) {
-                print('COMPLETING CONNECTION to input port');
-                _completeConnection(node.id, portId);
+            if (foundPort != null) {
+              if (!isInputPort) {
+                // Starting a connection from output port
+                print('STARTING CONNECTION from output port');
+                setState(() {
+                  isConnecting = true;
+                  connectingFromNodeId = node.id;
+                  connectingFromPortId = portId;
+                  currentMousePosition = details.localPosition;
+
+                  pendingConnection = PendingConnection(
+                    fromNodeId: node.id,
+                    fromPortId: portId,
+                    currentPosition: localPosition,
+                  );
+                  
+                  // Prevent panning from interfering with connection
+                  isMouseDragging = false;
+                  mouseDragStartPosition = null;
+                });
+                print('Connection state set - isConnecting: $isConnecting');
                 return;
+              } else {
+                // If we're already connecting and clicked on input port, try to complete connection
+                print('Clicked on input port - isConnecting: $isConnecting');
+                if (isConnecting &&
+                    connectingFromNodeId != null &&
+                    connectingFromPortId != null) {
+                  // Validate connection before completing
+                  if (_isValidConnection(node.id, portId)) {
+                    print('COMPLETING CONNECTION to input port');
+                    _completeConnection(node.id, portId);
+                  } else {
+                    print('Invalid connection - cancelling');
+                    _cancelConnection();
+                  }
+                  return;
+                }
               }
             }
           }
-        } else {
-          // Clicked on node body (not on a port)
-          print('Clicked on node body (no port detected)');
+          
+          // If no port was clicked, or if we're not connecting, select the node
+          print('Clicked on node body - selecting node');
           if (!isConnecting) {
             print('Starting node drag');
             // Start dragging node
@@ -1565,13 +1818,16 @@ class _GraphEditorState extends State<GraphEditor>
             return;
           }
         }
-      }
     }
 
     // Clicked on empty space - deselect and cancel operations
     _deselectAll();
     setState(() {
       showContextMenu = false;
+      // Also cancel any pending connection when clicking on empty space
+      if (isConnecting) {
+        _cancelConnection();
+      }
     });
     print('=== END TAP DOWN DEBUG ===\n');
   }
@@ -1631,7 +1887,7 @@ class _GraphEditorState extends State<GraphEditor>
         if (nodeIndex != -1) {
           final graphPoint = _screenToGraph(details.localFocalPoint);
           final uncConstrainedPosition = graphPoint - dragStartOffset!;
-          final nodeSize = nodes[nodeIndex].size ?? const Size(150.0, 80.0);
+          final nodeSize = nodes[nodeIndex].size ?? const Size(150.0, 100.0);
           final constrainedPosition = _constrainNodePosition(
             uncConstrainedPosition,
             nodeSize,
@@ -1699,7 +1955,7 @@ class _GraphEditorState extends State<GraphEditor>
 
       // Check if ending on a valid input port
       for (final node in nodes) {
-        if (node.rect.contains(localPosition)) {
+        if (node.containsWithPorts(localPosition - node.position)) {
           final nodeLocalPos = localPosition - node.position;
           final portId = node.getPortAt(nodeLocalPos);
 
@@ -1820,7 +2076,7 @@ class _GraphEditorState extends State<GraphEditor>
       minX = math.min(minX, node.position.dx);
       maxX = math.max(maxX, node.position.dx + (node.size?.width ?? 150.0));
       minY = math.min(minY, node.position.dy);
-      maxY = math.max(maxY, node.position.dy + (node.size?.height ?? 80.0));
+      maxY = math.max(maxY, node.position.dy + (node.size?.height ?? 100.0));
     }
 
     // Add padding around content

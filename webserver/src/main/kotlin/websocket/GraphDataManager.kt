@@ -16,7 +16,7 @@ class GraphDataManager {
     private val workspacesDir = "$baseDataDir/workspaces"
     private val filesDir = "$baseDataDir/files"
 
-    // Configured JSON instance to handle unknown keys gracefully
+
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -29,6 +29,9 @@ class GraphDataManager {
         File(workspacesDir).mkdirs()
         File(filesDir).mkdirs()
         FlowLogger.debug("GraphDataManager initialized with directories: graphs=$graphsDir, workspaces=$workspacesDir, files=$filesDir")
+
+
+        preloadAllGraphs()
     }
 
     fun saveGraph(graphId: String, graphData: GraphData): Boolean {
@@ -102,6 +105,32 @@ class GraphDataManager {
         } catch (e: Exception) {
             FlowLogger.debug("Failed to save file $path: ${e.message}")
             false
+        }
+    }
+
+    private fun preloadAllGraphs() {
+        try {
+            val graphFiles = File(graphsDir).listFiles()
+                ?.filter { it.extension == "json" }
+                ?: emptyList()
+
+            FlowLogger.debug("Pre-loading ${graphFiles.size} graphs into memory...")
+
+            graphFiles.forEach { file ->
+                try {
+                    val graphId = file.nameWithoutExtension
+                    val jsonString = file.readText()
+                    val graphData = json.decodeFromString(GraphData.serializer(), jsonString)
+                    graphs[graphId] = graphData
+                    FlowLogger.debug("Pre-loaded graph: $graphId with ${graphData.nodes.size} nodes")
+                } catch (e: Exception) {
+                    FlowLogger.debug("Failed to pre-load graph ${file.name}: ${e.message}")
+                }
+            }
+
+            FlowLogger.debug("Pre-loading complete. ${graphs.size} graphs now in memory.")
+        } catch (e: Exception) {
+            FlowLogger.debug("Error during graph pre-loading: ${e.message}")
         }
     }
 

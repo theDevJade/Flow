@@ -1,0 +1,122 @@
+# Test FlowLang Script for Frontend Integration
+# This demonstrates FlowLang's event-driven nature and syntax highlighting
+
+print("🚀 Hello from FlowLang in the frontend!")
+
+# Test variables with different types
+var name: String = "FlowLang User"
+var age: Number = 25
+var isActive: Boolean = true
+var score: Number = 95.5
+
+print("Name: " + name)
+print("Age: " + age)
+print("Active: " + isActive)
+print("Score: " + score)
+
+# Test conditional logic
+if (age > 18) {
+    print("✅ User is an adult")
+} else {
+    print("❌ User is a minor")
+}
+
+# Test complex conditions
+if (score >= 90 and isActive) {
+    print("🌟 Excellent performance!")
+} else if (score >= 70 or not isActive) {
+    print("📈 Good performance")
+} else {
+    print("📚 Needs improvement")
+}
+
+# Test function definition with parameters
+function greet(userName: String, userAge: Number) {
+    return "Hello, " + userName + "! You are " + userAge + " years old."
+}
+
+# Test function call
+var greeting = greet(name, age)
+print(greeting)
+
+# Test mathematical operations
+var x = 10
+var y = 20
+var sum = x + y
+var product = x * y
+var division = y / x
+var remainder = y % x
+
+print("Sum: " + sum)
+print("Product: " + product)
+print("Division: " + division)
+print("Remainder: " + remainder)
+
+# Test loop with counter
+var i = 1
+while (i <= 5) {
+    print("Count: " + i)
+    i = i + 1
+}
+
+# Test class definition
+class Person {
+    var name: String
+    var age: Number
+    
+    function Person(personName: String, personAge: Number) {
+        this.name = personName
+        this.age = personAge
+    }
+    
+    function introduce() {
+        return "Hi, I'm " + this.name + " and I'm " + this.age + " years old."
+    }
+    
+    function isAdult() {
+        return this.age >= 18
+    }
+}
+
+# Test object creation and method calls
+var person = new Person("Alice", 30)
+print(person.introduce())
+print("Is adult: " + person.isAdult())
+
+# Test event handler (FlowLang's event-driven nature)
+on userLogin {
+    print("🎉 User logged in: " + username)
+    print("Login time: " + loginTime)
+}
+
+# Test trigger event
+trigger userLogin
+
+# Test array/list operations
+var numbers: List = [1, 2, 3, 4, 5]
+var total = 0
+var j = 0
+while (j < numbers.length) {
+    total = total + numbers[j]
+    j = j + 1
+}
+print("Sum of numbers: " + total)
+
+# Test string operations
+var message = "FlowLang is awesome!"
+var length = message.length
+print("Message length: " + length)
+
+# Test boolean operations
+var condition1 = true
+var condition2 = false
+var result1 = condition1 and condition2
+var result2 = condition1 or condition2
+var result3 = not condition1
+
+print("True and False: " + result1)
+print("True or False: " + result2)
+print("Not True: " + result3)
+
+print("🎯 FlowLang test completed successfully!")
+print("✨ All syntax highlighting should be working perfectly!")

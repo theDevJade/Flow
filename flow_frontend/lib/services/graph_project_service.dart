@@ -105,7 +105,7 @@ class GraphProjectService {
       _projects =
           projectsList.map((json) => GraphProject.fromJson(json)).toList();
 
-      // Sort by modified date (newest first)
+
       _projects.sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));
 
       print('Loaded ${_projects.length} graph projects');
@@ -144,7 +144,7 @@ class GraphProjectService {
       graphData: initialGraphData ?? {},
     );
 
-    _projects.insert(0, project); // Add to beginning (newest first)
+    _projects.insert(0, project);
     await _saveProjectsToStorage();
     _projectsController.add(_projects);
 
@@ -169,7 +169,7 @@ class GraphProjectService {
       modifiedAt: DateTime.now(),
     );
 
-    // Resort by modified date
+
     _projects.sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));
 
     await _saveProjectsToStorage();

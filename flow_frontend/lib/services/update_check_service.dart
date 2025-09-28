@@ -95,8 +95,8 @@ class UpdateCheckService {
       ),
     ];
 
-    // For demo, randomly pick a scenario or always show update available
-    return scenarios.first; // Always show update available for demo
+
+    return scenarios.first;
   }
 }
 

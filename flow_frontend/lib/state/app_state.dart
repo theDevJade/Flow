@@ -7,6 +7,7 @@ import '../services/graph_persistence_service.dart';
 import '../services/flutter_log_service.dart';
 import '../graph_editor/node_template_service.dart';
 import '../services/graph_project_service.dart';
+import '../services/flowlang_execution_service.dart';
 import 'package:flow_frontend/state/file_system_state.dart' as fs;
 import 'package:flow_frontend/state/workspace_state.dart';
 import 'package:flow_frontend/state/workspace_manager.dart';
@@ -233,6 +234,14 @@ class AppState with ChangeNotifier {
         case 'file_saved':
 
           break;
+        case 'flowlang_execution_result':
+
+          FlowLangExecutionService.instance.handleExecutionResult(message);
+          break;
+        case 'flowlang_execution_error':
+
+          FlowLangExecutionService.instance.handleExecutionError(message);
+          break;
         default:
           debugPrint('AppState: Unhandled message type: ${message.type}');
           break;
@@ -383,7 +392,7 @@ class AppState with ChangeNotifier {
 
       GraphPersistenceService.instance.createGraph(graphId, workspaceId: workspaceId);
 
-      // Add a log entry for this action
+
       _flutterLogService.addCustomLog(
         'GRAPH_CREATION',
         'Auto-created missing graph: $graphId in workspace: $workspaceId (correlationId: $correlationId)',

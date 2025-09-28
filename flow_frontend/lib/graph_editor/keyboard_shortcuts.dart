@@ -56,6 +56,7 @@ class KeyboardShortcuts {
         'resetZoom': [LogicalKeyboardKey.keyR],
         'home': [LogicalKeyboardKey.keyH],
         'commandPalette': [primaryModifier, LogicalKeyboardKey.space],
+        'debug': [LogicalKeyboardKey.keyD],
       };
 
   static bool isPressed(String shortcut, Set<LogicalKeyboardKey> pressed) {
@@ -100,6 +101,7 @@ class KeyboardShortcuts {
       '${getShortcutDisplay('deselect')}: Deselect',
       '${getShortcutDisplay('resetZoom')}: Reset View',
       '${getShortcutDisplay('home')}: Frame All',
+      '${getShortcutDisplay('debug')}: Toggle Debug Hitboxes',
       '${getShortcutDisplay('zoomIn')}/${getShortcutDisplay('zoomOut')}: Zoom',
       'Mouse Wheel: Zoom',
     ];
