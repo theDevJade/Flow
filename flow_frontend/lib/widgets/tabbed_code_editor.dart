@@ -4,7 +4,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
 import '../models/open_file.dart';
 import '../state/app_state.dart';
-import 'editor/advanced_code_editor.dart';
+import 'editor/monaco_editor_widget.dart';
+import 'flowlang_execution_panel.dart';
 
 class TabbedCodeEditor extends StatefulWidget {
   const TabbedCodeEditor({super.key});
@@ -14,10 +15,27 @@ class TabbedCodeEditor extends StatefulWidget {
 }
 
 class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
+  bool _showExecutionPanel = false;
+
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppState>(
-      builder: (context, appState, child) {
+    return KeyboardListener(
+      focusNode: FocusNode(),
+      onKeyEvent: (KeyEvent event) {
+        // Handle Cmd+S (macOS) or Ctrl+S (Windows/Linux)
+        if (event is KeyDownEvent) {
+          final isCmdOrCtrl = HardwareKeyboard.instance.isMetaPressed || HardwareKeyboard.instance.isControlPressed;
+          if (isCmdOrCtrl && event.logicalKey == LogicalKeyboardKey.keyS) {
+            final appState = context.read<AppState>();
+            final activeFile = appState.fileSystemState.activeFile;
+            if (activeFile != null) {
+              _triggerSave(activeFile);
+            }
+          }
+        }
+      },
+      child: Consumer<AppState>(
+        builder: (context, appState, child) {
         final fileSystemState = appState.fileSystemState;
         final openFiles = fileSystemState.openFiles;
         final activeFile = fileSystemState.activeFile;
@@ -45,9 +63,30 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
                   ? _buildCodeEditor(activeFile)
                   : _buildEmptyState(),
             ),
+            // FlowLang execution panel
+            if (activeFile != null && _isFlowLangFile(activeFile.fileExtension))
+              _buildFlowLangExecutionPanel(activeFile),
           ],
         );
-      },
+        },
+      ),
+    );
+  }
+
+  bool _isFlowLangFile(String extension) {
+    return extension.toLowerCase() == 'flowlang';
+  }
+
+  Widget _buildFlowLangExecutionPanel(OpenFile file) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      height: _showExecutionPanel ? 300 : 0,
+      child: _showExecutionPanel
+          ? FlowLangExecutionPanel(
+              code: file.content,
+              fileName: file.fileName,
+            )
+          : const SizedBox.shrink(),
     );
   }
 
@@ -63,6 +102,12 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
       child: Row(
         children: [
           const SizedBox(width: 8),
+          Icon(
+            _getFileIcon(file.fileName),
+            size: 16,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          ),
+          const SizedBox(width: 8),
           Text(
             file.fileName,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -70,6 +115,22 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
             ),
           ),
           const Spacer(),
+          // FlowLang execution toggle button
+          if (_isFlowLangFile(file.fileExtension))
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _showExecutionPanel = !_showExecutionPanel;
+                });
+              },
+              icon: Icon(
+                _showExecutionPanel ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
+                size: 16,
+              ),
+              tooltip: _showExecutionPanel ? 'Hide Execution Panel' : 'Show Execution Panel',
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+            ),
           IconButton(
             icon: Icon(
               Icons.save,
@@ -78,8 +139,8 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
                   ? Theme.of(context).colorScheme.primary
                   : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
             ),
-            tooltip: 'Save (Cmd+S)',
-            onPressed: file.isModified ? () => _triggerSave(file) : null,
+            tooltip: 'Save (Cmd+S) - Modified: ${file.isModified}',
+            onPressed: () => _triggerSave(file),
             iconSize: 16,
           ),
           const SizedBox(width: 4),
@@ -199,60 +260,51 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
       '📄 TabbedCodeEditor: Using language "$language" for extension "${file.fileExtension}"',
     );
 
-    return KeyboardListener(
-      focusNode: FocusNode(),
-      onKeyEvent: (KeyEvent event) {
-        if (event is KeyDownEvent) {
-          // Note: Save functionality is now handled directly in AdvancedCodeEditor
-          // through the onSave callback, so Cmd+S/Ctrl+S will be handled there
-        }
-      },
-      child: Container(
-        color: Theme.of(context).colorScheme.background,
-        child: AdvancedCodeEditor(
-          key: ValueKey('${file.path}_${file.content.length}'), // Prevent unnecessary rebuilds
-          content: file.content,
-          language: language,
-          onChanged: (text) {
-            // Only update if content actually changed to prevent infinite loops
-            if (text != file.content) {
-              debugPrint(
-                '📝 TabbedCodeEditor: Content changed for ${file.path}, new length: ${text.length}',
-              );
-              // Defer state update to avoid setState during build
-              SchedulerBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  context.read<AppState>().fileSystemState.updateFileContent(
-                    file.path,
-                    text,
-                  );
-                }
-              });
-            }
-          },
-          onSave: (content) {
-            debugPrint('💾 Saving file: ${file.path}');
-            try {
-              final webSocketService = context.read<AppState>().webSocketService;
-              webSocketService.sendMessage('write_file', {
-                'path': file.path,
-                'content': content,
-              });
-              context.read<AppState>().fileSystemState.markFileSaved(file.path);
-            } catch (e) {
-              debugPrint('Error saving file: $e');
-            }
-          },
-        ),
+    return Container(
+      color: Theme.of(context).colorScheme.background,
+      child: MonacoEditorWidget(
+        key: ValueKey('monaco_${file.path}_${file.content.length}'),
+        content: file.content,
+        language: language,
+        onChanged: (text) {
+          // Only update if content actually changed to prevent infinite loops
+          if (text != file.content) {
+            debugPrint(
+              '📝 TabbedCodeEditor: Content changed for ${file.path}, new length: ${text.length}, old length: ${file.content.length}',
+            );
+            // Defer state update to avoid setState during build
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                debugPrint('📝 TabbedCodeEditor: Updating file content and marking as modified');
+                context.read<AppState>().fileSystemState.updateFileContent(
+                  file.path,
+                  text,
+                );
+              }
+            });
+          } else {
+            debugPrint('📝 TabbedCodeEditor: Content unchanged, skipping update');
+          }
+        },
+        onSave: (content) {
+          debugPrint('💾 Saving file: ${file.path}');
+          try {
+            final webSocketService = context.read<AppState>().webSocketService;
+            webSocketService.sendMessage('write_file', {
+              'path': file.path,
+              'content': content,
+            });
+            context.read<AppState>().fileSystemState.markFileSaved(file.path);
+          } catch (e) {
+            debugPrint('Error saving file: $e');
+          }
+        },
       ),
     );
   }
 
   void _triggerSave(OpenFile file) {
-    // The save functionality is now handled directly by the AdvancedCodeEditor
-    // This method is just for the toolbar button - the actual save happens
-    // through keyboard shortcut handling in the editor
-    debugPrint('💾 Save triggered for: ${file.path}');
+    debugPrint('💾 Save triggered for: ${file.path} with content length: ${file.content.length}');
 
     // Send save request via WebSocket
     final webSocketService = context.read<AppState>().webSocketService;
@@ -300,6 +352,8 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
     switch (extension) {
       case 'dart':
         return Icons.code;
+      case 'flowlang':
+        return Icons.auto_fix_high; // Special icon for FlowLang
       case 'json':
         return Icons.data_object;
       case 'yaml':
@@ -315,6 +369,11 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
         return Icons.javascript;
       case 'ts':
         return Icons.code;
+      case 'kt':
+      case 'kts':
+        return Icons.code;
+      case 'py':
+        return Icons.code;
       default:
         return Icons.insert_drive_file;
     }
@@ -324,6 +383,8 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
     switch (extension.toLowerCase()) {
       case 'dart':
         return 'dart';
+      case 'flowlang':
+        return 'flowlang'; // FlowLang support
       case 'kt':
       case 'kts':
         return 'kotlin';
