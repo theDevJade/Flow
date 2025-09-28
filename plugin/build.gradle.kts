@@ -3,6 +3,7 @@ import xyz.jpenilla.resourcefactory.bukkit.BukkitPluginYaml
 plugins {
     `java-library`
     kotlin("jvm") version "2.2.20"
+    kotlin("plugin.serialization") version "2.2.20"
     id("com.gradleup.shadow") version "8.3.0"
     id("io.papermc.paperweight.userdev") version "2.0.0-beta.18"
     id("xyz.jpenilla.resource-factory-bukkit-convention") version "1.3.0" // Generates plugin.yml based on the Gradle config
@@ -27,6 +28,7 @@ dependencies {
     paperweight.paperDevBundle("1.21.8-R0.1-SNAPSHOT")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     compileOnly(project(":common"))
     compileOnly(project(":webserver"))
     compileOnly(project(":flow"))

@@ -31,7 +31,7 @@ class LogMessageActionNode : ActionNodeHandler {
         GraphPortDefinition("success", "boolean", "Whether the message was logged successfully", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val message = inputs["message"] as? String
         val level = inputs["level"] as? String ?: "info"
 
@@ -74,7 +74,7 @@ class DelayActionNode : ActionNodeHandler {
         GraphPortDefinition("completed", "boolean", "Whether the delay completed successfully", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val ticks = (inputs["ticks"] as? Number)?.toLong()
 
         if (ticks == null) {
@@ -123,7 +123,7 @@ class GetServerInfoActionNode : ActionNodeHandler {
         GraphPortDefinition("worlds", "array", "List of world names", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val server = Bukkit.getServer()
 
         val outputs = mutableMapOf<String, Any?>()
@@ -159,7 +159,7 @@ class CreateItemActionNode : ActionNodeHandler {
         GraphPortDefinition("item", "ItemStack", "The created item stack", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val material = inputs["material"] as? Material
         val amount = (inputs["amount"] as? Number)?.toInt() ?: 1
 
@@ -201,7 +201,7 @@ class GetMaterialActionNode : ActionNodeHandler {
         GraphPortDefinition("found", "boolean", "Whether the material was found", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val name = inputs["name"] as? String
 
         if (name == null) {
@@ -244,7 +244,7 @@ class GetWorldActionNode : ActionNodeHandler {
         GraphPortDefinition("found", "boolean", "Whether the world was found", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val name = inputs["name"] as? String
 
         if (name == null) {
@@ -284,7 +284,7 @@ class ConditionalActionNode : ActionNodeHandler {
         GraphPortDefinition("isTrue", "boolean", "Whether the condition was true", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val condition = inputs["condition"] as? Boolean
         val trueValue = inputs["trueValue"]
         val falseValue = inputs["falseValue"]
@@ -329,7 +329,7 @@ class OutputPropertiesActionNode : ActionNodeHandler {
         GraphPortDefinition("allInputs", "object", "All input values as an object", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val outputs = mutableMapOf<String, Any?>()
 
 
@@ -366,7 +366,7 @@ class StringValueActionNode : ActionNodeHandler {
         GraphPortDefinition("output", "string", "The string value", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val value = inputs["value"] as? String ?: "Hello World"
 
         val outputs = mutableMapOf<String, Any?>()

@@ -27,6 +27,7 @@ class MainFlowBackendSegment : FlowLoaderSegment() {
                 try {
                     WebSocketCaller.run()
                 } catch (e: InterruptedException) {
+                    FlowLogger.debug(name, "Backend thread interrupted during shutdown")
                 } catch (e: Exception) {
                     FlowLogger.error(name, "Backend crashed", e)
                 } finally {
@@ -41,10 +42,21 @@ class MainFlowBackendSegment : FlowLoaderSegment() {
     }
 
     override fun unload() {
-        FlowWebserver.killAll()
         running.set(false)
         workerThread?.interrupt()
-        workerThread?.join(5000)
+        
+        // Give the thread a moment to respond to interrupt
+        try {
+            Thread.sleep(100)
+        } catch (e: InterruptedException) {
+            // Ignore
+        }
+        
+        // Force kill the webserver if it's still running
+        FlowWebserver.killAll()
+        
+        // Wait for the thread to finish with a longer timeout
+        workerThread?.join(10000)
         workerThread = null
     }
 }

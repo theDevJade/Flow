@@ -30,7 +30,7 @@ class SendMessageActionNode : ActionNodeHandler {
         GraphPortDefinition("success", "boolean", "Whether the message was sent successfully", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val player = inputs["player"] as? Player
         val message = inputs["message"] as? String
 
@@ -71,7 +71,7 @@ class TeleportPlayerActionNode : ActionNodeHandler {
         GraphPortDefinition("success", "boolean", "Whether the teleport was successful", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val player = inputs["player"] as? Player
         val location = inputs["location"] as? Location
 
@@ -112,7 +112,7 @@ class GiveItemActionNode : ActionNodeHandler {
         GraphPortDefinition("success", "boolean", "Whether the item was given successfully", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val player = inputs["player"] as? Player
         val item = inputs["item"] as? ItemStack
 
@@ -152,7 +152,7 @@ class BroadcastMessageActionNode : ActionNodeHandler {
         GraphPortDefinition("success", "boolean", "Whether the broadcast was successful", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val message = inputs["message"] as? String
 
         if (message == null) {
@@ -192,7 +192,7 @@ class SetBlockActionNode : ActionNodeHandler {
         GraphPortDefinition("success", "boolean", "Whether the block was set successfully", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val location = inputs["location"] as? Location
         val material = inputs["material"] as? Material
 
@@ -233,7 +233,7 @@ class BreakBlockActionNode : ActionNodeHandler {
         GraphPortDefinition("material", "Material", "The material that was broken", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val location = inputs["location"] as? Location
 
         if (location == null) {
@@ -277,7 +277,7 @@ class CreateLocationActionNode : ActionNodeHandler {
         GraphPortDefinition("location", "Location", "The created location", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val world = inputs["world"] as? org.bukkit.World
         val x = (inputs["x"] as? Number)?.toDouble()
         val y = (inputs["y"] as? Number)?.toDouble()
@@ -320,7 +320,7 @@ class GetBlockActionNode : ActionNodeHandler {
         GraphPortDefinition("block", "Block", "The block object", true, "")
     )
 
-    override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+    override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val location = inputs["location"] as? Location
 
         if (location == null) {

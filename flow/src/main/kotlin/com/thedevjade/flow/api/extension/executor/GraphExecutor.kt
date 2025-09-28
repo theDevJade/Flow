@@ -11,6 +11,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -253,7 +256,9 @@ class GraphExecutor(
             when (handler) {
                 is ActionNodeHandler -> {
                     context.logger.info("Executing ActionNodeHandler for '${node.name}'")
-                    when (val result = handler.execute(inputs)) {
+
+                    val propertiesMap = convertPropertiesToMap(node.properties, context)
+                    when (val result = handler.execute(inputs, propertiesMap)) {
                         is ActionResult.Success -> {
                             context.logger.info(
                                 "ActionNode '${node.name}' succeeded with outputs: ${
@@ -398,6 +403,42 @@ class GraphExecutor(
 
     private fun generateExecutionId(): String = "exec_${executionIdGenerator.incrementAndGet()}"
 
+
+    private fun convertPropertiesToMap(properties: Any?, context: GraphExecutionContext): Map<String, Any?> {
+        return when (properties) {
+            is Map<*, *> -> properties as Map<String, Any?>
+            is JsonObject -> {
+                try {
+                    properties.mapValues { (_, value) ->
+                        when (value) {
+                            is JsonPrimitive -> {
+                                if (value.isString) {
+                                    value.content
+                                } else {
+
+                                    try {
+                                        value.content.toDoubleOrNull() ?: value.content
+                                    } catch (e: Exception) {
+                                        value.content
+                                    }
+                                }
+                            }
+                            is JsonArray -> value.map { it.toString() }
+                            is JsonObject -> value.toString()
+                            else -> value.toString()
+                        }
+                    }
+                } catch (e: Exception) {
+                    context.logger.warn("Failed to convert JsonObject properties: ${e.message}")
+                    emptyMap<String, Any?>()
+                }
+            }
+            else -> {
+                context.logger.warn("Unknown properties type: ${properties?.javaClass?.simpleName}")
+                emptyMap<String, Any?>()
+            }
+        }
+    }
 
     fun dispose() {
         activeExecutions.clear()

@@ -323,7 +323,7 @@ class SimpleExtensionRegistry(
             override val inputs: List<GraphPortDefinition> = inputs
             override val outputs: List<GraphPortDefinition> = outputs
 
-            override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+            override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
                 return try {
 
                     if (executeMethod != null) {
@@ -618,8 +618,29 @@ class SimpleExtensionRegistry(
     }
 
     private fun extractPropertiesFromHandler(handler: Any): List<NodeProperty> {
-        // @TODO support properties
-        return emptyList()
+
+
+        return when (handler.javaClass.simpleName) {
+            "StringOutputActionNode" -> listOf(
+                NodeProperty(
+                    name = "value",
+                    type = "string",
+                    description = "The string value to output",
+                    defaultValue = "Hello World",
+                    required = false
+                )
+            )
+            "NumberOutputActionNode" -> listOf(
+                NodeProperty(
+                    name = "value",
+                    type = "number",
+                    description = "The number value to output",
+                    defaultValue = 42,
+                    required = false
+                )
+            )
+            else -> emptyList()
+        }
     }
 
     fun dispose() {
@@ -659,5 +680,5 @@ interface ActionNodeHandler {
     val inputs: List<GraphPortDefinition>
     val outputs: List<GraphPortDefinition>
 
-    suspend fun execute(inputs: Map<String, Any?>): ActionResult
+    suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?> = emptyMap()): ActionResult
 }

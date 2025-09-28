@@ -6,6 +6,7 @@ import com.thedevjade.flow.extension.registry.TriggerNodeHandler
 import com.thedevjade.flow.flowPlugin.Flow
 import com.thedevjade.flow.flowPlugin.utils.logger
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.*
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -29,6 +30,7 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
     override val dependencies: List<String> = emptyList()
     private lateinit var context: ExtensionContext
     private val eventHandlers = mutableMapOf<String, FlowLangEventHandler>()
+    private val graphDataManager = com.thedevjade.flow.webserver.websocket.GraphDataManager()
 
     override fun initialize(context: ExtensionContext) {
         this.context = context
@@ -700,7 +702,8 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
         registerActionNodeDirect(com.thedevjade.flow.flowPlugin.builtinextensions.nodes.GetWorldActionNode())
         registerActionNodeDirect(com.thedevjade.flow.flowPlugin.builtinextensions.nodes.ConditionalActionNode())
         registerActionNodeDirect(com.thedevjade.flow.flowPlugin.builtinextensions.nodes.OutputPropertiesActionNode())
-        registerActionNodeDirect(com.thedevjade.flow.flowPlugin.builtinextensions.nodes.StringValueActionNode())
+        registerActionNodeDirect(com.thedevjade.flow.flowPlugin.builtinextensions.nodes.StringOutputActionNode())
+        registerActionNodeDirect(com.thedevjade.flow.flowPlugin.builtinextensions.nodes.NumberOutputActionNode())
 
 
         registerActionNodeDirect(com.thedevjade.flow.flowPlugin.builtinextensions.nodes.SendMessageActionNode())
@@ -724,7 +727,7 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
         registerActionNode(com.thedevjade.flow.flowPlugin.builtinextensions.nodes.PlayerItemConsumeTriggerNode())
         registerTriggerNodeDirect(com.thedevjade.flow.flowPlugin.builtinextensions.nodes.TestTriggerNode())
 
-        context.logger.info("Registered ${18} graph nodes (7 actions, 11 triggers)")
+        context.logger.info("Registered ${19} graph nodes (8 actions, 11 triggers)")
     }
 
     private fun registerActionNode(nodeHandler: GraphNodeHandler) {
@@ -740,7 +743,7 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
             override val inputs: List<GraphPortDefinition> = nodeHandler.inputs
             override val outputs: List<GraphPortDefinition> = nodeHandler.outputs
 
-            override suspend fun execute(inputs: Map<String, Any?>): ActionResult {
+            override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
                 return try {
 
                     val mockContext = object : GraphNodeContext {
@@ -821,7 +824,6 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
 
 
             try {
-                val graphDataManager = com.thedevjade.flow.webserver.websocket.GraphDataManager()
                 val graphIds = graphDataManager.listGraphs()
 
                 context.logger.info("📊 Found ${graphIds.size} JSON graphs to search...")
@@ -913,7 +915,7 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
                 name = node.name,
                 type = node.templateId ?: node.name,
                 position = com.thedevjade.flow.api.graph.Position(node.position.x, node.position.y),
-                properties = emptyMap(), // @todo properties need to be made available
+                properties = convertJsonObjectToMap(node.properties).mapValues { it.value ?: "" },
                 inputs = node.inputs.map { port ->
                     com.thedevjade.flow.api.graph.GraphPort(
                         id = port.id,
@@ -956,6 +958,33 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
             lastModifiedAt = System.currentTimeMillis(),
             version = 1
         )
+    }
+
+    private fun convertJsonObjectToMap(jsonObject: JsonObject): Map<String, Any?> {
+        return try {
+            jsonObject.mapValues { (_, value) ->
+                when (value) {
+                    is JsonPrimitive -> {
+                        if (value.isString) {
+                            value.content
+                        } else {
+                            // Try to parse as number
+                            try {
+                                value.content.toDoubleOrNull() ?: value.content
+                            } catch (e: Exception) {
+                                value.content
+                            }
+                        }
+                    }
+                    is JsonArray -> value.map { it.toString() }
+                    is JsonObject -> value.toString()
+                    else -> value.toString()
+                }
+            }
+        } catch (e: Exception) {
+            context.logger.warn("Failed to convert JsonObject properties: ${e.message}")
+            emptyMap<String, Any?>()
+        }
     }
 
     private fun triggerFlowLangEvent(eventName: String, vararg parameters: Any) {
