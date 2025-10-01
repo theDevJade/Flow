@@ -177,19 +177,68 @@ class FileSystemService {
   }
 
   Future<bool> createFile(String dirPath, String fileName) async {
+    final completer = Completer<bool>();
+    final requestId = 'create_${DateTime.now().millisecondsSinceEpoch}';
+
+
+    late StreamSubscription subscription;
+    subscription = _webSocketService.messages.listen((message) {
+      if (message.type == 'file_created' &&
+          message.data['path']?.toString().endsWith(fileName) == true) {
+        final success = message.data['success'] as bool? ?? false;
+        if (!completer.isCompleted) {
+          completer.complete(success);
+        }
+        subscription.cancel();
+      }
+    });
+
     _webSocketService.sendMessage('create_file', {
       'dirPath': dirPath,
       'fileName': fileName,
     });
-    return true;
+
+
+    Future.delayed(const Duration(seconds: 5), () {
+      if (!completer.isCompleted) {
+        completer.complete(false);
+        subscription.cancel();
+      }
+    });
+
+    return completer.future;
   }
 
   Future<bool> createDirectory(String parentPath, String dirName) async {
+    final completer = Completer<bool>();
+
+
+    late StreamSubscription subscription;
+    subscription = _webSocketService.messages.listen((message) {
+      if (message.type == 'directory_created' &&
+          message.data['path']?.toString().endsWith(dirName) == true) {
+        final success = message.data['success'] as bool? ?? false;
+        if (!completer.isCompleted) {
+          completer.complete(success);
+        }
+        subscription.cancel();
+      }
+    });
+
     _webSocketService.sendMessage('create_directory', {
       'parentPath': parentPath,
       'dirName': dirName,
     });
-    return true;
+
+
+    Future.delayed(const Duration(seconds: 5), () {
+      if (!completer.isCompleted) {
+        completer.complete(false);
+        subscription.cancel();
+      }
+    });
+
+    return completer.future;
   }
 
   Future<bool> deleteFile(String filePath) async {

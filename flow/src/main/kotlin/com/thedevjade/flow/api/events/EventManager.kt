@@ -1,9 +1,10 @@
 package com.thedevjade.flow.api.events
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 
@@ -149,36 +150,66 @@ data class EventMetrics(
 )
 
 
-
-
 sealed class UserEvent {
     data class UserConnected(val userId: String, val sessionId: String, val timestamp: Long) : UserEvent()
     data class UserDisconnected(val userId: String, val sessionId: String, val timestamp: Long) : UserEvent()
     data class UserAuthenticated(val userId: String, val username: String, val timestamp: Long) : UserEvent()
     data class UserProfileUpdated(val userId: String, val changes: Map<String, Any>, val timestamp: Long) : UserEvent()
-    data class UserPermissionsChanged(val userId: String, val permissions: Set<String>, val timestamp: Long) : UserEvent()
+    data class UserPermissionsChanged(val userId: String, val permissions: Set<String>, val timestamp: Long) :
+        UserEvent()
 }
 
 
 sealed class GraphEvent {
     data class GraphCreated(val graphId: String, val userId: String, val timestamp: Long) : GraphEvent()
     data class GraphDeleted(val graphId: String, val userId: String, val timestamp: Long) : GraphEvent()
-    data class GraphUpdated(val graphId: String, val userId: String, val updateType: String, val timestamp: Long) : GraphEvent()
-    data class GraphShared(val graphId: String, val ownerId: String, val sharedWithUserId: String, val timestamp: Long) : GraphEvent()
-    data class GraphCollaborationStarted(val graphId: String, val users: Set<String>, val timestamp: Long) : GraphEvent()
-    data class NodeAdded(val graphId: String, val nodeId: String, val userId: String, val timestamp: Long) : GraphEvent()
-    data class NodeUpdated(val graphId: String, val nodeId: String, val userId: String, val timestamp: Long) : GraphEvent()
-    data class NodeDeleted(val graphId: String, val nodeId: String, val userId: String, val timestamp: Long) : GraphEvent()
-    data class ConnectionAdded(val graphId: String, val connectionId: String, val userId: String, val timestamp: Long) : GraphEvent()
-    data class ConnectionDeleted(val graphId: String, val connectionId: String, val userId: String, val timestamp: Long) : GraphEvent()
+    data class GraphUpdated(val graphId: String, val userId: String, val updateType: String, val timestamp: Long) :
+        GraphEvent()
+
+    data class GraphShared(
+        val graphId: String,
+        val ownerId: String,
+        val sharedWithUserId: String,
+        val timestamp: Long
+    ) : GraphEvent()
+
+    data class GraphCollaborationStarted(val graphId: String, val users: Set<String>, val timestamp: Long) :
+        GraphEvent()
+
+    data class NodeAdded(val graphId: String, val nodeId: String, val userId: String, val timestamp: Long) :
+        GraphEvent()
+
+    data class NodeUpdated(val graphId: String, val nodeId: String, val userId: String, val timestamp: Long) :
+        GraphEvent()
+
+    data class NodeDeleted(val graphId: String, val nodeId: String, val userId: String, val timestamp: Long) :
+        GraphEvent()
+
+    data class ConnectionAdded(val graphId: String, val connectionId: String, val userId: String, val timestamp: Long) :
+        GraphEvent()
+
+    data class ConnectionDeleted(
+        val graphId: String,
+        val connectionId: String,
+        val userId: String,
+        val timestamp: Long
+    ) : GraphEvent()
 }
 
 
 sealed class WebSocketEvent {
     data class ConnectionOpened(val sessionId: String, val userId: String?, val timestamp: Long) : WebSocketEvent()
     data class ConnectionClosed(val sessionId: String, val userId: String?, val timestamp: Long) : WebSocketEvent()
-    data class MessageReceived(val sessionId: String, val messageType: String, val messageSize: Int, val timestamp: Long) : WebSocketEvent()
-    data class MessageSent(val sessionId: String, val messageType: String, val messageSize: Int, val timestamp: Long) : WebSocketEvent()
+    data class MessageReceived(
+        val sessionId: String,
+        val messageType: String,
+        val messageSize: Int,
+        val timestamp: Long
+    ) : WebSocketEvent()
+
+    data class MessageSent(val sessionId: String, val messageType: String, val messageSize: Int, val timestamp: Long) :
+        WebSocketEvent()
+
     data class ConnectionError(val sessionId: String, val error: String, val timestamp: Long) : WebSocketEvent()
     data class RateLimitExceeded(val sessionId: String, val userId: String?, val timestamp: Long) : WebSocketEvent()
 }

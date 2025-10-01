@@ -630,6 +630,7 @@ class SimpleExtensionRegistry(
                     required = false
                 )
             )
+
             "NumberOutputActionNode" -> listOf(
                 NodeProperty(
                     name = "value",
@@ -639,6 +640,7 @@ class SimpleExtensionRegistry(
                     required = false
                 )
             )
+
             else -> emptyList()
         }
     }

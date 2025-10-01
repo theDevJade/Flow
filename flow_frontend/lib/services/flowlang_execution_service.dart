@@ -79,12 +79,12 @@ class FlowLangExecutionService with ChangeNotifier {
 
     try {
       debugPrint('🚀 FlowLangExecutionService: Executing FlowLang code (${code.length} chars)');
-      
-      // Send execution request via WebSocket
+
+
       final result = await _executeViaWebSocket(code, fileName);
-      
+
       stopwatch.stop();
-      
+
       final executionResult = FlowLangExecutionResult(
         output: result.output,
         errors: result.errors,
@@ -93,18 +93,18 @@ class FlowLangExecutionService with ChangeNotifier {
         executionTime: stopwatch.elapsed,
       );
 
-      // Add to history
+
       _addToHistory(executionResult);
-      
-      // Notify listeners
+
+
       _executionController.add(executionResult);
-      
+
       debugPrint('✅ FlowLangExecutionService: Execution completed in ${executionResult.executionTime.inMilliseconds}ms');
-      
+
       return executionResult;
     } catch (e) {
       stopwatch.stop();
-      
+
       final errorResult = FlowLangExecutionResult(
         output: '',
         errors: ['Execution failed: $e'],
@@ -115,9 +115,9 @@ class FlowLangExecutionService with ChangeNotifier {
 
       _addToHistory(errorResult);
       _executionController.add(errorResult);
-      
+
       debugPrint('❌ FlowLangExecutionService: Execution failed: $e');
-      
+
       return errorResult;
     } finally {
       _isExecuting = false;
@@ -128,8 +128,8 @@ class FlowLangExecutionService with ChangeNotifier {
   Future<FlowLangExecutionResult> _executeViaWebSocket(String code, String? fileName) async {
     final completer = Completer<FlowLangExecutionResult>();
     final timeout = const Duration(seconds: 30);
-    
-    // Set up timeout
+
+
     Timer(timeout, () {
       if (!completer.isCompleted) {
         completer.complete(FlowLangExecutionResult(
@@ -142,34 +142,16 @@ class FlowLangExecutionService with ChangeNotifier {
       }
     });
 
-    // Listen for execution response
+
     late StreamSubscription subscription;
-    subscription = WebSocketService.instance.messages.listen((message) {
-      if (message.type == 'flowlang_execution_result') {
-        subscription.cancel();
-        
-        final result = FlowLangExecutionResult.fromJson(message.data);
-        if (!completer.isCompleted) {
-          completer.complete(result);
-        }
-      } else if (message.type == 'flowlang_execution_error') {
-        subscription.cancel();
-        
-        final result = FlowLangExecutionResult(
-          output: '',
-          errors: [message.data['error'] ?? 'Unknown execution error'],
-          logs: List<String>.from(message.data['logs'] ?? []),
-          success: false,
-          executionTime: Duration.zero,
-        );
-        
-        if (!completer.isCompleted) {
-          completer.complete(result);
-        }
+    subscription = _executionController.stream.listen((result) {
+      subscription.cancel();
+      if (!completer.isCompleted) {
+        completer.complete(result);
       }
     });
 
-    // Send execution request
+
     WebSocketService.instance.sendMessage('execute_flowlang', {
       'code': code,
       'fileName': fileName ?? 'untitled.flowlang',
@@ -181,8 +163,8 @@ class FlowLangExecutionService with ChangeNotifier {
 
   void _addToHistory(FlowLangExecutionResult result) {
     _executionHistory.add(result);
-    
-    // Keep only the most recent results
+
+
     if (_executionHistory.length > maxHistorySize) {
       _executionHistory.removeAt(0);
     }
@@ -201,7 +183,7 @@ class FlowLangExecutionService with ChangeNotifier {
     return _executionHistory.where((result) => result.success == success).toList();
   }
 
-  /// Handle execution result messages from WebSocket
+
   void handleExecutionResult(dynamic message) {
     try {
       final result = FlowLangExecutionResult.fromJson(message.data);
@@ -213,7 +195,7 @@ class FlowLangExecutionService with ChangeNotifier {
     }
   }
 
-  /// Handle execution error messages from WebSocket
+
   void handleExecutionError(dynamic message) {
     try {
       final result = FlowLangExecutionResult(

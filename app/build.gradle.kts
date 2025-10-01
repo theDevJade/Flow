@@ -20,7 +20,7 @@ dependencies {
     implementation(project(":lang"))
     shadow(project(":plugin"))
 
-    // Shadowed libraries for Bukkit runtime
+
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
     implementation("org.reflections:reflections:0.10.2")
@@ -36,19 +36,19 @@ tasks {
     }
 }
 
-// Configure shadowJar
+
 tasks.shadowJar {
     archiveBaseName.set("Flow")
     archiveClassifier.set("")
     archiveVersion.set(version.toString())
 
-    // Relocation (avoid classpath conflicts in Bukkit)
+
     relocate("kotlinx.coroutines", "dev.flow.libs.coroutines")
     relocate("org.reflections", "dev.flow.libs.reflections")
     relocate("io.netty", "dev.flow.libs.netty")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
-    // Optionally filter out specific META-INF files if still problematic
+
     exclude("META-INF/io.netty.versions.properties")
 }
 

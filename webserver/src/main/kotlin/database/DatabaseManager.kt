@@ -1,13 +1,13 @@
 package com.thedevjade.flow.webserver.database
 
-import com.thedevjade.flow.common.models.FlowLogger
 import com.thedevjade.flow.common.config.FlowConfiguration
+import com.thedevjade.flow.common.models.FlowLogger
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.sqlite.SQLiteDataSource
 import java.io.File
 import javax.sql.DataSource
-import org.sqlite.SQLiteDataSource
 
 object DatabaseManager {
     private var database: Database? = null

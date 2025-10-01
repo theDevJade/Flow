@@ -41,7 +41,7 @@ class CustomWidgetSpan extends WidgetSpan {
 
 class Highlighter {
   HashMap<String, Color> colorMap = HashMap<String, Color>();
-  String currentLanguage = 'cpp'; // Default language
+  String currentLanguage = 'cpp';
 
   Highlighter() {
     _setupCppHighlighting();
@@ -134,11 +134,11 @@ class Highlighter {
 
     colorMap['\\bon\\s+(\\w+)'] = function;
 
-    // Brackets and parentheses
-    colorMap['[{}()\\[\\]]'] = const Color(0xfff8f8f2); // Foreground color for brackets
 
-    // Semicolons and commas
-    colorMap['[;,.]'] = const Color(0xff88846f); // Comment color for punctuation
+    colorMap['[{}()\\[\\]]'] = const Color(0xfff8f8f2);
+
+
+    colorMap['[;,.]'] = const Color(0xff88846f);
   }
 
   void _setupCppHighlighting() {

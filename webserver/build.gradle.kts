@@ -51,7 +51,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.ktor:ktor-server-config-yaml")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
-    // SQLite database dependencies
+
     implementation("org.jetbrains.exposed:exposed-core:0.53.0")
     implementation("org.jetbrains.exposed:exposed-dao:0.53.0")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.53.0")

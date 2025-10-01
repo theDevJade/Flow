@@ -266,7 +266,7 @@ class GraphManager(
         ConnectionOperationResult.Success(connection)
     }
 
-    
+
     suspend fun deleteConnection(
         graphId: String,
         userId: String,
@@ -293,7 +293,7 @@ class GraphManager(
         true
     }
 
-    
+
     suspend fun shareGraph(
         graphId: String,
         ownerId: String,
@@ -314,7 +314,7 @@ class GraphManager(
         true
     }
 
-    
+
     suspend fun deleteGraph(graphId: String, userId: String): Boolean = graphMutex.withLock {
         val graph = graphs[graphId] ?: return false
 
@@ -332,7 +332,7 @@ class GraphManager(
         true
     }
 
-    
+
     private fun createVersion(graphId: String, userId: String, description: String, graph: FlowGraph) {
         val version = GraphVersion(
             versionNumber = graph.version,
@@ -345,12 +345,12 @@ class GraphManager(
         graphVersions.getOrPut(graphId) { mutableListOf() }.add(version)
     }
 
-    
+
     fun getGraphVersions(graphId: String): List<GraphVersion> {
         return graphVersions[graphId] ?: emptyList()
     }
 
-    
+
     suspend fun restoreGraphVersion(
         graphId: String,
         userId: String,
@@ -381,21 +381,21 @@ class GraphManager(
         GraphUpdateResult.Success(restoredGraph)
     }
 
-    
+
     private fun hasWriteAccess(graphId: String, userId: String): Boolean {
         val graph = graphs[graphId] ?: return false
         return graph.ownerId == userId || graphCollaborators[graphId]?.contains(userId) == true
     }
 
-    
+
     fun hasReadAccess(graphId: String, userId: String): Boolean {
         val graph = graphs[graphId] ?: return false
         return graph.ownerId == userId ||
-               graph.isPublic ||
-               graphCollaborators[graphId]?.contains(userId) == true
+                graph.isPublic ||
+                graphCollaborators[graphId]?.contains(userId) == true
     }
 
-    
+
     fun getGraphStatistics(): GraphStatistics {
         return GraphStatistics(
             totalGraphs = graphs.size,
@@ -407,10 +407,10 @@ class GraphManager(
         )
     }
 
-    
+
     fun getTotalGraphCount(): Int = graphs.size
 
-    
+
     fun searchGraphs(
         query: String,
         userId: String? = null,
@@ -420,14 +420,14 @@ class GraphManager(
         return graphs.values
             .filter { graph ->
                 val matchesQuery = graph.name.contains(query, ignoreCase = true) ||
-                                   graph.description.contains(query, ignoreCase = true)
+                        graph.description.contains(query, ignoreCase = true)
                 val hasAccess = userId?.let { hasReadAccess(graph.id, it) } ?: includePublic && graph.isPublic
                 matchesQuery && hasAccess
             }
             .take(limit)
     }
 
-    
+
     fun dispose() {
         graphs.clear()
         userGraphs.clear()
@@ -509,7 +509,6 @@ enum class GraphPermission {
     WRITE,
     ADMIN
 }
-
 
 
 sealed class GraphCreationResult {

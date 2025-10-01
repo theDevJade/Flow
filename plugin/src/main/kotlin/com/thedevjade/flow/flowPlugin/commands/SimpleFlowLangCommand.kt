@@ -8,7 +8,7 @@ import java.io.File
 
 class SimpleFlowLangCommand : CommandExecutor, TabCompleter {
     private val loadedScripts = mutableMapOf<String, String>()
-    
+
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
         if (!sender.isOp) {
             sender.sendMessage("§cYou do not have permission to use this command.")
@@ -28,6 +28,7 @@ class SimpleFlowLangCommand : CommandExecutor, TabCompleter {
                 }
                 loadScript(sender, args[1])
             }
+
             "reload" -> {
                 if (args.size < 2) {
                     sender.sendMessage("§cUsage: /flowlang reload <script>")
@@ -35,6 +36,7 @@ class SimpleFlowLangCommand : CommandExecutor, TabCompleter {
                 }
                 reloadScript(sender, args[1])
             }
+
             "unload" -> {
                 if (args.size < 2) {
                     sender.sendMessage("§cUsage: /flowlang unload <script>")
@@ -42,9 +44,11 @@ class SimpleFlowLangCommand : CommandExecutor, TabCompleter {
                 }
                 unloadScript(sender, args[1])
             }
+
             "list" -> {
                 listLoadedScripts(sender)
             }
+
             else -> {
                 sender.sendMessage("§cUnknown subcommand: ${args[0]}")
                 sender.sendMessage("§cUsage: /flowlang <load|reload|unload|list> [script]")
@@ -56,7 +60,7 @@ class SimpleFlowLangCommand : CommandExecutor, TabCompleter {
 
     private fun loadScript(sender: CommandSender, scriptName: String) {
         val scriptFile = getScriptFile(scriptName)
-        
+
         if (!scriptFile.exists()) {
             sender.sendMessage("§cScript file not found: ${scriptFile.name}")
             return
@@ -107,7 +111,7 @@ class SimpleFlowLangCommand : CommandExecutor, TabCompleter {
     private fun getScriptFile(scriptName: String): File {
         val flowLangPath = "./flowlang"
         val scriptDir = File(flowLangPath)
-        
+
         if (!scriptDir.exists()) {
             scriptDir.mkdirs()
         }
@@ -116,7 +120,12 @@ class SimpleFlowLangCommand : CommandExecutor, TabCompleter {
         return File(scriptDir, fileName)
     }
 
-    override fun onTabComplete(sender: CommandSender, command: Command, alias: String, args: Array<out String>): List<String> {
+    override fun onTabComplete(
+        sender: CommandSender,
+        command: Command,
+        alias: String,
+        args: Array<out String>
+    ): List<String> {
         if (!sender.isOp) return emptyList()
 
         return when (args.size) {
@@ -125,6 +134,7 @@ class SimpleFlowLangCommand : CommandExecutor, TabCompleter {
                 "load", "reload", "unload" -> getAvailableScripts().filter { it.startsWith(args[1], ignoreCase = true) }
                 else -> emptyList()
             }
+
             else -> emptyList()
         }
     }

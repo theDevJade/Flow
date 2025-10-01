@@ -1,7 +1,7 @@
 package flow.api.implementation
 
-import flow.api.CommandRegistry
 import flow.api.CommandHandler
+import flow.api.CommandRegistry
 import java.util.concurrent.ConcurrentHashMap
 
 class CommandRegistryImpl : CommandRegistry {

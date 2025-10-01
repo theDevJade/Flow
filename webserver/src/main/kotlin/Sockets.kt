@@ -2,18 +2,18 @@ package com.thedevjade.flow.webserver
 
 import com.thedevjade.flow.common.models.FlowLogger
 import com.thedevjade.flow.webserver.websocket.*
-import flow.api.implementation.FlowApiImpl
 import io.ktor.http.*
-import io.ktor.serialization.JsonConvertException
+import io.ktor.serialization.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.server.webjars.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
-import kotlinx.serialization.json.*
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
-import java.time.Duration
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import kotlin.time.Duration.Companion.seconds
 
 fun Application.configureSockets(authService: AuthService) {
@@ -45,11 +45,14 @@ fun Application.configureSockets(authService: AuthService) {
     val projectDataDir = java.io.File("data").absolutePath
 
 
-    if (fileSystemAccess.setRootDirectory(java.nio.file.Paths.get(currentWorkingDir))) {
-        FlowLogger.debug("FlowAPI: File system root directory set to: $currentWorkingDir")
+    val projectRoot = java.io.File("../").absolutePath
+    val rootDir = if (java.io.File(projectRoot).exists()) projectRoot else currentWorkingDir
+
+    if (fileSystemAccess.setRootDirectory(java.nio.file.Paths.get(rootDir))) {
+        FlowLogger.debug("FlowAPI: File system root directory set to: $rootDir")
         FlowLogger.debug("FlowAPI: All files under root directory are now accessible")
     } else {
-        FlowLogger.debug("FlowAPI: Warning - Failed to set root directory: $currentWorkingDir")
+        FlowLogger.debug("FlowAPI: Warning - Failed to set root directory: $rootDir")
     }
 
     val sessionManager = WebSocketSessionManager()
@@ -62,7 +65,7 @@ fun Application.configureSockets(authService: AuthService) {
         sessionManager,
         dataManager,
         graphSyncHandler,
-        flow.api.implementation.FileSystemAccessImpl(),
+        fileSystemAccess as flow.api.implementation.FileSystemAccessImpl,
         flowCore
     )
 
@@ -174,13 +177,16 @@ fun Application.configureSockets(authService: AuthService) {
                                 send(Frame.Text(Json.encodeToString(WebSocketMessage.serializer(), errorMessage)))
                             }
                         }
+
                         is Frame.Binary -> {
                             debugLog("Received binary frame from $sessionId - Size: ${frame.data.size} bytes (not supported)")
                         }
+
                         is Frame.Close -> {
                             debugLog("Close frame received from session: $sessionId - Code: ${frame.readReason()?.code}, Reason: ${frame.readReason()?.message}")
                             break
                         }
+
                         else -> {
                             debugLog("Received unknown frame type from $sessionId: ${frame.frameType}")
                         }
@@ -220,21 +226,25 @@ fun Application.configureSockets(authService: AuthService) {
 
 
         get("/ws/health") {
-            call.respond(HttpStatusCode.OK, mapOf<String, Any>(
-                "status" to "healthy",
-                "active_sessions" to sessionManager.getAllSessions().size,
-                "users_online" to sessionManager.getUsersOnline().size,
-                "timestamp" to System.currentTimeMillis()
-            ))
+            call.respond(
+                HttpStatusCode.OK, mapOf<String, Any>(
+                    "status" to "healthy",
+                    "active_sessions" to sessionManager.getAllSessions().size,
+                    "users_online" to sessionManager.getUsersOnline().size,
+                    "timestamp" to System.currentTimeMillis()
+                )
+            )
         }
 
 
         get("/ws/users") {
-            call.respond(HttpStatusCode.OK, mapOf<String, Any>(
-                "users" to sessionManager.getUsersOnline().toList(),
-                "count" to sessionManager.getUsersOnline().size,
-                "timestamp" to System.currentTimeMillis()
-            ))
+            call.respond(
+                HttpStatusCode.OK, mapOf<String, Any>(
+                    "users" to sessionManager.getUsersOnline().toList(),
+                    "count" to sessionManager.getUsersOnline().size,
+                    "timestamp" to System.currentTimeMillis()
+                )
+            )
         }
     }
 }

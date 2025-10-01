@@ -1,19 +1,21 @@
 package com.thedevjade.flow.webserver
 
-import com.thedevjade.flow.common.models.FlowLogger
 import com.thedevjade.flow.common.config.FlowConfiguration
+import com.thedevjade.flow.common.models.FlowLogger
+import com.thedevjade.flow.webserver.database.AuthTokensTable
 import com.thedevjade.flow.webserver.database.DatabaseManager
 import com.thedevjade.flow.webserver.database.UsersTable
-import com.thedevjade.flow.webserver.database.AuthTokensTable
 import kotlinx.serialization.Serializable
-import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import java.util.UUID
+import java.util.*
 
 @Serializable
 data class User(

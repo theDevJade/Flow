@@ -44,17 +44,17 @@ class MainFlowBackendSegment : FlowLoaderSegment() {
     override fun unload() {
         running.set(false)
         workerThread?.interrupt()
-        
+
         // Give the thread a moment to respond to interrupt
         try {
             Thread.sleep(100)
         } catch (e: InterruptedException) {
             // Ignore
         }
-        
-        // Force kill the webserver if it's still running
+
+
         FlowWebserver.killAll()
-        
+
         // Wait for the thread to finish with a longer timeout
         workerThread?.join(10000)
         workerThread = null

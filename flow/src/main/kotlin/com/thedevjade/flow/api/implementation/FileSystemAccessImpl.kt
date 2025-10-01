@@ -1,15 +1,16 @@
 package flow.api.implementation
 
-import flow.api.FileSystemAccess
 import com.thedevjade.flow.common.models.FileTreeNode
+import flow.api.FileSystemAccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.io.IOException
-import java.nio.file.*
+import java.nio.file.FileVisitResult
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
-import kotlin.io.path.*
 
 class FileSystemAccessImpl : FileSystemAccess {
     private var rootDirectory: Path? = null
@@ -194,6 +195,8 @@ class FileSystemAccessImpl : FileSystemAccess {
     override suspend fun writeFile(filePath: Path, content: String): Boolean {
         return withContext(Dispatchers.IO) {
             try {
+                println("FileSystemAccessImpl: Writing file $filePath with content length: ${content.length}")
+
                 if (!isPathAllowed(filePath)) {
                     println("FileSystemAccessImpl: Access denied to write file: $filePath")
                     return@withContext false
@@ -204,7 +207,6 @@ class FileSystemAccessImpl : FileSystemAccess {
                     return@withContext false
                 }
 
-
                 filePath.parent?.let { parentDir ->
                     if (!Files.exists(parentDir)) {
                         Files.createDirectories(parentDir)
@@ -212,6 +214,7 @@ class FileSystemAccessImpl : FileSystemAccess {
                 }
 
                 Files.writeString(filePath, content)
+                println("FileSystemAccessImpl: Successfully wrote ${content.length} bytes to $filePath")
                 true
             } catch (e: Exception) {
                 println("FileSystemAccessImpl: Error writing file $filePath: ${e.message}")

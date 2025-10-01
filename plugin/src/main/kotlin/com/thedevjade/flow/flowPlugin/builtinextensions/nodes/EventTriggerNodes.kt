@@ -2,11 +2,6 @@ package com.thedevjade.flow.flowPlugin.builtinextensions.nodes
 
 import com.thedevjade.flow.extension.api.*
 import com.thedevjade.flow.extension.registry.TriggerNodeHandler
-import org.bukkit.entity.Player
-import org.bukkit.Location
-import org.bukkit.Material
-import org.bukkit.block.Block
-import org.bukkit.inventory.ItemStack
 
 @TriggerNode(
     name = "Player Join",

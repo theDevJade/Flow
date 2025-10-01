@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_monaco/flutter_monaco.dart';
 import 'package:provider/provider.dart';
 import '../models/open_file.dart';
 import '../state/app_state.dart';
+import '../services/websocket_service.dart';
 import 'editor/monaco_editor_widget.dart';
 import 'flowlang_execution_panel.dart';
 
@@ -16,6 +19,8 @@ class TabbedCodeEditor extends StatefulWidget {
 
 class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
   bool _showExecutionPanel = false;
+  final Set<String> _savingFiles = {};
+  final Map<String, MonacoController?> _monacoControllers = {}; // Store Monaco controllers for each file
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +34,8 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
             final appState = context.read<AppState>();
             final activeFile = appState.fileSystemState.activeFile;
             if (activeFile != null) {
-              _triggerSave(activeFile);
+              debugPrint('💾 Keyboard shortcut triggered - getting content from Monaco editor');
+              _triggerSaveWithMonacoContent(activeFile);
             }
           }
         }
@@ -81,10 +87,21 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       height: _showExecutionPanel ? 300 : 0,
+      decoration: _showExecutionPanel ? BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+      ) : null,
       child: _showExecutionPanel
           ? FlowLangExecutionPanel(
               code: file.content,
               fileName: file.fileName,
+              getCurrentCode: _monacoControllers[file.path] != null 
+                  ? () => _monacoControllers[file.path]!.getValue()
+                  : null,
             )
           : const SizedBox.shrink(),
     );
@@ -117,30 +134,61 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
           const Spacer(),
           // FlowLang execution toggle button
           if (_isFlowLangFile(file.fileExtension))
-            IconButton(
-              onPressed: () {
-                setState(() {
-                  _showExecutionPanel = !_showExecutionPanel;
-                });
-              },
-              icon: Icon(
-                _showExecutionPanel ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
-                size: 16,
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _showExecutionPanel = !_showExecutionPanel;
+                  });
+                },
+                icon: Icon(
+                  _showExecutionPanel ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
+                  size: 16,
+                ),
+                label: Text(_showExecutionPanel ? 'Hide Console' : 'Show Console'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _showExecutionPanel 
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.surface,
+                  foregroundColor: _showExecutionPanel
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.onSurface,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  minimumSize: const Size(0, 24),
+                ),
               ),
-              tooltip: _showExecutionPanel ? 'Hide Execution Panel' : 'Show Execution Panel',
-              padding: const EdgeInsets.all(4),
-              constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
             ),
           IconButton(
-            icon: Icon(
-              Icons.save,
-              size: 16,
-              color: file.isModified
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-            ),
-            tooltip: 'Save (Cmd+S) - Modified: ${file.isModified}',
-            onPressed: () => _triggerSave(file),
+            icon: _savingFiles.contains(file.path)
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  )
+                : Icon(
+                    Icons.save,
+                    size: 16,
+                    color: file.isModified
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  ),
+            tooltip: _savingFiles.contains(file.path)
+                ? 'Saving...'
+                : file.isModified 
+                    ? 'Save (Cmd+S) - Modified'
+                    : 'Save (Cmd+S)',
+            onPressed: file.content.isNotEmpty && !_savingFiles.contains(file.path)
+                ? () {
+                    debugPrint('💾 Save button clicked - getting content from Monaco editor');
+                    _triggerSaveWithMonacoContent(file);
+                  }
+                : null,
             iconSize: 16,
           ),
           const SizedBox(width: 4),
@@ -233,6 +281,8 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
               const SizedBox(width: 4),
               InkWell(
                 onTap: () {
+                  // Clean up Monaco controller when closing file
+                  _monacoControllers.remove(file.path);
                   context.read<AppState>().fileSystemState.closeFile(file.path);
                 },
                 child: Icon(
@@ -267,54 +317,116 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
         content: file.content,
         language: language,
         onChanged: (text) {
-          // Only update if content actually changed to prevent infinite loops
-          if (text != file.content) {
-            debugPrint(
-              '📝 TabbedCodeEditor: Content changed for ${file.path}, new length: ${text.length}, old length: ${file.content.length}',
-            );
-            // Defer state update to avoid setState during build
-            SchedulerBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                debugPrint('📝 TabbedCodeEditor: Updating file content and marking as modified');
-                context.read<AppState>().fileSystemState.updateFileContent(
-                  file.path,
-                  text,
-                );
-              }
-            });
-          } else {
-            debugPrint('📝 TabbedCodeEditor: Content unchanged, skipping update');
-          }
+          // Update content immediately to ensure it's available for saving
+          context.read<AppState>().fileSystemState.updateFileContent(
+            file.path,
+            text,
+          );
         },
-        onSave: (content) {
-          debugPrint('💾 Saving file: ${file.path}');
-          try {
-            final webSocketService = context.read<AppState>().webSocketService;
-            webSocketService.sendMessage('write_file', {
-              'path': file.path,
-              'content': content,
-            });
-            context.read<AppState>().fileSystemState.markFileSaved(file.path);
-          } catch (e) {
-            debugPrint('Error saving file: $e');
-          }
+        onControllerReady: (controller) {
+          // Store the Monaco controller for this file
+          _monacoControllers[file.path] = controller;
         },
+        // onSave removed - save is handled by keyboard shortcut and button
       ),
     );
   }
 
-  void _triggerSave(OpenFile file) {
-    debugPrint('💾 Save triggered for: ${file.path} with content length: ${file.content.length}');
-
-    // Send save request via WebSocket
-    final webSocketService = context.read<AppState>().webSocketService;
-    webSocketService.sendMessage('write_file', {
-      'path': file.path,
-      'content': file.content,
+  void _triggerSaveWithMonacoContent(OpenFile file) async {
+    // Set loading state
+    setState(() {
+      _savingFiles.add(file.path);
     });
 
-    // Mark as saved locally
-    context.read<AppState>().fileSystemState.markFileSaved(file.path);
+    try {
+      // Get content directly from Monaco controller
+      String contentToSave;
+      final controller = _monacoControllers[file.path];
+      if (controller != null) {
+        contentToSave = await controller.getValue();
+        debugPrint('💾 _triggerSaveWithMonacoContent: Got content from Monaco controller, length: ${contentToSave.length}');
+      } else {
+        contentToSave = file.content;
+        debugPrint('💾 _triggerSaveWithMonacoContent: No Monaco controller available, using file.content length: ${file.content.length}');
+      }
+
+      _triggerSave(file, contentToSave);
+    } catch (e) {
+      debugPrint('💾 Error getting content from Monaco controller: $e');
+      // Fallback to file content
+      _triggerSave(file, file.content);
+    }
+  }
+
+  void _triggerSave(OpenFile file, [String? content]) {
+    final contentToSave = content ?? file.content;
+    debugPrint('💾 _triggerSave: content param length: ${content?.length ?? 'null'}, file.content length: ${file.content.length}, using: ${contentToSave.length}');
+    
+    // Set loading state
+    setState(() {
+      _savingFiles.add(file.path);
+    });
+
+    StreamSubscription? subscription;
+    Timer? timeoutTimer;
+
+    try {
+      final webSocketService = context.read<AppState>().webSocketService;
+      
+      // Listen for save response
+      subscription = webSocketService.messages.listen((message) {
+        if (message.type == 'file_saved' && 
+            message.data['path'] == file.path) {
+          final success = message.data['success'] as bool? ?? false;
+          
+          // Clean up
+          timeoutTimer?.cancel();
+          subscription?.cancel();
+          
+          // Remove loading state
+          if (mounted) {
+            setState(() {
+              _savingFiles.remove(file.path);
+            });
+          }
+          
+          if (success) {
+            // Mark as saved locally
+            context.read<AppState>().fileSystemState.markFileSaved(file.path);
+          }
+        }
+      });
+
+      // Send save request via WebSocket
+      debugPrint('💾 Sending WebSocket write_file - path: ${file.path}, content length: ${contentToSave.length}');
+      debugPrint('💾 WebSocket content preview: ${contentToSave.substring(0, contentToSave.length > 100 ? 100 : contentToSave.length)}...');
+      webSocketService.sendMessage('write_file', {
+        'path': file.path,
+        'content': contentToSave,
+      });
+
+      // Set up timeout
+      timeoutTimer = Timer(const Duration(seconds: 3), () {
+        subscription?.cancel();
+        if (mounted) {
+          setState(() {
+            _savingFiles.remove(file.path);
+          });
+        }
+      });
+      
+    } catch (e) {
+      // Clean up
+      subscription?.cancel();
+      timeoutTimer?.cancel();
+      
+      // Remove loading state
+      if (mounted) {
+        setState(() {
+          _savingFiles.remove(file.path);
+        });
+      }
+    }
   }
 
   Widget _buildEmptyState() {
@@ -336,14 +448,123 @@ class _TabbedCodeEditorState extends State<TabbedCodeEditor> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Open a file from the explorer to start editing',
+            'Open a file from the explorer or create a new one',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: _showNewFileDialog,
+            icon: const Icon(Icons.add),
+            label: const Text('New File'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
           ),
         ],
       ),
     );
+  }
+
+  void _showNewFileDialog() {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Create new file'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'File name',
+              hintText: 'example.dart',
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+            onSubmitted: (value) {
+              if (value.trim().isNotEmpty) {
+                Navigator.of(context).pop();
+                _createNewFile(value.trim());
+              }
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final fileName = controller.text.trim();
+                if (fileName.isNotEmpty) {
+                  Navigator.of(context).pop();
+                  _createNewFile(fileName);
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _createNewFile(String fileName) {
+    debugPrint('📄 TabbedCodeEditor: Creating new file: $fileName');
+
+    final fullPath = 'lib/$fileName'; // Default to lib directory
+
+    final appState = context.read<AppState>();
+    
+    // Listen for file creation response
+    late StreamSubscription subscription;
+    subscription = appState.webSocketService.messages.listen((message) {
+      if (message.type == 'file_created' && 
+          message.data['path'] == fullPath && 
+          message.data['success'] == true) {
+        // File created successfully, open it in the editor
+        if (mounted) {
+          // Open the new file in the editor
+          appState.fileSystemState.openFile(fullPath, '');
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('File created and opened: $fileName'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        subscription.cancel();
+      }
+    });
+
+    appState.webSocketService.send(
+      WebSocketMessage(
+        type: 'file_create',
+        data: {
+          'dirPath': 'lib',
+          'fileName': fileName,
+        },
+      ),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Creating file: $fileName'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    // Fallback: open file after timeout if no response received
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        subscription.cancel();
+        // Try to open the file anyway
+        appState.fileSystemState.openFile(fullPath, '');
+      }
+    });
   }
 
   IconData _getFileIcon(String fileName) {

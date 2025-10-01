@@ -6,16 +6,16 @@ class MonacoEditorWidget extends StatefulWidget {
   final String content;
   final String language;
   final Function(String) onChanged;
-  final Function(String)? onSave;
   final Function(bool)? onInitialized; // Callback for initialization status
+  final Function(MonacoController?)? onControllerReady; // Callback when controller is ready
 
   const MonacoEditorWidget({
     super.key,
     required this.content,
     required this.language,
     required this.onChanged,
-    this.onSave,
     this.onInitialized,
+    this.onControllerReady,
   });
 
   @override
@@ -59,8 +59,12 @@ class _MonacoEditorWidgetState extends State<MonacoEditorWidget> {
           hover: true,
           contextMenu: true,
           mouseWheelZoom: false,
+          readOnly: false,
         ),
       );
+
+      // Monaco editor should handle Cmd+S automatically
+      // The onSave callback will be triggered by the parent widget
 
       // Set initial content with error handling
       try {
@@ -94,6 +98,10 @@ class _MonacoEditorWidgetState extends State<MonacoEditorWidget> {
       setState(() {
         _isInitialized = true;
       });
+      
+      // Provide the controller to parent
+      widget.onControllerReady?.call(_controller);
+      
       widget.onInitialized?.call(true);
     } catch (e) {
       debugPrint('Error initializing Monaco editor: $e');
@@ -117,15 +125,30 @@ class _MonacoEditorWidgetState extends State<MonacoEditorWidget> {
     }
   }
 
-  Future<void> _triggerSave() async {
-    if (_controller != null && widget.onSave != null) {
+  // Method to force content synchronization
+  Future<void> forceContentSync() async {
+    if (_controller != null) {
       try {
         final content = await _controller!.getValue();
-        widget.onSave!(content);
+        debugPrint('🔄 MonacoEditor: Force content sync, length: ${content.length}');
+        widget.onChanged(content);
       } catch (e) {
-        debugPrint('Error triggering save: $e');
+        debugPrint('Error force syncing content from Monaco editor: $e');
       }
     }
+  }
+
+  // Method to get current content from editor
+  Future<String> getCurrentContent() async {
+    if (_controller != null) {
+      try {
+        return await _controller!.getValue();
+      } catch (e) {
+        debugPrint('Error getting content from Monaco editor: $e');
+        return widget.content;
+      }
+    }
+    return widget.content;
   }
 
   @override

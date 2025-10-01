@@ -203,7 +203,7 @@ class GraphCollaborationService {
   }
 
   void _handleGraphSync(WebSocketMessage message) {
-    // Handle real-time graph synchronization
+
     _eventController.add(
       CollaborationEvent.graphSync(
         data: message.data,
@@ -225,7 +225,7 @@ class GraphCollaborationService {
     }
   }
 
-  // Methods to send collaboration events
+
   void addNode(GraphNode node) {
     _webSocketService.send(
       WebSocketMessage(
@@ -351,7 +351,7 @@ class GraphCollaborationService {
   }
 }
 
-// Collaboration event types
+
 abstract class CollaborationEvent {
   const CollaborationEvent();
 

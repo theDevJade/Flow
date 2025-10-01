@@ -2,11 +2,10 @@ package com.thedevjade.flow.webserver.websocket
 
 import com.thedevjade.flow.common.models.FlowLogger
 import io.ktor.websocket.*
-import kotlinx.coroutines.channels.ClosedReceiveChannelException
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.UUID
 
 class WebSocketSessionManager {
     private val sessions = ConcurrentHashMap<String, WebSocketSessionData>()

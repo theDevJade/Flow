@@ -2,7 +2,7 @@ package com.thedevjade.flow.webserver.websocket
 
 import com.thedevjade.flow.common.models.FlowLogger
 import io.ktor.websocket.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.*
 
 
@@ -28,8 +28,10 @@ class GraphSyncHandler(
         val correlationId = "sync_${System.currentTimeMillis()}_${(1000..9999).random()}"
 
         try {
-            FlowLogger.debug("GraphSyncHandler",
-                "Processing graph update - MessageId: ${message.id}, CorrelationId: $correlationId")
+            FlowLogger.debug(
+                "GraphSyncHandler",
+                "Processing graph update - MessageId: ${message.id}, CorrelationId: $correlationId"
+            )
 
             val graphId = message.data["graphId"]?.jsonPrimitive?.content
             val updateType = message.data["updateType"]?.jsonPrimitive?.content
@@ -38,8 +40,10 @@ class GraphSyncHandler(
             val batchUpdates = message.data["batchUpdates"]?.jsonArray
 
             if (graphId.isNullOrBlank()) {
-                FlowLogger.warn("GraphSyncHandler",
-                    "Graph update missing graphId - CorrelationId: $correlationId")
+                FlowLogger.warn(
+                    "GraphSyncHandler",
+                    "Graph update missing graphId - CorrelationId: $correlationId"
+                )
                 sendSyncErrorResponse(session, message.id, "Missing graphId", correlationId)
                 return
             }
@@ -52,33 +56,51 @@ class GraphSyncHandler(
                         sendSyncErrorResponse(session, message.id, "Missing node data for $updateType", correlationId)
                     }
                 }
+
                 "connection_add", "connection_update" -> {
                     if (connectionJson != null) {
                         handleConnectionUpdate(graphId, connectionJson, updateType, session, message.id, correlationId)
                     } else {
-                        sendSyncErrorResponse(session, message.id, "Missing connection data for $updateType", correlationId)
+                        sendSyncErrorResponse(
+                            session,
+                            message.id,
+                            "Missing connection data for $updateType",
+                            correlationId
+                        )
                     }
                 }
+
                 "batch_update" -> {
                     if (batchUpdates != null && batchUpdates.size <= MAX_BATCH_SIZE) {
                         handleBatchUpdate(graphId, batchUpdates, session, message.id, correlationId)
                     } else {
-                        sendSyncErrorResponse(session, message.id, "Invalid batch update data or size exceeded", correlationId)
+                        sendSyncErrorResponse(
+                            session,
+                            message.id,
+                            "Invalid batch update data or size exceeded",
+                            correlationId
+                        )
                     }
                 }
+
                 "graph_sync" -> {
                     handleFullGraphSync(graphId, message.data, session, message.id, correlationId)
                 }
+
                 else -> {
-                    FlowLogger.warn("GraphSyncHandler",
-                        "Unknown update type: $updateType - CorrelationId: $correlationId")
+                    FlowLogger.warn(
+                        "GraphSyncHandler",
+                        "Unknown update type: $updateType - CorrelationId: $correlationId"
+                    )
                     sendSyncErrorResponse(session, message.id, "Unknown update type: $updateType", correlationId)
                 }
             }
 
         } catch (e: Exception) {
-            FlowLogger.error("GraphSyncHandler",
-                "Error processing graph update - CorrelationId: $correlationId", e)
+            FlowLogger.error(
+                "GraphSyncHandler",
+                "Error processing graph update - CorrelationId: $correlationId", e
+            )
             sendSyncErrorResponse(session, message.id, "Error processing graph update: ${e.message}", correlationId)
         }
     }
@@ -95,8 +117,10 @@ class GraphSyncHandler(
         try {
             val node = json.decodeFromJsonElement<GraphNode>(nodeJson)
 
-            FlowLogger.info("GraphSyncHandler",
-                "Processing node update - GraphId: $graphId, NodeId: ${node.id}, Type: $updateType, CorrelationId: $correlationId")
+            FlowLogger.info(
+                "GraphSyncHandler",
+                "Processing node update - GraphId: $graphId, NodeId: ${node.id}, Type: $updateType, CorrelationId: $correlationId"
+            )
 
 
             if (node.id.isBlank() || node.name.isBlank()) {
@@ -126,15 +150,19 @@ class GraphSyncHandler(
 
                 broadcastGraphUpdate(graphId, updateType, nodeJson, null, correlationId, excludeSession = session)
 
-                FlowLogger.debug("GraphSyncHandler",
-                    "Node update completed successfully - GraphId: $graphId, NodeId: ${node.id}, CorrelationId: $correlationId")
+                FlowLogger.debug(
+                    "GraphSyncHandler",
+                    "Node update completed successfully - GraphId: $graphId, NodeId: ${node.id}, CorrelationId: $correlationId"
+                )
             } else {
                 sendSyncErrorResponse(session, messageId, "Failed to persist node update", correlationId)
             }
 
         } catch (e: Exception) {
-            FlowLogger.error("GraphSyncHandler",
-                "Error in node update - GraphId: $graphId, CorrelationId: $correlationId", e)
+            FlowLogger.error(
+                "GraphSyncHandler",
+                "Error in node update - GraphId: $graphId, CorrelationId: $correlationId", e
+            )
             sendSyncErrorResponse(session, messageId, "Node update failed: ${e.message}", correlationId)
         }
     }
@@ -151,8 +179,10 @@ class GraphSyncHandler(
         try {
             val connection = json.decodeFromJsonElement<GraphConnection>(connectionJson)
 
-            FlowLogger.info("GraphSyncHandler",
-                "Processing connection update - GraphId: $graphId, ConnectionId: ${connection.id}, Type: $updateType, CorrelationId: $correlationId")
+            FlowLogger.info(
+                "GraphSyncHandler",
+                "Processing connection update - GraphId: $graphId, ConnectionId: ${connection.id}, Type: $updateType, CorrelationId: $correlationId"
+            )
 
 
             if (connection.id.isBlank() || connection.fromNodeId.isBlank() || connection.toNodeId.isBlank()) {
@@ -179,15 +209,19 @@ class GraphSyncHandler(
                 sendSyncSuccessResponse(session, messageId, "Connection updated successfully", correlationId)
                 broadcastGraphUpdate(graphId, updateType, null, connectionJson, correlationId, excludeSession = session)
 
-                FlowLogger.debug("GraphSyncHandler",
-                    "Connection update completed successfully - GraphId: $graphId, ConnectionId: ${connection.id}, CorrelationId: $correlationId")
+                FlowLogger.debug(
+                    "GraphSyncHandler",
+                    "Connection update completed successfully - GraphId: $graphId, ConnectionId: ${connection.id}, CorrelationId: $correlationId"
+                )
             } else {
                 sendSyncErrorResponse(session, messageId, "Failed to persist connection update", correlationId)
             }
 
         } catch (e: Exception) {
-            FlowLogger.error("GraphSyncHandler",
-                "Error in connection update - GraphId: $graphId, CorrelationId: $correlationId", e)
+            FlowLogger.error(
+                "GraphSyncHandler",
+                "Error in connection update - GraphId: $graphId, CorrelationId: $correlationId", e
+            )
             sendSyncErrorResponse(session, messageId, "Connection update failed: ${e.message}", correlationId)
         }
     }
@@ -201,8 +235,10 @@ class GraphSyncHandler(
         correlationId: String
     ) = withTimeout(SYNC_TIMEOUT_SECONDS * 1000L) {
         try {
-            FlowLogger.info("GraphSyncHandler",
-                "Processing batch update - GraphId: $graphId, BatchSize: ${batchUpdates.size}, CorrelationId: $correlationId")
+            FlowLogger.info(
+                "GraphSyncHandler",
+                "Processing batch update - GraphId: $graphId, BatchSize: ${batchUpdates.size}, CorrelationId: $correlationId"
+            )
 
             val currentGraph = dataManager.loadGraph(graphId) ?: GraphData(
                 nodes = emptyList(),
@@ -234,6 +270,7 @@ class GraphSyncHandler(
                             processedUpdates.add(update)
                         }
                     }
+
                     "connection_add", "connection_update" -> {
                         if (connectionJson != null) {
                             val connection = json.decodeFromJsonElement<GraphConnection>(connectionJson)
@@ -259,8 +296,10 @@ class GraphSyncHandler(
             val saveSuccess = dataManager.saveGraph(graphId, updatedGraph)
 
             if (saveSuccess) {
-                sendSyncSuccessResponse(session, messageId,
-                    "Batch update completed: ${processedUpdates.size} updates processed", correlationId)
+                sendSyncSuccessResponse(
+                    session, messageId,
+                    "Batch update completed: ${processedUpdates.size} updates processed", correlationId
+                )
 
 
                 val broadcastMessage = WebSocketMessage(
@@ -279,8 +318,10 @@ class GraphSyncHandler(
             }
 
         } catch (e: Exception) {
-            FlowLogger.error("GraphSyncHandler",
-                "Error in batch update - GraphId: $graphId, CorrelationId: $correlationId", e)
+            FlowLogger.error(
+                "GraphSyncHandler",
+                "Error in batch update - GraphId: $graphId, CorrelationId: $correlationId", e
+            )
             sendSyncErrorResponse(session, messageId, "Batch update failed: ${e.message}", correlationId)
         }
     }
@@ -294,8 +335,10 @@ class GraphSyncHandler(
         correlationId: String
     ) {
         try {
-            FlowLogger.info("GraphSyncHandler",
-                "Processing full graph sync - GraphId: $graphId, CorrelationId: $correlationId")
+            FlowLogger.info(
+                "GraphSyncHandler",
+                "Processing full graph sync - GraphId: $graphId, CorrelationId: $correlationId"
+            )
 
             val graphData = syncData["graphData"]?.jsonObject
             if (graphData != null) {
@@ -323,8 +366,10 @@ class GraphSyncHandler(
             }
 
         } catch (e: Exception) {
-            FlowLogger.error("GraphSyncHandler",
-                "Error in full graph sync - GraphId: $graphId, CorrelationId: $correlationId", e)
+            FlowLogger.error(
+                "GraphSyncHandler",
+                "Error in full graph sync - GraphId: $graphId, CorrelationId: $correlationId", e
+            )
             sendSyncErrorResponse(session, messageId, "Full graph sync failed: ${e.message}", correlationId)
         }
     }
@@ -359,11 +404,15 @@ class GraphSyncHandler(
 
         try {
             sessionManager.broadcast(broadcastMessage, excludeSession = excludeSession)
-            FlowLogger.debug("GraphSyncHandler",
-                "Graph update broadcasted - GraphId: $graphId, UpdateType: $updateType, CorrelationId: $correlationId")
+            FlowLogger.debug(
+                "GraphSyncHandler",
+                "Graph update broadcasted - GraphId: $graphId, UpdateType: $updateType, CorrelationId: $correlationId"
+            )
         } catch (e: Exception) {
-            FlowLogger.error("GraphSyncHandler",
-                "Failed to broadcast graph update - CorrelationId: $correlationId", e)
+            FlowLogger.error(
+                "GraphSyncHandler",
+                "Failed to broadcast graph update - CorrelationId: $correlationId", e
+            )
         }
     }
 
@@ -389,8 +438,10 @@ class GraphSyncHandler(
             val jsonMessage = json.encodeToString(WebSocketMessage.serializer(), response)
             session.send(Frame.Text(jsonMessage))
         } catch (e: Exception) {
-            FlowLogger.error("GraphSyncHandler",
-                "Failed to send sync success response - CorrelationId: $correlationId", e)
+            FlowLogger.error(
+                "GraphSyncHandler",
+                "Failed to send sync success response - CorrelationId: $correlationId", e
+            )
         }
     }
 
@@ -416,8 +467,10 @@ class GraphSyncHandler(
             val jsonMessage = json.encodeToString(WebSocketMessage.serializer(), response)
             session.send(Frame.Text(jsonMessage))
         } catch (e: Exception) {
-            FlowLogger.error("GraphSyncHandler",
-                "Failed to send sync error response - CorrelationId: $correlationId", e)
+            FlowLogger.error(
+                "GraphSyncHandler",
+                "Failed to send sync error response - CorrelationId: $correlationId", e
+            )
         }
     }
 }

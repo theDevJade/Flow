@@ -6,7 +6,6 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.util.*
-import kotlinx.serialization.json.*
 
 fun Application.configureAuthRoutes(authService: AuthService) {
     routing {
@@ -22,10 +21,12 @@ fun Application.configureAuthRoutes(authService: AuthService) {
                         call.respond(HttpStatusCode.Unauthorized, loginResponse)
                     }
                 } catch (e: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, LoginResponse(
-                        success = false,
-                        message = "Invalid request format: ${e.message}"
-                    ))
+                    call.respond(
+                        HttpStatusCode.BadRequest, LoginResponse(
+                            success = false,
+                            message = "Invalid request format: ${e.message}"
+                        )
+                    )
                 }
             }
 
@@ -48,23 +49,30 @@ fun Application.configureAuthRoutes(authService: AuthService) {
 
                 val authToken = authService.validateToken(token)
                 if (authToken != null) {
-                    call.respond(HttpStatusCode.OK, mapOf(
-                        "valid" to true,
-                        "username" to authToken.username,
-                        "userId" to authToken.userId,
-                        "expiresAt" to authToken.expiresAt
-                    ))
+                    call.respond(
+                        HttpStatusCode.OK, mapOf(
+                            "valid" to true,
+                            "username" to authToken.username,
+                            "userId" to authToken.userId,
+                            "expiresAt" to authToken.expiresAt
+                        )
+                    )
                 } else {
-                    call.respond(HttpStatusCode.Unauthorized, mapOf("valid" to false, "message" to "Invalid or expired token"))
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        mapOf("valid" to false, "message" to "Invalid or expired token")
+                    )
                 }
             }
 
             get("/stats") {
-                call.respond(HttpStatusCode.OK, mapOf(
-                    "activeTokens" to authService.getActiveTokensCount(),
-                    "activeUsers" to authService.getActiveUsersCount(),
-                    "timestamp" to System.currentTimeMillis()
-                ))
+                call.respond(
+                    HttpStatusCode.OK, mapOf(
+                        "activeTokens" to authService.getActiveTokensCount(),
+                        "activeUsers" to authService.getActiveUsersCount(),
+                        "timestamp" to System.currentTimeMillis()
+                    )
+                )
             }
         }
     }

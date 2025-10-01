@@ -8,7 +8,14 @@ import java.time.Instant
 
 object GraphDataRepository {
 
-    fun saveGraph(graphId: String, userId: Int, workspaceId: String, name: String, data: String, version: String = "1.0.0"): Boolean =
+    fun saveGraph(
+        graphId: String,
+        userId: Int,
+        workspaceId: String,
+        name: String,
+        data: String,
+        version: String = "1.0.0"
+    ): Boolean =
         transaction(DatabaseManager.getDatabase()) {
             try {
                 val existingGraph = GraphDataTable.select { GraphDataTable.graphId eq graphId }.singleOrNull()

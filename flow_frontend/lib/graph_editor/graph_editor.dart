@@ -61,6 +61,7 @@ class _GraphEditorState extends State<GraphEditor>
   List<GraphNode> nodes = [];
   List<GraphConnection> connections = [];
   PendingConnection? pendingConnection;
+  bool _isGraphLoaded = false; // Track if graph has been properly loaded
 
   // WebSocket service for auto-saving
   WebSocketService? _webSocketService;
@@ -106,6 +107,26 @@ class _GraphEditorState extends State<GraphEditor>
   bool isPointerDown = false;
   String? connectingFromPortId;
   Offset? currentMousePosition;
+  
+  // Input device detection for improved mouse and trackpad support
+  bool _isTrackpadInput = false;
+  bool _isMouseInput = false;
+  
+  /// Detect input device type based on pointer characteristics
+  /// This helps provide appropriate interaction patterns for different input devices
+  void _detectInputDevice(PointerDownEvent event) {
+    // Mouse typically has discrete button presses and specific characteristics
+    // Trackpad typically has more continuous input and different pressure characteristics
+    if (event.buttons == 1 || event.buttons == 2) {
+      // This is likely a mouse click (left or right button)
+      _isMouseInput = true;
+      _isTrackpadInput = false;
+    } else {
+      // This might be trackpad input
+      _isTrackpadInput = true;
+      _isMouseInput = false;
+    }
+  }
 
   // UI State
   bool showCommandPalette = false;
@@ -240,6 +261,7 @@ class _GraphEditorState extends State<GraphEditor>
         panOffset = Offset.zero;
         selectedNodeId = null;
         selectedConnectionId = null;
+        _isGraphLoaded = false; // Reset loaded flag when switching graphs
       });
 
       // Configure persistence service for the new graph and load it
@@ -480,6 +502,7 @@ class _GraphEditorState extends State<GraphEditor>
     } else {
       debugPrint('No cached data found, creating new empty graph');
       // Create a new empty graph if no data is available
+      _isGraphLoaded = true; // Mark as loaded even for empty graphs
       WidgetsBinding.instance.addPostFrameCallback((_) {
         widget.onLoadingStateChanged?.call(false, null);
       });
@@ -606,7 +629,8 @@ class _GraphEditorState extends State<GraphEditor>
       }
     }
 
-    // Auto-fit to show all nodes after loading
+    // Mark graph as loaded and auto-fit to show all nodes after loading
+    _isGraphLoaded = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _frameAll();
@@ -619,6 +643,12 @@ class _GraphEditorState extends State<GraphEditor>
     debugPrint(
       'Auto-saving graph with ${nodes.length} nodes and ${connections.length} connections',
     );
+
+    // Prevent saving empty graphs during initialization to avoid overwriting existing data
+    if (!_isGraphLoaded || (nodes.isEmpty && connections.isEmpty)) {
+      debugPrint('Skipping auto-save: graph not loaded yet or is empty (likely during initialization)');
+      return;
+    }
 
     final graphData = {
       'nodes': nodes
@@ -1177,6 +1207,9 @@ class _GraphEditorState extends State<GraphEditor>
   void _handlePointerDown(PointerDownEvent event) {
     isPointerDown = true;
     
+    // Detect input device type based on pointer characteristics
+    _detectInputDevice(event);
+    
     // Right click detection - button 2 is right mouse button
     if (event.buttons == 2) {
       if (showContextMenu) {
@@ -1189,6 +1222,14 @@ class _GraphEditorState extends State<GraphEditor>
         _showContextMenuAt(event.localPosition);
       }
     }
+    // Middle mouse button detection - button 4 is middle mouse button (for panning)
+    else if (event.buttons == 4) {
+      // Middle mouse button for immediate panning (like CAD applications)
+      if (!isDraggingNode && !isConnecting) {
+        isMouseDragging = true;
+        mouseDragStartPosition = event.localPosition;
+      }
+    }
     // Left click detection - button 1 is left mouse button
     else if (event.buttons == 1) {
       // Only start panning if clicking on empty space and not already doing something else
@@ -1198,7 +1239,7 @@ class _GraphEditorState extends State<GraphEditor>
         final clickedNode = _getNodeAtPosition(event.localPosition);
         if (clickedNode == null) {
           // Start mouse drag panning only for empty space
-          isMouseDragging = true;
+          // Don't immediately set isMouseDragging to true - wait for movement
           mouseDragStartPosition = event.localPosition;
         }
       }
@@ -1255,12 +1296,15 @@ class _GraphEditorState extends State<GraphEditor>
       return;
     }
 
-    // PRIORITY 3: Alternative mouse drag detection - if pointer is down and we're not doing anything else
+    // PRIORITY 3: Enhanced mouse drag detection - if pointer is down and we're not doing anything else
     if (isPointerDown && !isDraggingNode && !isConnecting && mouseDragStartPosition != null) {
       final delta = event.localPosition - mouseDragStartPosition!;
       
+      // Use different thresholds based on input device type
+      final dragThreshold = _isMouseInput ? 2.0 : 3.0; // More sensitive for mouse
+      
       // Only start dragging if we've moved a significant distance
-      if (delta.distance > 5.0) {
+      if (delta.distance > dragThreshold) {
         isMouseDragging = true;
         final uncConstrainedPanOffset = panOffset + delta;
         final constrainedPanOffset = _constrainPanOffset(uncConstrainedPanOffset);
@@ -1293,10 +1337,23 @@ class _GraphEditorState extends State<GraphEditor>
 
   void _handlePointerSignal(PointerSignalEvent event) {
     if (event is PointerScrollEvent) {
-      // Handle mouse wheel zoom with more responsive scaling
+      // Enhanced mouse wheel zoom support with device-specific scaling
       final zoomDelta = event.scrollDelta.dy;
-      // Use a more moderate zoom factor for better control
-      final zoomFactor = zoomDelta > 0 ? 1.0 / 1.1 : 1.1;
+      
+      // Detect if this is a trackpad or mouse wheel event
+      // Trackpad events typically have smaller delta values and can be continuous
+      // Mouse wheel events have larger, discrete delta values
+      final isMouseWheel = zoomDelta.abs() > 10.0; // Mouse wheel typically has larger deltas
+      
+      // Update input device detection
+      _isMouseInput = isMouseWheel;
+      _isTrackpadInput = !isMouseWheel;
+      
+      // Use different zoom factors for mouse wheel vs trackpad
+      // Mouse wheel needs more aggressive scaling for better responsiveness
+      final zoomFactor = isMouseWheel 
+          ? (zoomDelta > 0 ? 1.0 / 1.2 : 1.2)  // More aggressive for mouse wheel
+          : (zoomDelta > 0 ? 1.0 / 1.1 : 1.1); // More moderate for trackpad
 
       // Zoom towards the mouse cursor position with immediate response
       final targetScale = (scale * zoomFactor).clamp(minScale, maxScale);
@@ -1854,6 +1911,10 @@ class _GraphEditorState extends State<GraphEditor>
       return;
     }
 
+    // Detect if this is likely trackpad input (scale gestures are more common on trackpad)
+    _isTrackpadInput = true;
+    _isMouseInput = false;
+
     if (details.scale != 1.0) {
       // Handle zoom with reduced sensitivity for better control
       // Apply a dampening factor to make zooming less aggressive
@@ -1880,7 +1941,7 @@ class _GraphEditorState extends State<GraphEditor>
         _saveViewState();
       }
     } else if (lastFocalPoint != null) {
-      // Handle pan/drag
+      // Handle pan/drag - this is primarily for trackpad two-finger panning
       if (isDraggingNode && draggingNodeId != null && dragStartOffset != null) {
         // Drag node with improved constraint handling
         final nodeIndex = nodes.indexWhere((n) => n.id == draggingNodeId);
@@ -1914,7 +1975,7 @@ class _GraphEditorState extends State<GraphEditor>
         // Only call setState to trigger repaint
         setState(() {});
       } else {
-        // Pan the canvas with optimized performance for macOS
+        // Pan the canvas with optimized performance for trackpad
         final now = DateTime.now();
         if (_lastPanUpdate == null ||
             now.difference(_lastPanUpdate!) >=

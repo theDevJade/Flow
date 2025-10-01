@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../services/websocket_service.dart';
 
 
-/// and node data when moving between tabs or making changes
+
 class GraphPersistenceService with ChangeNotifier {
   static GraphPersistenceService? _instance;
   static GraphPersistenceService get instance =>
@@ -17,13 +17,13 @@ class GraphPersistenceService with ChangeNotifier {
   final WebSocketService _webSocketService = WebSocketService.instance;
   late StreamSubscription _messageSubscription;
 
-  // Auto-save functionality
+
   Timer? _autoSaveTimer;
   bool _hasUnsavedChanges = false;
   String? _currentGraphId;
   String? _currentWorkspaceId;
 
-  // State tracking
+
   final Map<String, Map<String, dynamic>> _graphDataCache = {};
   final Map<String, DateTime> _lastSaveTime = {};
 
@@ -88,7 +88,7 @@ class GraphPersistenceService with ChangeNotifier {
             'Graph $graphId loaded successfully with ${graphData['nodes']?.length ?? 0} nodes',
           );
 
-          // Notify listeners that new graph data is available
+
           notifyListeners();
         } catch (e) {
           debugPrint('Error caching loaded graph data: $e');
@@ -97,11 +97,11 @@ class GraphPersistenceService with ChangeNotifier {
     } else {
       debugPrint('Graph load failed for $graphId, error: $error');
 
-      // If graph not found, attempt to create it automatically
+
       if (error == 'Graph not found' && graphId != null) {
         debugPrint('Attempting to create missing graph: $graphId');
 
-        // Extract workspaceId from graphId if possible
+
         String workspaceId = 'default_workspace';
         if (graphId.contains('-')) {
           final parts = graphId.split('-');
@@ -110,7 +110,7 @@ class GraphPersistenceService with ChangeNotifier {
           }
         }
 
-        // Create a new empty graph
+
         createGraph(graphId, workspaceId: workspaceId);
       }
     }
@@ -134,24 +134,24 @@ class GraphPersistenceService with ChangeNotifier {
     if (graphId != null && graphId == _currentGraphId && nodeId != null && nodeData != null) {
       debugPrint('Node $nodeId updated in graph $graphId');
 
-      // Update the cached graph data
+
       final cachedData = _graphDataCache[graphId];
       if (cachedData != null) {
         final nodes = List<Map<String, dynamic>>.from(cachedData['nodes'] ?? []);
         final nodeIndex = nodes.indexWhere((node) => node['id'] == nodeId);
 
         if (nodeIndex != -1) {
-          // Update existing node
+
           nodes[nodeIndex] = Map<String, dynamic>.from(nodeData);
         } else {
-          // Add new node if it doesn't exist
+
           nodes.add(Map<String, dynamic>.from(nodeData));
         }
 
         cachedData['nodes'] = nodes;
         _graphDataCache[graphId] = cachedData;
 
-        // Notify listeners that the graph data has been updated
+
         notifyListeners();
       }
     }
@@ -165,24 +165,24 @@ class GraphPersistenceService with ChangeNotifier {
     if (graphId != null && graphId == _currentGraphId && connectionId != null && connectionData != null) {
       debugPrint('Connection $connectionId updated in graph $graphId');
 
-      // Update the cached graph data
+
       final cachedData = _graphDataCache[graphId];
       if (cachedData != null) {
         final connections = List<Map<String, dynamic>>.from(cachedData['connections'] ?? []);
         final connectionIndex = connections.indexWhere((conn) => conn['id'] == connectionId);
 
         if (connectionIndex != -1) {
-          // Update existing connection
+
           connections[connectionIndex] = Map<String, dynamic>.from(connectionData);
         } else {
-          // Add new connection if it doesn't exist
+
           connections.add(Map<String, dynamic>.from(connectionData));
         }
 
         cachedData['connections'] = connections;
         _graphDataCache[graphId] = cachedData;
 
-        // Notify listeners that the graph data has been updated
+
         notifyListeners();
       }
     }
@@ -197,7 +197,7 @@ class GraphPersistenceService with ChangeNotifier {
     if (graphId != null && graphId == _currentGraphId) {
       debugPrint('Graph update broadcast received for $graphId: $updateType');
 
-      // Update the cached graph data based on the update type
+
       final cachedData = _graphDataCache[graphId];
       if (cachedData != null) {
         bool updated = false;
@@ -210,11 +210,11 @@ class GraphPersistenceService with ChangeNotifier {
             final nodeIndex = nodes.indexWhere((node) => node['id'] == nodeId);
 
             if (updateType == 'node_add' || nodeIndex == -1) {
-              // Add new node
+
               nodes.add(Map<String, dynamic>.from(nodeData));
               updated = true;
             } else if (updateType == 'node_update') {
-              // Update existing node
+
               nodes[nodeIndex] = Map<String, dynamic>.from(nodeData);
               updated = true;
             }
@@ -231,11 +231,11 @@ class GraphPersistenceService with ChangeNotifier {
             final connectionIndex = connections.indexWhere((conn) => conn['id'] == connectionId);
 
             if (updateType == 'connection_add' || connectionIndex == -1) {
-              // Add new connection
+
               connections.add(Map<String, dynamic>.from(connectionData));
               updated = true;
             } else if (updateType == 'connection_update') {
-              // Update existing connection
+
               connections[connectionIndex] = Map<String, dynamic>.from(connectionData);
               updated = true;
             }
@@ -246,21 +246,21 @@ class GraphPersistenceService with ChangeNotifier {
 
         if (updated) {
           _graphDataCache[graphId] = cachedData;
-          // Notify listeners that the graph data has been updated
+
           notifyListeners();
         }
       }
     }
   }
 
-  /// Set the current active graph
+
   void setCurrentGraph(String graphId, String workspaceId) {
-    // Save current graph if there are unsaved changes
+
     if (_hasUnsavedChanges && _currentGraphId != null) {
       saveCurrentGraph();
     }
 
-    // Ensure proper formatting of graph ID with workspace prefix if needed
+
     String formattedGraphId = graphId;
     if (!graphId.contains('-') &&
         graphId != 'default' &&
@@ -273,37 +273,37 @@ class GraphPersistenceService with ChangeNotifier {
     _currentWorkspaceId = workspaceId;
     _hasUnsavedChanges = false;
 
-    // Start auto-save timer
+
     _startAutoSaveTimer();
   }
 
-  /// Mark that the graph has unsaved changes
+
   void markGraphAsModified() {
     _hasUnsavedChanges = true;
     _restartDebounceTimer();
   }
 
-  /// Update node position and mark as modified
+
   void updateNodePosition(String nodeId, Offset position) {
     markGraphAsModified();
-    // Send real-time update to other clients
+
     _sendNodeMoveUpdate(nodeId, position);
   }
 
-  /// Update node data and mark as modified
+
   void updateNodeData(String nodeId, Map<String, dynamic> data) {
     markGraphAsModified();
-    // Send real-time update to other clients
+
     _sendNodeUpdate(nodeId, data);
   }
 
-  /// Save the current graph
+
   Future<void> saveCurrentGraph({Map<String, dynamic>? graphData}) async {
     if (_currentGraphId == null || _currentWorkspaceId == null) {
       return;
     }
 
-    // Attempt to reconnect if not connected
+
     if (_webSocketService.currentStatus !=
         WebSocketConnectionStatus.connected) {
       debugPrint('WebSocket not connected, attempting to reconnect...');
@@ -312,10 +312,10 @@ class GraphPersistenceService with ChangeNotifier {
     }
 
     try {
-      // Ensure graphData has the required nodes and connections fields
+
       final dataToSend = graphData ?? _graphDataCache[_currentGraphId] ?? {};
 
-      // Make sure we have nodes and connections arrays (even if empty)
+
       if (!dataToSend.containsKey('nodes')) {
         dataToSend['nodes'] = [];
       }
@@ -341,9 +341,9 @@ class GraphPersistenceService with ChangeNotifier {
     }
   }
 
-  /// Load a graph by ID
+
   Future<void> loadGraph(String graphId) async {
-    // Attempt to reconnect if not connected
+
     if (_webSocketService.currentStatus !=
         WebSocketConnectionStatus.connected) {
       debugPrint('WebSocket not connected, attempting to reconnect...');
@@ -352,7 +352,7 @@ class GraphPersistenceService with ChangeNotifier {
     }
 
     try {
-      // Check if we need to construct a proper graph ID
+
       String finalGraphId = graphId;
       String? workspaceId;
 
@@ -363,7 +363,7 @@ class GraphPersistenceService with ChangeNotifier {
         workspaceId = _currentWorkspaceId;
         debugPrint('Constructing full graph ID: $finalGraphId');
       } else if (graphId.contains('-')) {
-        // Extract workspace ID from graph ID
+
         final parts = graphId.split('-');
         if (parts.length > 1 && parts[0].startsWith('workspace_')) {
           workspaceId = parts[0];
@@ -375,7 +375,7 @@ class GraphPersistenceService with ChangeNotifier {
         data: {
           'graphId': finalGraphId,
           'createIfNotExists':
-              true, // Tell server to create if it doesn't exist
+              true,
           'workspaceId': workspaceId,
         },
       );
@@ -387,15 +387,15 @@ class GraphPersistenceService with ChangeNotifier {
     }
   }
 
-  /// Create a new graph with default data
+
   Future<void> createGraph(String graphId, {String? workspaceId}) async {
-    // Attempt to reconnect if not connected
+
     if (_webSocketService.currentStatus !=
         WebSocketConnectionStatus.connected) {
       debugPrint('WebSocket not connected, attempting to reconnect...');
       _webSocketService.reconnect();
 
-      // Save this for later using custom send method which will queue
+
       final wsId = workspaceId ?? _currentWorkspaceId ?? 'default_workspace';
       String finalGraphId = graphId;
       if (!graphId.contains('-') && graphId != 'default') {

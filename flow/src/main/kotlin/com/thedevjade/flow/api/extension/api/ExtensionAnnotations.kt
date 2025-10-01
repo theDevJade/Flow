@@ -3,7 +3,6 @@ package com.thedevjade.flow.extension.api
 import kotlin.reflect.KClass
 
 
-
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class TerminalCommand(
@@ -134,8 +133,6 @@ enum class ConfigType {
     DOUBLE,
     LIST
 }
-
-
 
 
 @Target(AnnotationTarget.CLASS)

@@ -1,11 +1,9 @@
 package com.thedevjade.flow.webserver.websocket
 
-import com.thedevjade.flow.common.models.*
-import kotlinx.serialization.json.*
+import com.thedevjade.flow.common.models.FlowLogger
+import com.thedevjade.flow.common.models.NodeData
+import kotlinx.serialization.json.Json
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 
 class GraphDataManager {
@@ -54,20 +52,36 @@ class GraphDataManager {
     fun loadGraph(graphId: String): GraphData? {
         return try {
 
-            graphs[graphId]?.let { return it }
-
-
             val file = File("$graphsDir/$graphId.json")
             if (file.exists()) {
                 val jsonString = file.readText()
                 val graphData = json.decodeFromString(GraphData.serializer(), jsonString)
                 graphs[graphId] = graphData
+                FlowLogger.debug("Loaded graph $graphId from file system with ${graphData.nodes.size} nodes")
                 graphData
             } else {
+
+                graphs[graphId]?.let {
+                    FlowLogger.debug("Graph $graphId not found in file system, using cached version with ${it.nodes.size} nodes")
+                    return it
+                }
                 null
             }
         } catch (e: Exception) {
             FlowLogger.debug("Failed to load graph $graphId: ${e.message}")
+            null
+        }
+    }
+
+    fun reloadGraph(graphId: String): GraphData? {
+        return try {
+
+            graphs.remove(graphId)
+            val result = loadGraph(graphId)
+            FlowLogger.debug("Force reloaded graph $graphId: ${result?.nodes?.size ?: 0} nodes")
+            result
+        } catch (e: Exception) {
+            FlowLogger.debug("Failed to reload graph $graphId: ${e.message}")
             null
         }
     }

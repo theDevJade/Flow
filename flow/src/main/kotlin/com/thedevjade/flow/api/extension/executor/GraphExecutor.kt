@@ -423,6 +423,7 @@ class GraphExecutor(
                                     }
                                 }
                             }
+
                             is JsonArray -> value.map { it.toString() }
                             is JsonObject -> value.toString()
                             else -> value.toString()
@@ -433,6 +434,7 @@ class GraphExecutor(
                     emptyMap<String, Any?>()
                 }
             }
+
             else -> {
                 context.logger.warn("Unknown properties type: ${properties?.javaClass?.simpleName}")
                 emptyMap<String, Any?>()

@@ -741,12 +741,40 @@ class _FileTreeViewState extends State<FileTreeView> {
     final fullPath = '$parentPath/$fileName';
 
     final appState = context.read<AppState>();
+    
+    // Listen for file creation response
+    late StreamSubscription subscription;
+    subscription = appState.webSocketService.messages.listen((message) {
+      if (message.type == 'file_created' && 
+          message.data['path'] == fullPath && 
+          message.data['success'] == true) {
+        // File created successfully, open it in the editor
+        if (mounted) {
+          setState(() {
+            _expandedNodes.add(parentPath);
+          });
+          // Open the new file in the editor
+          appState.fileSystemState.openFile(fullPath, '');
+          // Refresh the file tree
+          appState.fileSystemService.requestFileTree();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('File created and opened: $fileName'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        subscription.cancel();
+      }
+    });
+
     appState.webSocketService.send(
       WebSocketMessage(
         type: 'file_create',
         data: {
-          'path': fullPath,
-          'content': '',
+          'dirPath': parentPath,
+          'fileName': fileName,
         },
       ),
     );
@@ -758,13 +786,13 @@ class _FileTreeViewState extends State<FileTreeView> {
       ),
     );
 
-
-    Future.delayed(const Duration(milliseconds: 500), () {
+    // Fallback: open file after timeout if no response received
+    Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
-        setState(() {
-          _expandedNodes.add(parentPath);
-        });
-        appState.fileSystemService.initialize();
+        subscription.cancel();
+        // Try to open the file anyway
+        appState.fileSystemState.openFile(fullPath, '');
+        appState.fileSystemService.requestFileTree();
       }
     });
   }

@@ -1,6 +1,5 @@
 package com.thedevjade.flow.webserver.database
 
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -10,7 +9,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
 
 object NodeTemplateRepository {
-    
+
     fun initializeDefaultTemplates() {
         if (getTemplateCount() == 0L) {
             val defaultTemplates = getDefaultNodeTemplates()
@@ -19,11 +18,11 @@ object NodeTemplateRepository {
             }
         }
     }
-    
+
     private fun getTemplateCount(): Long = transaction(DatabaseManager.getDatabase()) {
         NodeTemplatesTable.selectAll().count()
     }
-    
+
     fun insertTemplate(template: NodeTemplate) = transaction(DatabaseManager.getDatabase()) {
         NodeTemplatesTable.insert {
             it[templateId] = template.templateId
@@ -37,7 +36,7 @@ object NodeTemplateRepository {
             it[updatedAt] = Instant.now()
         }
     }
-    
+
     fun getAllTemplates(): List<NodeTemplate> = transaction(DatabaseManager.getDatabase()) {
         NodeTemplatesTable.selectAll().map { row ->
             NodeTemplate(
@@ -51,7 +50,7 @@ object NodeTemplateRepository {
             )
         }
     }
-    
+
     fun getTemplatesByCategory(category: String): List<NodeTemplate> = transaction(DatabaseManager.getDatabase()) {
         NodeTemplatesTable.select { NodeTemplatesTable.category eq category }.map { row ->
             NodeTemplate(
@@ -65,7 +64,7 @@ object NodeTemplateRepository {
             )
         }
     }
-    
+
     fun updateTemplate(templateId: String, template: NodeTemplate) = transaction(DatabaseManager.getDatabase()) {
         NodeTemplatesTable.update({ NodeTemplatesTable.templateId eq templateId }) {
             it[name] = template.name
@@ -76,11 +75,11 @@ object NodeTemplateRepository {
             it[updatedAt] = Instant.now()
         }
     }
-    
+
     fun deleteTemplate(templateId: String) = transaction(DatabaseManager.getDatabase()) {
         NodeTemplatesTable.deleteWhere { NodeTemplatesTable.templateId eq templateId }
     }
-    
+
     private fun getDefaultNodeTemplates(): List<NodeTemplate> {
         return listOf(
             NodeTemplate(
@@ -92,23 +91,29 @@ object NodeTemplateRepository {
                     put("color", buildJsonObject { put("r", 0.2); put("g", 0.6); put("b", 0.2); put("a", 1.0) })
                     put("size", buildJsonObject { put("width", 150); put("height", 80) })
                     put("inputs", JsonArray(emptyList()))
-                    put("outputs", JsonArray(listOf(
-                        buildJsonObject {
-                            put("id", "material")
-                            put("name", "Material")
-                            put("type", "material")
-                            put("color", buildJsonObject { put("r", 1.0); put("g", 0.8); put("b", 0.0); put("a", 1.0) })
-                        }
-                    )))
-                    put("properties", JsonArray(listOf(
-                        buildJsonObject {
-                            put("name", "material_name")
-                            put("type", "string")
-                            put("label", "Material Name")
-                            put("default", "DefaultMaterial")
-                            put("description", "Name of the material to load")
-                        }
-                    )))
+                    put(
+                        "outputs", JsonArray(
+                            listOf(
+                                buildJsonObject {
+                                    put("id", "material")
+                                    put("name", "Material")
+                                    put("type", "material")
+                                    put(
+                                        "color",
+                                        buildJsonObject { put("r", 1.0); put("g", 0.8); put("b", 0.0); put("a", 1.0) })
+                                }
+                            )))
+                    put(
+                        "properties", JsonArray(
+                            listOf(
+                                buildJsonObject {
+                                    put("name", "material_name")
+                                    put("type", "string")
+                                    put("label", "Material Name")
+                                    put("default", "DefaultMaterial")
+                                    put("description", "Name of the material to load")
+                                }
+                            )))
                 }.toString(),
                 isDefault = true,
                 version = "1.0.0"
@@ -121,28 +126,38 @@ object NodeTemplateRepository {
                 templateData = buildJsonObject {
                     put("color", buildJsonObject { put("r", 0.1); put("g", 0.4); put("b", 0.8); put("a", 1.0) })
                     put("size", buildJsonObject { put("width", 120); put("height", 60) })
-                    put("inputs", JsonArray(listOf(
-                        buildJsonObject {
-                            put("id", "a")
-                            put("name", "A")
-                            put("type", "float")
-                            put("color", buildJsonObject { put("r", 0.8); put("g", 0.8); put("b", 0.8); put("a", 1.0) })
-                        },
-                        buildJsonObject {
-                            put("id", "b")
-                            put("name", "B")
-                            put("type", "float")
-                            put("color", buildJsonObject { put("r", 0.8); put("g", 0.8); put("b", 0.8); put("a", 1.0) })
-                        }
-                    )))
-                    put("outputs", JsonArray(listOf(
-                        buildJsonObject {
-                            put("id", "result")
-                            put("name", "Result")
-                            put("type", "float")
-                            put("color", buildJsonObject { put("r", 0.8); put("g", 0.8); put("b", 0.8); put("a", 1.0) })
-                        }
-                    )))
+                    put(
+                        "inputs", JsonArray(
+                            listOf(
+                                buildJsonObject {
+                                    put("id", "a")
+                                    put("name", "A")
+                                    put("type", "float")
+                                    put(
+                                        "color",
+                                        buildJsonObject { put("r", 0.8); put("g", 0.8); put("b", 0.8); put("a", 1.0) })
+                                },
+                                buildJsonObject {
+                                    put("id", "b")
+                                    put("name", "B")
+                                    put("type", "float")
+                                    put(
+                                        "color",
+                                        buildJsonObject { put("r", 0.8); put("g", 0.8); put("b", 0.8); put("a", 1.0) })
+                                }
+                            )))
+                    put(
+                        "outputs", JsonArray(
+                            listOf(
+                                buildJsonObject {
+                                    put("id", "result")
+                                    put("name", "Result")
+                                    put("type", "float")
+                                    put(
+                                        "color",
+                                        buildJsonObject { put("r", 0.8); put("g", 0.8); put("b", 0.8); put("a", 1.0) })
+                                }
+                            )))
                     put("properties", JsonArray(emptyList()))
                 }.toString(),
                 isDefault = true,
@@ -156,14 +171,18 @@ object NodeTemplateRepository {
                 templateData = buildJsonObject {
                     put("color", buildJsonObject { put("r", 0.8); put("g", 0.2); put("b", 0.2); put("a", 1.0) })
                     put("size", buildJsonObject { put("width", 150); put("height", 80) })
-                    put("inputs", JsonArray(listOf(
-                        buildJsonObject {
-                            put("id", "input")
-                            put("name", "Input")
-                            put("type", "any")
-                            put("color", buildJsonObject { put("r", 1.0); put("g", 1.0); put("b", 1.0); put("a", 1.0) })
-                        }
-                    )))
+                    put(
+                        "inputs", JsonArray(
+                            listOf(
+                                buildJsonObject {
+                                    put("id", "input")
+                                    put("name", "Input")
+                                    put("type", "any")
+                                    put(
+                                        "color",
+                                        buildJsonObject { put("r", 1.0); put("g", 1.0); put("b", 1.0); put("a", 1.0) })
+                                }
+                            )))
                     put("outputs", JsonArray(emptyList()))
                     put("properties", JsonArray(emptyList()))
                 }.toString(),

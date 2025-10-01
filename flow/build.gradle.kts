@@ -33,7 +33,7 @@ tasks.test {
     useJUnitPlatform()
 }
 
-// Task to run WebSocket server (delegates to webserver module)
+
 tasks.register("runWebSocketServer") {
     group = "application"
     description = "Run the WebSocket server"

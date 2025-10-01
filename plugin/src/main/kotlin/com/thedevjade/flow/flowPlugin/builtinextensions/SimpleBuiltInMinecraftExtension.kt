@@ -6,7 +6,9 @@ import com.thedevjade.flow.extension.registry.TriggerNodeHandler
 import com.thedevjade.flow.flowPlugin.Flow
 import com.thedevjade.flow.flowPlugin.utils.logger
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -829,9 +831,17 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
                 context.logger.info("📊 Found ${graphIds.size} JSON graphs to search...")
 
                 graphIds.forEach { graphId ->
-                    val graphData = graphDataManager.loadGraph(graphId)
+                    val graphData = graphDataManager.reloadGraph(graphId)
                     if (graphData != null) {
                         context.logger.info("📊 Graph: $graphId with ${graphData.nodes.size} nodes")
+                        context.logger.info("📊 Graph data structure: nodes=${graphData.nodes.size}, connections=${graphData.connections.size}")
+
+                        // Debug: Log first few nodes if any exist
+                        if (graphData.nodes.isNotEmpty()) {
+                            context.logger.info("📊 First node: id=${graphData.nodes.first().id}, name=${graphData.nodes.first().name}, templateId=${graphData.nodes.first().templateId}")
+                        } else {
+                            context.logger.warn("⚠️ Graph $graphId has no nodes - this might indicate a save issue")
+                        }
 
 
                         try {
@@ -845,6 +855,7 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
 
                                 try {
                                     val flowGraph = convertToFlowGraph(graphData, graphId)
+                                    context.logger.info("🔄 Converted graph '$graphId': ${flowGraph.nodes.size} nodes, ${flowGraph.connections.size} connections")
                                     context.logger.info("🔄 Executing graph '$graphId' with trigger: $triggerName")
 
 
@@ -908,6 +919,7 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
         graphData: com.thedevjade.flow.webserver.websocket.GraphData,
         graphId: String
     ): com.thedevjade.flow.api.graph.FlowGraph {
+        context.logger.info("🔄 Converting graph '$graphId': input has ${graphData.nodes.size} nodes, ${graphData.connections.size} connections")
 
         val flowNodes = graphData.nodes.map { node ->
             com.thedevjade.flow.api.graph.GraphNode(
@@ -946,7 +958,7 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
             )
         }
 
-        return com.thedevjade.flow.api.graph.FlowGraph(
+        val result = com.thedevjade.flow.api.graph.FlowGraph(
             id = graphId,
             name = "Converted Graph",
             description = "Graph converted from JSON data",
@@ -958,6 +970,9 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
             lastModifiedAt = System.currentTimeMillis(),
             version = 1
         )
+
+        context.logger.info("🔄 Conversion complete for '$graphId': output has ${result.nodes.size} nodes, ${result.connections.size} connections")
+        return result
     }
 
     private fun convertJsonObjectToMap(jsonObject: JsonObject): Map<String, Any?> {
@@ -976,6 +991,7 @@ class SimpleBuiltInMinecraftExtension : FlowExtension, Listener {
                             }
                         }
                     }
+
                     is JsonArray -> value.map { it.toString() }
                     is JsonObject -> value.toString()
                     else -> value.toString()

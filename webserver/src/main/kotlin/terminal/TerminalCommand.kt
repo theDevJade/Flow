@@ -1,7 +1,7 @@
 package com.thedevjade.flow.webserver.terminal
 
 import com.thedevjade.flow.common.models.FlowLogger
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.JsonElement
 
 interface TerminalCommand {
     val name: String

@@ -8,10 +8,18 @@ import java.time.Instant
 
 object WorkspaceRepository {
 
-    fun saveWorkspace(workspaceId: String, userId: Int, name: String, data: String, currentPage: String?, settings: String = "{}"): Boolean =
+    fun saveWorkspace(
+        workspaceId: String,
+        userId: Int,
+        name: String,
+        data: String,
+        currentPage: String?,
+        settings: String = "{}"
+    ): Boolean =
         transaction(DatabaseManager.getDatabase()) {
             try {
-                val existingWorkspace = WorkspaceDataTable.select { WorkspaceDataTable.workspaceId eq workspaceId }.singleOrNull()
+                val existingWorkspace =
+                    WorkspaceDataTable.select { WorkspaceDataTable.workspaceId eq workspaceId }.singleOrNull()
 
                 if (existingWorkspace != null) {
                     WorkspaceDataTable.update({ WorkspaceDataTable.workspaceId eq workspaceId }) {
@@ -106,17 +114,18 @@ object WorkspaceRepository {
         }
     }
 
-    fun updateCurrentPage(workspaceId: String, currentPage: String): Boolean = transaction(DatabaseManager.getDatabase()) {
-        try {
-            WorkspaceDataTable.update({ WorkspaceDataTable.workspaceId eq workspaceId }) {
-                it[WorkspaceDataTable.currentPage] = currentPage
-                it[updatedAt] = Instant.now()
-            } > 0
-        } catch (e: Exception) {
-            FlowLogger.debug("Error updating current page for workspace $workspaceId: ${e.message}")
-            false
+    fun updateCurrentPage(workspaceId: String, currentPage: String): Boolean =
+        transaction(DatabaseManager.getDatabase()) {
+            try {
+                WorkspaceDataTable.update({ WorkspaceDataTable.workspaceId eq workspaceId }) {
+                    it[WorkspaceDataTable.currentPage] = currentPage
+                    it[updatedAt] = Instant.now()
+                } > 0
+            } catch (e: Exception) {
+                FlowLogger.debug("Error updating current page for workspace $workspaceId: ${e.message}")
+                false
+            }
         }
-    }
 
     fun updateSettings(workspaceId: String, settings: String): Boolean = transaction(DatabaseManager.getDatabase()) {
         try {
@@ -150,17 +159,18 @@ object WorkspaceRepository {
 }
 
 
-fun GraphDataRepository.deleteGraphsByWorkspace(workspaceId: String): Boolean = transaction(DatabaseManager.getDatabase()) {
-    try {
-        GraphDataTable.update({ GraphDataTable.workspaceId eq workspaceId }) {
-            it[isActive] = false
-            it[updatedAt] = Instant.now()
-        } >= 0
-    } catch (e: Exception) {
-        FlowLogger.debug("Error deleting graphs for workspace $workspaceId: ${e.message}")
-        false
+fun GraphDataRepository.deleteGraphsByWorkspace(workspaceId: String): Boolean =
+    transaction(DatabaseManager.getDatabase()) {
+        try {
+            GraphDataTable.update({ GraphDataTable.workspaceId eq workspaceId }) {
+                it[isActive] = false
+                it[updatedAt] = Instant.now()
+            } >= 0
+        } catch (e: Exception) {
+            FlowLogger.debug("Error deleting graphs for workspace $workspaceId: ${e.message}")
+            false
+        }
     }
-}
 
 data class WorkspaceData(
     val workspaceId: String,

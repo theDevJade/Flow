@@ -2,7 +2,6 @@ package com.thedevjade.flow.webserver.terminal
 
 import com.thedevjade.flow.common.models.FlowLogger
 import com.thedevjade.flow.webserver.terminal.commands.*
-import kotlinx.serialization.json.*
 
 class TerminalInterpreter {
     private val commandRegistry = TerminalCommandRegistry()
@@ -53,16 +52,20 @@ class TerminalInterpreter {
         val commandName = parts[0]
         val args = parts.drop(1)
 
-        FlowLogger.info("TerminalInterpreter",
-            "Executing command: '$commandName' with args: $args")
+        FlowLogger.info(
+            "TerminalInterpreter",
+            "Executing command: '$commandName' with args: $args"
+        )
 
         val command = commandRegistry.getCommand(commandName)
         return if (command != null) {
             try {
                 command.execute(args, context)
             } catch (e: Exception) {
-                FlowLogger.error("TerminalInterpreter",
-                    "Error executing command '$commandName': ${e.message}", e)
+                FlowLogger.error(
+                    "TerminalInterpreter",
+                    "Error executing command '$commandName': ${e.message}", e
+                )
                 TerminalResult.Error("Error executing command: ${e.message}")
             }
         } else {
@@ -106,8 +109,10 @@ class TerminalInterpreter {
                 }
             }
         } catch (e: Exception) {
-            FlowLogger.error("TerminalInterpreter",
-                "Error generating autocomplete suggestions: ${e.message}", e)
+            FlowLogger.error(
+                "TerminalInterpreter",
+                "Error generating autocomplete suggestions: ${e.message}", e
+            )
         }
 
         return suggestions.take(10)

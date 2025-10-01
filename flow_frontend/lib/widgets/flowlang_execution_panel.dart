@@ -5,11 +5,13 @@ import '../services/flowlang_execution_service.dart';
 class FlowLangExecutionPanel extends StatefulWidget {
   final String code;
   final String? fileName;
+  final Future<String> Function()? getCurrentCode; // Function to get current code from Monaco editor
 
   const FlowLangExecutionPanel({
     super.key,
     required this.code,
     this.fileName,
+    this.getCurrentCode,
   });
 
   @override
@@ -24,6 +26,17 @@ class _FlowLangExecutionPanelState extends State<FlowLangExecutionPanel> {
   void initState() {
     super.initState();
     _executionService = FlowLangExecutionService.instance;
+    
+    // Auto-scroll to newest execution when new results are added
+    _executionService.executionStream.listen((_) {
+      if (mounted && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0, // Scroll to top since we're showing newest first
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
@@ -33,14 +46,24 @@ class _FlowLangExecutionPanelState extends State<FlowLangExecutionPanel> {
   }
 
   Future<void> _executeCode() async {
-    if (widget.code.trim().isEmpty) {
-      _showSnackBar('No code to execute', isError: true);
-      return;
-    }
-
     try {
+      // Get current code from Monaco editor if available, otherwise use widget.code
+      String codeToExecute;
+      if (widget.getCurrentCode != null) {
+        codeToExecute = await widget.getCurrentCode!();
+        debugPrint('🚀 FlowLang Execution: Got current code from Monaco editor, length: ${codeToExecute.length}');
+      } else {
+        codeToExecute = widget.code;
+        debugPrint('🚀 FlowLang Execution: Using widget.code, length: ${widget.code.length}');
+      }
+
+      if (codeToExecute.trim().isEmpty) {
+        _showSnackBar('No code to execute', isError: true);
+        return;
+      }
+
       await _executionService.executeFlowLang(
-        widget.code,
+        codeToExecute,
         fileName: widget.fileName,
       );
     } catch (e) {
@@ -137,28 +160,30 @@ class _FlowLangExecutionPanelState extends State<FlowLangExecutionPanel> {
             child: Consumer<FlowLangExecutionService>(
               builder: (context, service, child) {
                 if (service.executionHistory.isEmpty) {
-                  return Center(
+                  return Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           Icons.code_off,
-                          size: 48,
+                          size: 24,
                           color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No executions yet',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Click "Run" to execute your FlowLang code',
+                          'No executions yet',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Click "Run" to execute your FlowLang code',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
@@ -170,8 +195,10 @@ class _FlowLangExecutionPanelState extends State<FlowLangExecutionPanel> {
                   padding: const EdgeInsets.all(16),
                   itemCount: service.executionHistory.length,
                   itemBuilder: (context, index) {
-                    final result = service.executionHistory[index];
-                    return _buildExecutionResult(result, index);
+                    // Reverse the index to show newest first
+                    final reversedIndex = service.executionHistory.length - 1 - index;
+                    final result = service.executionHistory[reversedIndex];
+                    return _buildExecutionResult(result, reversedIndex);
                   },
                 );
               },

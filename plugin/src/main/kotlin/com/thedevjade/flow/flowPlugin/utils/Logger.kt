@@ -1,9 +1,9 @@
 package com.thedevjade.flow.flowPlugin.utils
 
-import com.thedevjade.flow.common.models.FlowLogger
 import com.thedevjade.flow.common.config.FlowConfiguration
+import com.thedevjade.flow.common.models.FlowLogger
 
-class Logger : FlowLogger.LogHandler{
+class Logger : FlowLogger.LogHandler {
     override fun log(
         level: FlowLogger.LogLevel,
         component: String,
@@ -11,7 +11,7 @@ class Logger : FlowLogger.LogHandler{
         throwable: Throwable?
     ) {
         val logMessage = "[$level][$component] $message"
-        
+
         when (level) {
             FlowLogger.LogLevel.DEBUG -> {
                 if (FlowConfiguration.webserverConfig.debugLog == true) {
@@ -22,6 +22,7 @@ class Logger : FlowLogger.LogHandler{
                     }
                 }
             }
+
             FlowLogger.LogLevel.INFO -> {
                 if (throwable != null) {
                     info("$logMessage - ${throwable.javaClass.simpleName}: ${throwable.message}")
@@ -29,6 +30,7 @@ class Logger : FlowLogger.LogHandler{
                     info(logMessage)
                 }
             }
+
             FlowLogger.LogLevel.WARN -> {
                 if (throwable != null) {
                     warning("$logMessage - ${throwable.javaClass.simpleName}: ${throwable.message}")
@@ -36,6 +38,7 @@ class Logger : FlowLogger.LogHandler{
                     warning(logMessage)
                 }
             }
+
             FlowLogger.LogLevel.ERROR -> {
                 if (throwable != null) {
                     error("$logMessage - ${throwable.javaClass.simpleName}: ${throwable.message}")

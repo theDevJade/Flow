@@ -1,13 +1,11 @@
 package com.thedevjade.flow.webserver.api
 
 import com.thedevjade.flow.common.models.FlowLogger
-import io.ktor.server.websocket.*
-import io.ktor.websocket.*
-import kotlinx.coroutines.*
-import kotlinx.serialization.json.*
 import com.thedevjade.flow.webserver.websocket.WebSocketMessage
 import com.thedevjade.flow.webserver.websocket.WebSocketSessionManager
 import flow.api.implementation.FileSystemAccessImpl
+import io.ktor.websocket.*
+import kotlinx.serialization.json.*
 
 
 class FlowAPIIntegration(
@@ -17,7 +15,8 @@ class FlowAPIIntegration(
     private val fileSystemAccessImpl: FileSystemAccessImpl,
     private val flowCore: com.thedevjade.flow.api.FlowCore
 ) {
-    private val flowAPI = FlowAPI.getInstance(sessionManager, dataManager, graphSyncHandler, fileSystemAccessImpl, flowCore)
+    private val flowAPI =
+        FlowAPI.getInstance(sessionManager, dataManager, graphSyncHandler, fileSystemAccessImpl, flowCore)
 
 
     fun initialize() {
@@ -136,12 +135,15 @@ class FlowAPIIntegration(
                 is SessionEvent.Connected -> {
                     FlowLogger.debug("FlowAPI Session: User ${event.userId ?: "anonymous"} connected (${event.sessionId})")
                 }
+
                 is SessionEvent.Disconnected -> {
                     FlowLogger.debug("FlowAPI Session: User ${event.userId ?: "anonymous"} disconnected (${event.sessionId})")
                 }
+
                 is SessionEvent.Authenticated -> {
                     FlowLogger.debug("FlowAPI Session: User ${event.userId} authenticated (${event.sessionId})")
                 }
+
                 is SessionEvent.ActivityUpdate -> {
 
                 }
@@ -149,8 +151,6 @@ class FlowAPIIntegration(
         }
     }
 }
-
-
 
 
 private class ListDirectoriesCommand : CustomCommandHandler {

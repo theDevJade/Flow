@@ -227,7 +227,7 @@ class WebSocketService with ChangeNotifier {
         },
       );
 
-      // Send authentication message if token is available
+
       if (_token != null && _token!.isNotEmpty) {
         final authMessage = WebSocketMessage(
           type: 'auth',
@@ -256,7 +256,7 @@ class WebSocketService with ChangeNotifier {
       debugPrint('WebSocket connected successfully');
       _startHeartbeat();
 
-      // Process any queued messages
+
       _processMessageQueue();
     } catch (e) {
       _addLog('CONNECTION', 'Failed to connect: $e', isError: true);
@@ -317,7 +317,7 @@ class WebSocketService with ChangeNotifier {
           );
           debugPrint('Cannot send message: WebSocket channel not available');
 
-          // Trigger reconnection when channel is not available
+
           _setStatus(WebSocketConnectionStatus.error);
           _scheduleReconnect();
         }
@@ -340,7 +340,7 @@ class WebSocketService with ChangeNotifier {
         'Cannot send message type: ${message.type} with data: ${message.data}. WebSocket not connected (status: $_currentStatus)',
       );
 
-      // Store message to be sent once reconnected
+
       if (_messageQueue.length < maxQueuedMessages) {
         _messageQueue.add(message);
         debugPrint(
@@ -350,7 +350,7 @@ class WebSocketService with ChangeNotifier {
         debugPrint('Message queue full, dropping message: ${message.type}');
       }
 
-      // Attempt to reconnect if we have a token and are not already reconnecting
+
       if (_token != null &&
           _currentStatus != WebSocketConnectionStatus.connecting &&
           _currentStatus != WebSocketConnectionStatus.reconnecting) {
@@ -412,7 +412,7 @@ class WebSocketService with ChangeNotifier {
       debugPrint('Max reconnection attempts reached or service is disposing');
       _setStatus(WebSocketConnectionStatus.error);
 
-      // Notify listeners that reconnection attempts are exhausted
+
       if (_reconnectAttempts >= maxReconnectAttempts) {
         _addLog(
           'AUTH',
@@ -452,7 +452,7 @@ class WebSocketService with ChangeNotifier {
         _setStatus(WebSocketConnectionStatus.reconnecting);
         try {
           await connect(_token);
-          // If successful, reset reconnect attempts
+
           _reconnectAttempts = 0;
         } catch (e) {
           _addLog(
@@ -462,7 +462,7 @@ class WebSocketService with ChangeNotifier {
           );
           debugPrint('Reconnection attempt failed: $e');
           _setStatus(WebSocketConnectionStatus.error);
-          // Don't call _scheduleReconnect() recursively - let the connect() method handle it
+
         }
       }
     });
@@ -488,7 +488,7 @@ class WebSocketService with ChangeNotifier {
     _cleanup();
   }
 
-  /// Manually trigger a reconnection attempt
+
   void reconnect() {
     if (_isDisposing) return;
 
@@ -516,11 +516,11 @@ class WebSocketService with ChangeNotifier {
 
     _addLog('QUEUE', 'Processing ${_messageQueue.length} queued messages');
 
-    // Create a copy of the queue to avoid modification issues during iteration
+
     final messagesToProcess = List<WebSocketMessage>.from(_messageQueue);
     _messageQueue.clear();
 
-    // Process each message
+
     for (final message in messagesToProcess) {
       _addLog(
         'QUEUE',
@@ -528,7 +528,7 @@ class WebSocketService with ChangeNotifier {
         data: message.data,
       );
 
-      // Call send again - this will either send or requeue if still not connected
+
       send(message);
     }
   }

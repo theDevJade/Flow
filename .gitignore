@@ -51,4 +51,4 @@ build
 
 ### RunServer task ###
 /app/run
-data
+data*.hprof

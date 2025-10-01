@@ -35,27 +35,55 @@ class HelpCommand : TerminalCommand {
                 "clear" -> TerminalResult.Success(
                     output = listOf("clear - Clear the terminal screen", "Usage: clear")
                 )
+
                 "echo" -> TerminalResult.Success(
                     output = listOf("echo - Display text", "Usage: echo <text>", "Example: echo Hello World")
                 )
+
                 "pwd" -> TerminalResult.Success(
                     output = listOf("pwd - Print current workspace directory", "Usage: pwd")
                 )
+
                 "ls" -> TerminalResult.Success(
-                    output = listOf("ls - List workspace items", "Usage: ls [path]", "Lists graphs, files, and workspace objects")
+                    output = listOf(
+                        "ls - List workspace items",
+                        "Usage: ls [path]",
+                        "Lists graphs, files, and workspace objects"
+                    )
                 )
+
                 "cd" -> TerminalResult.Success(
-                    output = listOf("cd - Change workspace directory", "Usage: cd <path>", "Navigate between workspace contexts")
+                    output = listOf(
+                        "cd - Change workspace directory",
+                        "Usage: cd <path>",
+                        "Navigate between workspace contexts"
+                    )
                 )
+
                 "graph" -> TerminalResult.Success(
-                    output = listOf("graph - Graph operations", "Usage: graph <action>", "Actions: list, create, open, save, delete")
+                    output = listOf(
+                        "graph - Graph operations",
+                        "Usage: graph <action>",
+                        "Actions: list, create, open, save, delete"
+                    )
                 )
+
                 "workspace" -> TerminalResult.Success(
-                    output = listOf("workspace - Workspace management", "Usage: workspace <action>", "Actions: info, switch, create, list")
+                    output = listOf(
+                        "workspace - Workspace management",
+                        "Usage: workspace <action>",
+                        "Actions: info, switch, create, list"
+                    )
                 )
+
                 "flow" -> TerminalResult.Success(
-                    output = listOf("flow - Flow application commands", "Usage: flow <action>", "Actions: status, info, version")
+                    output = listOf(
+                        "flow - Flow application commands",
+                        "Usage: flow <action>",
+                        "Actions: status, info, version"
+                    )
                 )
+
                 else -> TerminalResult.Error("Unknown command: $commandName")
             }
         }
@@ -113,21 +141,25 @@ class LsCommand : TerminalCommand {
                 "projects/",
                 "settings.json"
             )
+
             "/graphs" -> listOf(
                 "main-graph.flow",
                 "test-graph.flow",
                 "prototype.flow"
             )
+
             "/workspaces" -> listOf(
                 "default/",
                 "development/",
                 "production/"
             )
+
             "/files" -> listOf(
                 "README.md",
                 "config.yaml",
                 "data/"
             )
+
             else -> listOf("(empty directory)")
         }
 
@@ -166,6 +198,7 @@ class CdCommand : TerminalCommand {
                 val parts = context.currentDirectory.split("/").filter { it.isNotEmpty() }
                 if (parts.isEmpty()) "/" else "/${parts.dropLast(1).joinToString("/")}"
             }
+
             path == "." -> context.currentDirectory
             else -> {
                 if (context.currentDirectory == "/") "/$path" else "${context.currentDirectory}/$path"

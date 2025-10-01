@@ -1,16 +1,13 @@
 package com.thedevjade.flow.webserver.api
 
 import com.thedevjade.flow.common.models.FlowLogger
-import io.ktor.server.websocket.*
-import io.ktor.websocket.*
-import kotlinx.coroutines.*
-import kotlinx.serialization.json.*
-import com.thedevjade.flow.webserver.websocket.WebSocketMessage
-import com.thedevjade.flow.webserver.websocket.WebSocketMessageHandler
-import com.thedevjade.flow.webserver.websocket.WebSocketSessionManager
-import com.thedevjade.flow.webserver.websocket.GraphDataManager
-import com.thedevjade.flow.webserver.websocket.GraphSyncHandler
+import com.thedevjade.flow.webserver.websocket.*
 import flow.api.implementation.FileSystemAccessImpl
+import io.ktor.websocket.*
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.add
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
@@ -35,7 +32,13 @@ class FlowAPI private constructor(
             flowCore: com.thedevjade.flow.api.FlowCore
         ): FlowAPI {
             return instance ?: synchronized(this) {
-                instance ?: FlowAPI(sessionManager, dataManager, graphSyncHandler, fileAccessAccessImpl, flowCore).also { instance = it }
+                instance ?: FlowAPI(
+                    sessionManager,
+                    dataManager,
+                    graphSyncHandler,
+                    fileAccessAccessImpl,
+                    flowCore
+                ).also { instance = it }
             }
         }
 
@@ -59,8 +62,6 @@ class FlowAPI private constructor(
 
     private val userSessions = ConcurrentHashMap<String, UserSession>()
     private val sessionListeners = mutableListOf<SessionEventListener>()
-
-
 
 
     fun registerSession(sessionId: String, session: DefaultWebSocketSession) {
@@ -133,8 +134,6 @@ class FlowAPI private constructor(
     }
 
 
-
-
     fun setFileExplorerRootDirectory(path: String): Boolean {
         val directory = File(path)
         return if (directory.exists() && directory.isDirectory) {
@@ -193,8 +192,6 @@ class FlowAPI private constructor(
 
 
     fun getRootAccessDirectory(): String? = rootAccessDirectory
-
-
 
 
     fun registerCommand(handler: CustomCommandHandler): Boolean {
@@ -263,8 +260,6 @@ class FlowAPI private constructor(
             )
         }
     }
-
-
 
 
     suspend fun updateUserSession(
@@ -347,8 +342,6 @@ class FlowAPI private constructor(
             }
         }
     }
-
-
 
 
     fun getAPIStatus(): FlowAPIStatus {

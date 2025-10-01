@@ -1,14 +1,12 @@
 package com.thedevjade.flow.webserver.websocket
 
-import com.thedevjade.flow.common.models.FlowLogger
-import com.thedevjade.flow.webserver.database.WorkspaceRepository
 import com.thedevjade.flow.common.models.FileTreeNode
+import com.thedevjade.flow.common.models.FlowLogger
 import com.thedevjade.flow.webserver.api.FlowAPI
-import com.thedevjade.flow.webserver.terminal.TerminalInterpreter
+import com.thedevjade.flow.webserver.database.WorkspaceRepository
 import com.thedevjade.flow.webserver.terminal.TerminalContext
+import com.thedevjade.flow.webserver.terminal.TerminalInterpreter
 import com.thedevjade.flow.webserver.terminal.TerminalResult
-import flow.api.FileSystemAccess
-import flow.api.implementation.FileSystemAccessImpl
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
@@ -1092,7 +1090,11 @@ class WebSocketMessageHandler(
 
             if (fileSystemAccess.getRootDirectory() == null) {
                 val currentWorkingDir = java.io.File("").absolutePath
-                if (!fileSystemAccess.setRootDirectory(java.nio.file.Paths.get(currentWorkingDir))) {
+
+                val projectRoot = java.io.File("../").absolutePath
+                val rootDir = if (java.io.File(projectRoot).exists()) projectRoot else currentWorkingDir
+
+                if (!fileSystemAccess.setRootDirectory(java.nio.file.Paths.get(rootDir))) {
                     FlowLogger.error("WebSocketMessageHandler", "Failed to initialize file system access")
                     sendErrorResponse(sessionId, message.id, "File system not initialized", correlationId)
                     return
@@ -1158,16 +1160,6 @@ class WebSocketMessageHandler(
             val flowApi = FlowAPI.getInstance();
             val fileSystemAccess = flowApi.getFileManager()
 
-
-            if (fileSystemAccess.getRootDirectory() == null) {
-                val currentWorkingDir = java.io.File("").absolutePath
-                if (!fileSystemAccess.setRootDirectory(java.nio.file.Paths.get(currentWorkingDir))) {
-                    FlowLogger.error("WebSocketMessageHandler", "Failed to initialize file system access")
-                    sendErrorResponse(sessionId, message.id, "File system not initialized", correlationId)
-                    return
-                }
-            }
-
             val path = java.nio.file.Paths.get(filePath)
             val content = fileSystemAccess.readFile(path)
 
@@ -1217,7 +1209,7 @@ class WebSocketMessageHandler(
 
             FlowLogger.info(
                 "WebSocketMessageHandler",
-                "Writing file - Path: $filePath, SessionId: $sessionId, CorrelationId: $correlationId"
+                "Writing file - Path: $filePath, Content length: ${content.length}, SessionId: $sessionId, CorrelationId: $correlationId"
             )
 
             val flowApi = FlowAPI.getInstance();

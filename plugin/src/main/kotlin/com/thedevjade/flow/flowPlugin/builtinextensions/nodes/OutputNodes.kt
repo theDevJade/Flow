@@ -31,18 +31,18 @@ class StringOutputActionNode : ActionNodeHandler {
     override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val outputs = mutableMapOf<String, Any?>()
         outputs["output"] = inputs["trigger"] // Pass through trigger
-        
-        // Get the string value from properties
+
+
         val stringValue = properties["value"] as? String ?: "Hello World"
         outputs["value"] = stringValue
-        
+
         return ActionResult.Success(outputs)
     }
 }
 
 @ActionNode(
     name = "Number Output",
-    category = "OUTPUT", 
+    category = "OUTPUT",
     description = "Output a number value from properties",
     icon = "numbers",
     color = "#E91E63"
@@ -64,16 +64,16 @@ class NumberOutputActionNode : ActionNodeHandler {
 
     override suspend fun execute(inputs: Map<String, Any?>, properties: Map<String, Any?>): ActionResult {
         val outputs = mutableMapOf<String, Any?>()
-        outputs["output"] = inputs["trigger"] // Pass through trigger
-        
-        // Get the number value from properties
+        outputs["output"] = inputs["trigger"]
+
+
         val numberValue = when (val propValue = properties["value"]) {
             is Number -> propValue
             is String -> propValue.toDoubleOrNull() ?: 42.0
             else -> 42.0
         }
         outputs["value"] = numberValue
-        
+
         return ActionResult.Success(outputs)
     }
 }
