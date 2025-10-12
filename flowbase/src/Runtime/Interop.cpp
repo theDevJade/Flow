@@ -3,11 +3,7 @@
 #include <iostream>
 #include <dlfcn.h>
 #include <cstring>
-
-
-#ifdef HAS_LIBFFI
-#include <ffi.h>
-#endif
+#include <ffi/ffi.h>
 
 
 #ifdef HAS_PYTHON
@@ -133,74 +129,116 @@ IPCValue EnhancedCAdapter::call(const std::string& function, const std::vector<I
         return IPCValue();
     }
     
-
     functionPointers[function] = funcPtr;
     
-
-    if (function == "printf" && !args.empty() && args[0].type == IPCValue::Type::STRING) {
-        printf("%s", args[0].stringValue.c_str());
-        fflush(stdout);
-        return IPCValue::makeInt(0);
-    }
+    // Use libffi for dynamic function calls
+    // Prepare argument types and values
+    ffi_cif cif;
+    ffi_type** arg_types = new ffi_type*[args.size()];
+    void** arg_values = new void*[args.size()];
     
-    if (function == "strlen" && !args.empty() && args[0].type == IPCValue::Type::STRING) {
-        size_t len = strlen(args[0].stringValue.c_str());
-        return IPCValue::makeInt(len);
-    }
+    // Storage for actual argument values
+    std::vector<int64_t> int_storage;
+    std::vector<double> float_storage;
+    std::vector<const char*> string_storage;
+    std::vector<uint8_t> bool_storage; // Use uint8_t instead of bool
     
-    if (function == "sqrt" && !args.empty() && args[0].type == IPCValue::Type::FLOAT) {
-        typedef double (*sqrt_func)(double);
-        sqrt_func f = (sqrt_func)funcPtr;
-        double result = f(args[0].floatValue);
-        return IPCValue::makeFloat(result);
-    }
+    int_storage.reserve(args.size());
+    float_storage.reserve(args.size());
+    string_storage.reserve(args.size());
+    bool_storage.reserve(args.size());
     
-    if (function == "my_sqrt" && !args.empty() && args[0].type == IPCValue::Type::FLOAT) {
-        typedef double (*sqrt_func)(double);
-        sqrt_func f = (sqrt_func)funcPtr;
-        double result = f(args[0].floatValue);
-        return IPCValue::makeFloat(result);
-    }
-    
-    // Handle int-returning functions with 2 int args (add, multiply)
-    if ((function == "add" || function == "multiply") && args.size() == 2 &&
-        args[0].type == IPCValue::Type::INT && args[1].type == IPCValue::Type::INT) {
-        typedef int (*int_int_func)(int, int);
-        int_int_func f = (int_int_func)funcPtr;
-        int result = f((int)args[0].intValue, (int)args[1].intValue);
-        return IPCValue::makeInt(result);
-    }
-    
-    // Handle int-returning functions with 1 int arg (factorial, get_magic_number)
-    if ((function == "factorial" || function == "get_magic_number") && 
-        (args.empty() || (args.size() == 1 && args[0].type == IPCValue::Type::INT))) {
-        if (args.empty()) {
-            // No args - e.g., get_magic_number()
-            typedef int (*int_func)();
-            int_func f = (int_func)funcPtr;
-            int result = f();
-            return IPCValue::makeInt(result);
-        } else {
-            // One int arg - e.g., factorial(n)
-            typedef int (*int_int_func)(int);
-            int_int_func f = (int_int_func)funcPtr;
-            int result = f((int)args[0].intValue);
-            return IPCValue::makeInt(result);
+    // Prepare arguments
+    for (size_t i = 0; i < args.size(); i++) {
+        switch (args[i].type) {
+            case IPCValue::Type::INT:
+                arg_types[i] = &ffi_type_sint64;
+                int_storage.push_back(args[i].intValue);
+                arg_values[i] = &int_storage.back();
+                break;
+            case IPCValue::Type::FLOAT:
+                arg_types[i] = &ffi_type_double;
+                float_storage.push_back(args[i].floatValue);
+                arg_values[i] = &float_storage.back();
+                break;
+            case IPCValue::Type::STRING:
+                arg_types[i] = &ffi_type_pointer;
+                string_storage.push_back(args[i].stringValue.c_str());
+                arg_values[i] = &string_storage.back();
+                break;
+            case IPCValue::Type::BOOL:
+                arg_types[i] = &ffi_type_uint8;
+                bool_storage.push_back(args[i].boolValue ? 1 : 0);
+                arg_values[i] = &bool_storage.back();
+                break;
+            default:
+                arg_types[i] = &ffi_type_pointer;
+                arg_values[i] = nullptr;
+                break;
         }
     }
     
-    // Handle void functions with string arg (greet)
-    if (function == "greet" && !args.empty() && args[0].type == IPCValue::Type::STRING) {
-        typedef void (*void_str_func)(const char*);
-        void_str_func f = (void_str_func)funcPtr;
-        f(args[0].stringValue.c_str());
-        return IPCValue::makeInt(0);
+    // Infer return type using the type system
+    IPCValue::Type flowReturnType = inferReturnType(function, args);
+    ffi_type* return_type;
+    
+    switch (flowReturnType) {
+        case IPCValue::Type::FLOAT:
+            return_type = &ffi_type_double;
+            break;
+        case IPCValue::Type::STRING:
+            return_type = &ffi_type_pointer;
+            break;
+        case IPCValue::Type::BOOL:
+            return_type = &ffi_type_uint8;
+            break;
+        case IPCValue::Type::INT:
+        default:
+            return_type = &ffi_type_sint64;
+            break;
     }
     
-    // For other functions, would need libffi for dynamic calls
-    std::cerr << "Warning: Function '" << function << "' found but signature not handled. " 
-              << "Add specific handler or compile with libffi support." << std::endl;
-    return IPCValue::makeInt(0);
+    // Prepare the call interface
+    if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, args.size(), return_type, arg_types) != FFI_OK) {
+        std::cerr << "Failed to prepare FFI call for " << function << std::endl;
+        delete[] arg_types;
+        delete[] arg_values;
+        return IPCValue();
+    }
+    
+    // Prepare return value storage
+    union {
+        int64_t i;
+        double d;
+        void* p;
+    } return_value;
+    
+    // Make the call
+    ffi_call(&cif, FFI_FN(funcPtr), &return_value, arg_values);
+    
+    // Clean up
+    delete[] arg_types;
+    delete[] arg_values;
+    
+    // Convert return value
+    IPCValue result;
+    if (return_type == &ffi_type_sint64 || return_type == &ffi_type_sint32) {
+        result = IPCValue::makeInt(return_value.i);
+    } else if (return_type == &ffi_type_double) {
+        result = IPCValue::makeFloat(return_value.d);
+    } else if (return_type == &ffi_type_pointer) {
+        if (return_value.p) {
+            result = IPCValue::makeString((const char*)return_value.p);
+        } else {
+            result = IPCValue();
+        }
+    } else if (return_type == &ffi_type_void) {
+        result = IPCValue::makeInt(0);
+    } else {
+        result = IPCValue::makeInt(return_value.i);
+    }
+    
+    return result;
 }
 
 void EnhancedCAdapter::shutdown() {
@@ -209,6 +247,7 @@ void EnhancedCAdapter::shutdown() {
         libHandle = nullptr;
     }
     functionPointers.clear();
+    functionSignatures.clear();
 }
 
 void EnhancedCAdapter::exportFunction(const std::string& name, void* funcPtr) {
@@ -218,6 +257,56 @@ void EnhancedCAdapter::exportFunction(const std::string& name, void* funcPtr) {
 void* EnhancedCAdapter::getFunctionPointer(const std::string& name) {
     auto it = functionPointers.find(name);
     return (it != functionPointers.end()) ? it->second : nullptr;
+}
+
+void EnhancedCAdapter::registerFunctionSignature(const std::string& name,
+                                                 const std::vector<IPCValue::Type>& argTypes,
+                                                 IPCValue::Type returnType) {
+    functionSignatures[name] = FunctionSignature(argTypes, returnType);
+}
+
+IPCValue::Type EnhancedCAdapter::inferReturnType(const std::string& function, const std::vector<IPCValue>& args) {
+    // Check if we have an explicit signature registered
+    auto it = functionSignatures.find(function);
+    if (it != functionSignatures.end()) {
+        return it->second.returnType;
+    }
+    
+    // Common patterns for return type inference
+    if (function.find("sqrt") != std::string::npos || 
+        function.find("sin") != std::string::npos ||
+        function.find("cos") != std::string::npos ||
+        function.find("tan") != std::string::npos ||
+        function.find("pow") != std::string::npos ||
+        function.find("log") != std::string::npos ||
+        function.find("exp") != std::string::npos) {
+        return IPCValue::Type::FLOAT;
+    }
+    
+    if (function == "strlen" || 
+        function.find("count") != std::string::npos ||
+        function.find("size") != std::string::npos) {
+        return IPCValue::Type::INT;
+    }
+    
+    if (function.find("greet") != std::string::npos || 
+        function.find("print") != std::string::npos ||
+        function.find("write") != std::string::npos) {
+        return IPCValue::Type::INT; // void functions return 0
+    }
+    
+    if (function.find("str") != std::string::npos ||
+        function.find("get") != std::string::npos) {
+        return IPCValue::Type::STRING;
+    }
+    
+    // If first argument is float, assume float return
+    if (!args.empty() && args[0].type == IPCValue::Type::FLOAT) {
+        return IPCValue::Type::FLOAT;
+    }
+    
+    // Default to int
+    return IPCValue::Type::INT;
 }
 
 // ============================================================

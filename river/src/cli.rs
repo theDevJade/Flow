@@ -64,5 +64,23 @@ pub enum Commands {
     
     /// Clean build artifacts
     Clean,
+    
+    /// Install a specific version of the Flow compiler
+    InstallFlow {
+        /// Version to install (e.g., "0.1.0", "latest", or git commit)
+        version: String,
+    },
+    
+    /// List installed Flow compiler versions
+    ListFlows,
+    
+    /// Switch to a specific Flow compiler version
+    UseFlow {
+        /// Version to use
+        version: String,
+    },
+    
+    /// Update Flow compiler to the latest version
+    UpdateFlow,
 }
 

@@ -132,7 +132,32 @@ func main() {
 
 ## 🛠️ Installation
 
-### Prerequisites
+### Quick Install with Lake (Recommended)
+
+**Lake** is our rustup-style toolchain installer:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://lake.flow-lang.org/init | sh
+```
+
+Or locally:
+```bash
+cd lake && ./lake-init
+```
+
+Lake automatically downloads prebuilt binaries or builds from source. See [lake/README.md](lake/README.md) for full docs.
+
+**Managing Flow:**
+```bash
+lake help           # All commands
+lake show           # Installed versions  
+lake update         # Update to latest
+lake uninstall      # Remove everything
+```
+
+### Manual Installation
+
+#### Prerequisites
 
 - **C++ compiler** (Clang 10+ or GCC 9+)
 - **LLVM 18+** with development libraries

@@ -4,7 +4,7 @@
 #include <cstring>
 #include <iostream>
 
-// Helper to convert Java string to C string
+
 static std::string jstring_to_string(JNIEnv* env, jstring jstr) {
     if (!jstr) return "";
     const char* str = env->GetStringUTFChars(jstr, nullptr);
@@ -13,7 +13,7 @@ static std::string jstring_to_string(JNIEnv* env, jstring jstr) {
     return result;
 }
 
-// Helper to throw Java exception
+
 static void throw_flow_exception(JNIEnv* env, const char* message) {
     jclass exClass = env->FindClass("com/flowlang/bindings/FlowException");
     if (exClass) {
@@ -21,9 +21,9 @@ static void throw_flow_exception(JNIEnv* env, const char* message) {
     }
 }
 
-// ============================================================
-// FlowRuntime Native Methods
-// ============================================================
+
+
+
 
 extern "C" {
 

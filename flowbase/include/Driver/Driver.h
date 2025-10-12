@@ -14,6 +14,8 @@ struct CompilerOptions {
     bool optimize;
     int optimizationLevel;
     bool verbose;
+    bool objectOnly;      // Compile to .o only, don't link
+    bool multiFile;       // Enable multi-file compilation mode
     
     CompilerOptions()
         : inputFile(""),
@@ -22,7 +24,9 @@ struct CompilerOptions {
           emitAST(false),
           optimize(false),
           optimizationLevel(0),
-          verbose(false) {}
+          verbose(false),
+          objectOnly(false),
+          multiFile(true) {}  // Enable by default
 };
 
 class Driver {

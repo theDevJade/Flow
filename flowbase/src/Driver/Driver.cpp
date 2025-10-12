@@ -1,4 +1,5 @@
 #include "../../include/Driver/Driver.h"
+#include "../../include/Driver/MultiFileBuilder.h"
 #include "../../include/Lexer/Lexer.h"
 #include "../../include/Parser/Parser.h"
 #include "../../include/Sema/SemanticAnalyzer.h"
@@ -8,6 +9,7 @@
 #include <sstream>
 #include <iostream>
 #include <cstdlib>
+#include <filesystem>
 
 namespace flow {
 
@@ -29,6 +31,29 @@ std::string Driver::readFile(const std::string& filename) {
 }
 
 int Driver::compile() {
+    // Check if multi-file compilation is needed
+    if (options.multiFile && !options.objectOnly) {
+        // Check if the input file has any imports
+        std::ifstream file(options.inputFile);
+        if (file.is_open()) {
+            std::string line;
+            bool hasImports = false;
+            while (std::getline(file, line)) {
+                if (line.find("import") != std::string::npos && line.find("\"") != std::string::npos) {
+                    hasImports = true;
+                    break;
+                }
+            }
+            file.close();
+            
+            if (hasImports) {
+                // Use multi-file builder
+                MultiFileBuilder builder(options.inputFile, options.outputFile, options.verbose);
+                return builder.build() ? 0 : 1;
+            }
+        }
+    }
+    
     if (options.verbose) {
         std::cout << "Flow Compiler v0.1.0" << std::endl;
         std::cout << "Compiling: " << options.inputFile << std::endl;
@@ -125,17 +150,39 @@ int Driver::compile() {
         std::cout << "  Object file written to: " << objectFile << std::endl;
     }
     
+    // Skip linking if object-only mode
+    if (options.objectOnly) {
+        if (options.verbose) {
+            std::cout << "  Object file kept: " << objectFile << std::endl;
+            std::cout << "Compilation successful (object-only mode)" << std::endl;
+        }
+        return 0;
+    }
+    
     // Link to create executable
     if (options.verbose) {
         std::cout << "Phase 6: Linking" << std::endl;
     }
     
+    // Get list of libraries to link
+    auto linkedLibs = codegen.getLinkedLibraries();
+    std::string libFlags = "";
+    for (const auto& lib : linkedLibs) {
+        // Strip "lib" prefix if present (since -l adds it automatically)
+        std::string libName = lib;
+        if (libName.substr(0, 3) == "lib") {
+            libName = libName.substr(3);
+        }
+        // Add both the current directory and common library paths
+        libFlags += " -L. -L/tmp/ffi_test -L/usr/local/lib -l" + libName;
+    }
+    
     // Use clang/gcc to link the object file
     std::string linkCmd;
     #ifdef __APPLE__
-        linkCmd = "clang++ -o " + options.outputFile + " " + objectFile;
+        linkCmd = "clang++ -o " + options.outputFile + " " + objectFile + libFlags;
     #else
-        linkCmd = "g++ -o " + options.outputFile + " " + objectFile;
+        linkCmd = "g++ -o " + options.outputFile + " " + objectFile + libFlags;
     #endif
     
     int linkResult = system(linkCmd.c_str());

@@ -18,9 +18,9 @@
 
 using namespace flow;
 
-// ============================================================
-// INTERNAL STRUCTURES
-// ============================================================
+
+
+
 
 struct FlowRuntime {
     std::string lastError;
@@ -74,9 +74,9 @@ struct FlowValue {
     FlowValue(FlowValueType t) : type(t), int_value(0) {}
 };
 
-// ============================================================
-// RUNTIME MANAGEMENT
-// ============================================================
+
+
+
 
 FlowRuntime* flow_runtime_new() {
     try {
@@ -95,9 +95,9 @@ const char* flow_runtime_get_error(FlowRuntime* runtime) {
     return runtime->lastError.c_str();
 }
 
-// ============================================================
-// MODULE MANAGEMENT
-// ============================================================
+
+
+
 
 FlowModule* flow_module_compile(FlowRuntime* runtime, const char* source, const char* module_name) {
     if (!runtime || !source || !module_name) {
@@ -178,9 +178,9 @@ void flow_module_free(FlowModule* module) {
     delete module;
 }
 
-// ============================================================
-// FUNCTION MANAGEMENT
-// ============================================================
+
+
+
 
 FlowFunction* flow_module_get_function(FlowModule* module, const char* function_name) {
     if (!module || !function_name) return nullptr;
@@ -199,7 +199,7 @@ int flow_function_get_param_count(FlowFunction* function) {
     return function->decl->parameters.size();
 }
 
-// ============================================================
+
 // VALUE MANAGEMENT
 // ============================================================
 

@@ -33,15 +33,28 @@ public:
 };
 
 
+struct FunctionSignature {
+    std::vector<IPCValue::Type> argTypes;
+    IPCValue::Type returnType;
+    
+    FunctionSignature() : returnType(IPCValue::Type::INT) {}
+    FunctionSignature(const std::vector<IPCValue::Type>& args, IPCValue::Type ret)
+        : argTypes(args), returnType(ret) {}
+};
+
 class EnhancedCAdapter : public EnhancedLanguageAdapter {
 private:
     void* libHandle;
     std::string moduleName;
     std::map<std::string, void*> functionPointers;
+    std::map<std::string, FunctionSignature> functionSignatures;
     
     // Type marshalling helpers
     void* marshalArguments(const std::vector<IPCValue>& args, std::vector<void*>& marshalled);
     IPCValue unmarshalReturn(void* result, IPCValue::Type expectedType);
+    
+    // Type inference from function name patterns
+    IPCValue::Type inferReturnType(const std::string& function, const std::vector<IPCValue>& args);
     
 public:
     EnhancedCAdapter() : libHandle(nullptr) {}
@@ -55,6 +68,11 @@ public:
     // Enhanced features
     void exportFunction(const std::string& name, void* funcPtr);
     void* getFunctionPointer(const std::string& name);
+    
+    // Register function signature for accurate type handling
+    void registerFunctionSignature(const std::string& name, 
+                                   const std::vector<IPCValue::Type>& argTypes,
+                                   IPCValue::Type returnType);
 };
 
 

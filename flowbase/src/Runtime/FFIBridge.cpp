@@ -86,7 +86,7 @@ void flow_ffi_call_void(const char* adapter, const char* module,
     try {
         std::vector<IPCValue> ipcArgs;
         // Assume void* args are actually pointers to primitive types for now
-        // In a real implementation, we'd need type information
+
         (void)args; // Unused for now
         (void)arg_count;
         

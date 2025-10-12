@@ -1,4 +1,6 @@
 #include "../../include/Codegen/CodeGenerator.h"
+#include "../../include/Lexer/Lexer.h"
+#include "../../include/Parser/Parser.h"
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/IRBuilder.h>
@@ -11,12 +13,16 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/TargetParser/Triple.h>
+#include <fstream>
+#include <sstream>
+#include <filesystem>
 #include <iostream>
+#include <set>
 
 namespace flow {
 
 CodeGenerator::CodeGenerator(const std::string& moduleName)
-    : currentValue(nullptr) {
+    : currentValue(nullptr), currentDirectory(".") {
     context = std::make_unique<llvm::LLVMContext>();
     module = std::make_unique<llvm::Module>(moduleName, *context);
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
@@ -27,6 +33,8 @@ CodeGenerator::CodeGenerator(const std::string& moduleName)
 
 void CodeGenerator::declareBuiltinFunctions() {
 
+    // We use weak linkage to allow multiple definitions without conflicts
+    
     std::vector<llvm::Type*> printfArgs = {llvm::PointerType::get(*context, 0)};
     llvm::FunctionType* printfType = llvm::FunctionType::get(
         llvm::Type::getInt32Ty(*context),
@@ -80,7 +88,7 @@ void CodeGenerator::declareBuiltinFunctions() {
     );
     llvm::Function* printFunc = llvm::Function::Create(
         printType,
-        llvm::Function::ExternalLinkage,
+        llvm::Function::WeakODRLinkage,  // Weak linkage for multi-file compilation
         "print",
         module.get()
     );
@@ -103,7 +111,7 @@ void CodeGenerator::declareBuiltinFunctions() {
     // Create Flow's println function (print with newline)
     llvm::Function* printlnFunc = llvm::Function::Create(
         printType,
-        llvm::Function::ExternalLinkage,
+        llvm::Function::WeakODRLinkage,  // Weak linkage for multi-file compilation
         "println",
         module.get()
     );
@@ -116,18 +124,18 @@ void CodeGenerator::declareBuiltinFunctions() {
     llvm::Argument* printlnArg = printlnFunc->arg_begin();
     printlnArg->setName("str");
     
-    // Create format string with newline
+
     llvm::Value* formatStr = builder->CreateGlobalString("%s\n", "", 0, module.get());
     
-    // Call printf with format string
+
     builder->CreateCall(printfFunc, {formatStr, printlnArg});
     
     // Return void
     builder->CreateRetVoid();
     
-    // Create len() function
+
     // For simplicity, len() will take a pointer and return a constant for now
-    // In a full implementation, arrays would store their length
+
     llvm::FunctionType* lenType = llvm::FunctionType::get(
         llvm::Type::getInt32Ty(*context),
         {llvm::PointerType::get(*context, 0)},
@@ -135,13 +143,13 @@ void CodeGenerator::declareBuiltinFunctions() {
     );
     llvm::Function* lenFunc = llvm::Function::Create(
         lenType,
-        llvm::Function::ExternalLinkage,
+        llvm::Function::WeakODRLinkage,  // Weak linkage for multi-file compilation
         "len",
         module.get()
     );
     
     // For now, len() just returns 0 (placeholder)
-    // Full implementation would require runtime length tracking
+
     llvm::BasicBlock* lenEntry = llvm::BasicBlock::Create(*context, "entry", lenFunc);
     builder->SetInsertPoint(lenEntry);
     llvm::Value* lenResult = llvm::ConstantInt::get(*context, llvm::APInt(32, 0));
@@ -215,10 +223,8 @@ llvm::Type* CodeGenerator::getLLVMType(std::shared_ptr<Type> flowType) {
         return llvm::Type::getVoidTy(*context);
     }
     
-    // Resolve type aliases first
     flowType = resolveTypeAlias(flowType);
     
-    // TODO: Implement full type mapping
     switch (flowType->kind) {
         case TypeKind::INT:
             return llvm::Type::getInt32Ty(*context);
@@ -227,22 +233,41 @@ llvm::Type* CodeGenerator::getLLVMType(std::shared_ptr<Type> flowType) {
         case TypeKind::BOOL:
             return llvm::Type::getInt1Ty(*context);
         case TypeKind::STRING:
-            // Strings as opaque pointer (LLVM 15+ uses opaque pointers)
             return llvm::PointerType::get(*context, 0);
         case TypeKind::VOID:
             return llvm::Type::getVoidTy(*context);
         case TypeKind::STRUCT:
-            // TODO: Look up struct type
+            // Special handling for builtin Option<T> struct
+            if (flowType->name == "Option" && !flowType->typeParams.empty()) {
+                std::string optionKey = "Option<" + flowType->typeParams[0]->toString() + ">";
+                if (structTypes.find(optionKey) != structTypes.end()) {
+                    return structTypes[optionKey];
+                }
+                // Create Option<T> as { i1 hasValue, T value }
+                std::vector<llvm::Type*> optionFields;
+                optionFields.push_back(llvm::Type::getInt1Ty(*context));
+                optionFields.push_back(getLLVMType(flowType->typeParams[0]));
+                llvm::StructType* optionType = llvm::StructType::create(*context, optionFields, optionKey);
+                structTypes[optionKey] = optionType;
+                // Register field indices for Option<T>
+                structFieldIndices[optionKey]["hasValue"] = 0;
+                structFieldIndices[optionKey]["value"] = 1;
+                return optionType;
+            }
+            
             if (structTypes.find(flowType->name) != structTypes.end()) {
                 return structTypes[flowType->name];
             }
-            return llvm::Type::getVoidTy(*context);
+            return llvm::StructType::create(*context, flowType->name);
         case TypeKind::ARRAY:
-            // Array is represented as a pointer to the element type
             if (!flowType->typeParams.empty()) {
-                return llvm::PointerType::get(getLLVMType(flowType->typeParams[0]), 0);
+                llvm::Type* elemType = getLLVMType(flowType->typeParams[0]);
+                return llvm::PointerType::get(elemType, 0);
             }
+            return llvm::PointerType::get(llvm::Type::getInt8Ty(*context), 0);
+        case TypeKind::FUNCTION:
             return llvm::PointerType::get(*context, 0);
+        case TypeKind::UNKNOWN:
         default:
             return llvm::Type::getVoidTy(*context);
     }
@@ -272,8 +297,37 @@ llvm::FunctionType* CodeGenerator::getFunctionType(FunctionDecl& funcDecl) {
     return llvm::FunctionType::get(returnType, paramTypes, false);
 }
 
+void CodeGenerator::declareExternalFunction(FunctionDecl& funcDecl) {
+    // Check if function already exists
+    if (module->getFunction(funcDecl.name)) {
+        return; // Already declared
+    }
+    
+    // Create LLVM function type
+    llvm::FunctionType* FT = getFunctionType(funcDecl);
+    
+    // Create external function declaration (no body)
+    llvm::Function::Create(
+        FT,
+        llvm::Function::ExternalLinkage,
+        funcDecl.name,
+        module.get()
+    );
+}
+
 void CodeGenerator::generate(std::shared_ptr<Program> program) {
     if (program) {
+        // Set current directory to the program's source file directory if available
+        if (!program->declarations.empty() && program->declarations[0]) {
+            if (!program->declarations[0]->location.filename.empty()) {
+                namespace fs = std::filesystem;
+                currentDirectory = fs::path(program->declarations[0]->location.filename)
+                                      .parent_path().string();
+                if (currentDirectory.empty()) {
+                    currentDirectory = ".";
+                }
+            }
+        }
         program->accept(*this);
     }
 }
@@ -301,8 +355,7 @@ void CodeGenerator::compileToObject(const std::string& filename) {
     llvm::InitializeNativeTargetAsmParser();
     
     // Get the target triple - use the module's triple or get default
-    std::string moduleTripleStr = module->getTargetTriple();
-    llvm::Triple targetTriple(moduleTripleStr);
+    llvm::Triple targetTriple = module->getTargetTriple();
     
     if (targetTriple.str().empty()) {
         #ifdef __APPLE__
@@ -312,7 +365,7 @@ void CodeGenerator::compileToObject(const std::string& filename) {
         #else
             targetTriple = llvm::Triple("x86_64-unknown-unknown");
         #endif
-        module->setTargetTriple(targetTriple.str());
+        module->setTargetTriple(targetTriple);
     }
     
     // Look up the target
@@ -325,10 +378,10 @@ void CodeGenerator::compileToObject(const std::string& filename) {
         return;
     }
     
-    // Create target machine
+    // Create target machine (using new API for LLVM 21+)
     llvm::TargetOptions opt;
     llvm::TargetMachine* targetMachine = target->createTargetMachine(
-        targetTripleStr,
+        targetTriple,
         "generic",
         "",
         opt,
@@ -360,7 +413,7 @@ void CodeGenerator::compileToObject(const std::string& filename) {
 }
 
 // ============================================================
-// VISITOR IMPLEMENTATIONS - TODO: Implement code generation
+// VISITOR IMPLEMENTATIONS
 // ============================================================
 
 void CodeGenerator::visit(IntLiteralExpr& node) {
@@ -381,7 +434,6 @@ void CodeGenerator::visit(BoolLiteralExpr& node) {
 }
 
 void CodeGenerator::visit(IdentifierExpr& node) {
-    // TODO: Look up variable
     auto it = namedValues.find(node.name);
     if (it != namedValues.end()) {
         currentValue = builder->CreateLoad(getLLVMType(node.type), it->second, node.name);
@@ -632,7 +684,13 @@ void CodeGenerator::visit(CallExpr& node) {
         }
         
         // Make direct call to the foreign function
-        currentValue = builder->CreateCall(foreignFunc, args, funcName + "_result");
+        // Check if function returns void - if so, don't name the result
+        if (foreignFunc->getReturnType()->isVoidTy()) {
+            builder->CreateCall(foreignFunc, args);
+            currentValue = nullptr;
+        } else {
+            currentValue = builder->CreateCall(foreignFunc, args, funcName + "_result");
+        }
         return;
     }
     
@@ -1171,16 +1229,11 @@ void CodeGenerator::visit(BlockStmt& node) {
 }
 
 void CodeGenerator::visit(FunctionDecl& node) {
-    // TODO: Full function generation
     llvm::FunctionType* FT = getFunctionType(node);
     
-    // Main function always has external linkage
-    llvm::Function::LinkageTypes linkage;
-    if (node.name == "main" || node.isExported) {
-        linkage = llvm::Function::ExternalLinkage;
-    } else {
-        linkage = llvm::Function::InternalLinkage;
-    }
+    // For multi-file compilation, all functions need external linkage
+    // so they can be called from other modules
+    llvm::Function::LinkageTypes linkage = llvm::Function::ExternalLinkage;
     
     llvm::Function* F = llvm::Function::Create(
         FT,
@@ -1214,14 +1267,13 @@ void CodeGenerator::visit(FunctionDecl& node) {
         }
     }
     
-    // Add implicit return if needed
     llvm::BasicBlock* currentBlock = builder->GetInsertBlock();
     if (currentBlock && !currentBlock->getTerminator()) {
         if (node.returnType->isVoid()) {
             builder->CreateRetVoid();
         } else {
-            // For non-void functions, insert a return of default value
-            // TODO: This should be an error in semantic analysis
+            // Fallback return for paths without explicit return
+            // Semantic analysis should catch missing returns; this ensures valid LLVM IR
             builder->CreateRet(llvm::Constant::getNullValue(getLLVMType(node.returnType)));
         }
     }
@@ -1256,7 +1308,7 @@ void CodeGenerator::visit(TypeDefDecl& node) {
 }
 
 void CodeGenerator::visit(LinkDecl& node) {
-    // Register foreign functions for IPC dispatch
+    // Register foreign functions for IPC dispatch or direct linking (C adapter)
     for (auto& func : node.functions) {
         if (func) {
             // Track this as a foreign function
@@ -1265,29 +1317,146 @@ void CodeGenerator::visit(LinkDecl& node) {
             info.module = node.module;
             foreignFunctions[func->name] = info;
             
-            // Still create LLVM function declaration for type checking
+            // Create LLVM function declaration with external linkage
+            // For C adapter, these will be resolved at link time
+            // For other adapters (Python, JS), these will go through IPC at runtime
             llvm::FunctionType* FT = getFunctionType(*func);
             llvm::Function::Create(FT, llvm::Function::ExternalLinkage, func->name, module.get());
         }
     }
 }
 
-void CodeGenerator::visit(ImportDecl& node) {
-    // TODO: Implement actual module loading and compilation
-    // For now, this is a placeholder that would:
-    // 1. Resolve the module path
-    // 2. Compile the imported module if not already compiled
-    // 3. Link against it or import its symbols
-    // 4. Handle selective imports if specified
+std::vector<std::string> CodeGenerator::getLinkedLibraries() const {
+    std::vector<std::string> libraries;
+    std::set<std::string> seen; // Avoid duplicates
     
-    // In a full implementation, we would add the imported module's
-    // LLVM module to this module's linking context
-    (void)node; // Suppress unused parameter warning
+    for (const auto& pair : foreignFunctions) {
+        const ForeignFunctionInfo& info = pair.second;
+        // Only include C adapter libraries (others use IPC at runtime)
+        if (info.adapter == "c" && !info.module.empty() && seen.find(info.module) == seen.end()) {
+            libraries.push_back(info.module);
+            seen.insert(info.module);
+        }
+    }
+    
+    return libraries;
+}
+
+std::string CodeGenerator::resolveModulePath(const std::string& importPath) {
+    namespace fs = std::filesystem;
+    
+    if (fs::path(importPath).is_absolute()) {
+        return importPath;
+    }
+    
+    fs::path fullPath = fs::path(currentDirectory) / importPath;
+    
+    try {
+        return fs::canonical(fullPath).string();
+    } catch (const std::filesystem::filesystem_error&) {
+        return fullPath.string();
+    }
+}
+
+std::shared_ptr<Program> CodeGenerator::loadModule(const std::string& modulePath) {
+    auto it = processedModules.find(modulePath);
+    if (it != processedModules.end()) {
+        return it->second;
+    }
+    
+    std::ifstream file(modulePath);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open module: " + modulePath);
+    }
+    
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string source = buffer.str();
+    file.close();
+    
+    Lexer lexer(source, modulePath);
+    std::vector<Token> tokens = lexer.tokenize();
+    
+    Parser parser(tokens);
+    auto program = parser.parse();
+    
+    // Don't add to processedModules here - done in processImportedModule
+    
+    return program;
+}
+
+void CodeGenerator::processImportedModule(const std::string& modulePath) {
+    // Check if already processed to prevent circular imports
+    if (processedModules.find(modulePath) != processedModules.end()) {
+        std::cerr << "[CODEGEN] Module already processed: " << modulePath << std::endl;
+        return; // Already processed or currently being processed
+    }
+    
+    try {
+        std::cerr << "[CODEGEN] Loading module: " << modulePath << std::endl;
+        // Mark as being processed BEFORE loading to prevent infinite loops
+        processedModules[modulePath] = nullptr;
+        
+        // Load and parse the module
+        std::cerr << "[CODEGEN] Opening file..." << std::endl;
+        std::ifstream file(modulePath);
+        if (!file.is_open()) {
+            throw std::runtime_error("Failed to open module: " + modulePath);
+        }
+        std::cerr << "[CODEGEN] Reading file..." << std::endl;
+        
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        std::string source = buffer.str();
+        file.close();
+        std::cerr << "[CODEGEN] File read, starting lexer..." << std::endl;
+        
+        Lexer lexer(source, modulePath);
+        std::cerr << "[CODEGEN] Tokenizing..." << std::endl;
+        std::vector<Token> tokens = lexer.tokenize();
+        std::cerr << "[CODEGEN] Tokens: " << tokens.size() << ", starting parser..." << std::endl;
+        
+        Parser parser(tokens);
+        std::cerr << "[CODEGEN] Parsing..." << std::endl;
+        auto program = parser.parse();
+        std::cerr << "[CODEGEN] Parsed successfully" << std::endl;
+        
+        // Update with actual program
+        processedModules[modulePath] = program;
+        
+        // Generate full code for imported module
+        // This works because we're doing it BEFORE generating main module code
+        std::cerr << "[CODEGEN] Generating code for " << program->declarations.size() << " items..." << std::endl;
+        std::string savedDir = currentDirectory;
+        currentDirectory = std::filesystem::path(modulePath).parent_path().string();
+        
+        for (auto& decl : program->declarations) {
+            if (decl && !dynamic_cast<ImportDecl*>(decl.get())) {
+                decl->accept(*this);
+            }
+        }
+        
+        std::cerr << "[CODEGEN] Code generation complete for imported module" << std::endl;
+        currentDirectory = savedDir;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error loading module " << modulePath << ": " << e.what() << std::endl;
+    }
+}
+
+void CodeGenerator::visit(ImportDecl& node) {
+    // Multi-file compilation note:
+    // For proper multi-file support, each Flow module should be compiled separately
+    // to an object file, then linked together. For now, imports are handled by
+    // semantic analysis, and imported symbols become external references.
+    std::cerr << "Note: Multi-file compilation is not fully supported yet." << std::endl;
+    std::cerr << "      Each module should be compiled separately and linked." << std::endl;
+    std::cerr << "      Import: " << node.modulePath << std::endl;
+    (void)node;
 }
 
 void CodeGenerator::visit(ModuleDecl& node) {
     // Set the module name in LLVM module
-    // This could be used for namespacing and exports
     module->setModuleIdentifier(node.name);
 }
 

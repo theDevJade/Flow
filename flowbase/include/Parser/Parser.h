@@ -34,7 +34,6 @@ private:
     ParseError error(const Token& token, const std::string& message);
     void synchronize();
     
-    // TODO: Implement parsing methods
     std::shared_ptr<Program> parseProgram();
     std::shared_ptr<Decl> parseDeclaration();
     std::shared_ptr<FunctionDecl> parseFunctionDecl();

@@ -783,9 +783,9 @@ std::shared_ptr<Type> Parser::parseType() {
         return arrayType;
     }
     
-    // Check for optional type: type?
+    // Check for optional type: type? -> desugar to Option<type>
     if (match(TokenType::QUESTION)) {
-        auto optionalType = std::make_shared<Type>(TypeKind::OPTION, "optional");
+        auto optionalType = std::make_shared<Type>(TypeKind::STRUCT, "Option");
         optionalType->typeParams.push_back(baseType);
         return optionalType;
     }

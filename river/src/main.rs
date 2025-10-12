@@ -25,6 +25,10 @@ fn main() {
         cli::Commands::List => commands::list::execute(),
         cli::Commands::Update => commands::update::execute(),
         cli::Commands::Clean => commands::clean::execute(),
+        cli::Commands::InstallFlow { version } => commands::flow_manager::install_flow(version),
+        cli::Commands::ListFlows => commands::flow_manager::list_flows(),
+        cli::Commands::UseFlow { version } => commands::flow_manager::use_flow(version),
+        cli::Commands::UpdateFlow => commands::flow_manager::update_flow(),
     };
     
     match result {

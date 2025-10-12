@@ -11,9 +11,9 @@
 
 namespace flow {
 
-// ============================================================
-// JVM ADAPTER - For Java, Kotlin, Scala
-// ============================================================
+
+
+
 
 JVMAdapter::JVMAdapter() : jvm(nullptr), env(nullptr) {}
 
@@ -187,8 +187,8 @@ IPCValue JVMAdapter::callStatic(const std::string& className, const std::string&
     jclass clazz = findClass(className);
     if (!clazz) return IPCValue();
     
-    // For simplicity, assume methods with standard signatures
-    // In production, you'd need proper signature inference
+
+
     std::string signature = "(";
     for (const auto& arg : args) {
         switch (arg.type) {

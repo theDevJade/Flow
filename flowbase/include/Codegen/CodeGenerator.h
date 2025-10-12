@@ -35,6 +35,10 @@ private:
     };
     std::map<std::string, ForeignFunctionInfo> foreignFunctions;
     
+    // Track processed modules to avoid duplicates
+    std::map<std::string, std::shared_ptr<Program>> processedModules;
+    std::string currentDirectory;
+    
     llvm::Value* currentValue; // Hold the result of the last visited expression
     
     llvm::Type* getLLVMType(std::shared_ptr<Type> flowType);
@@ -42,11 +46,19 @@ private:
     void declareBuiltinFunctions();
     std::shared_ptr<Type> resolveTypeAlias(std::shared_ptr<Type> type);
     
+    // Module loading for imports
+    std::string resolveModulePath(const std::string& importPath);
+    std::shared_ptr<Program> loadModule(const std::string& modulePath);
+    void processImportedModule(const std::string& modulePath);
+    
 public:
     CodeGenerator(const std::string& moduleName);
     
 
     void generate(std::shared_ptr<Program> program);
+    
+    // Declare external function (for multi-file compilation)
+    void declareExternalFunction(FunctionDecl& funcDecl);
     
     // Output methods
     void dumpIR();
@@ -54,6 +66,9 @@ public:
     void compileToObject(const std::string& filename);
     
     llvm::Module* getModule() { return module.get(); }
+    
+    // Get list of linked libraries (for Driver to pass to linker)
+    std::vector<std::string> getLinkedLibraries() const;
     
     // Expression visitors
     void visit(IntLiteralExpr& node) override;

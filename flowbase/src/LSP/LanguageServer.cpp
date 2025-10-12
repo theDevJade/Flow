@@ -8,9 +8,7 @@
 namespace flow {
 namespace lsp {
 
-
-
-
+static std::string extractIdentifierAtPosition(const std::string& text, Position pos);
 
 std::string escapeJSON(const std::string& str) {
     std::ostringstream oss;
@@ -548,8 +546,101 @@ std::string LanguageServer::handleTextDocumentHover(const std::string& params) {
 
 std::vector<Location> LanguageServer::getDefinition(const std::string& uri, Position pos) {
     std::vector<Location> locations;
-    // TODO: Implement definition lookup
+    
+    auto docIt = documents.find(uri);
+    if (docIt == documents.end() || !docIt->second.ast) {
+        return locations;
+    }
+    
+    auto& doc = docIt->second;
+    std::string identifier = extractIdentifierAtPosition(doc.text, pos);
+    if (identifier.empty()) {
+        return locations;
+    }
+    
+    for (auto& decl : doc.ast->declarations) {
+        if (auto funcDecl = std::dynamic_pointer_cast<FunctionDecl>(decl)) {
+            if (funcDecl->name == identifier) {
+                Location loc;
+                loc.uri = uri;
+                loc.range.start = Position(funcDecl->location.line - 1, funcDecl->location.column);
+                loc.range.end = Position(funcDecl->location.line - 1, funcDecl->location.column + identifier.length());
+                locations.push_back(loc);
+                return locations;
+            }
+        }
+        
+        if (auto structDecl = std::dynamic_pointer_cast<StructDecl>(decl)) {
+            if (structDecl->name == identifier) {
+                Location loc;
+                loc.uri = uri;
+                loc.range.start = Position(structDecl->location.line - 1, structDecl->location.column);
+                loc.range.end = Position(structDecl->location.line - 1, structDecl->location.column + identifier.length());
+                locations.push_back(loc);
+                return locations;
+            }
+            
+            for (const auto& field : structDecl->fields) {
+                if (field.name == identifier) {
+                    Location loc;
+                    loc.uri = uri;
+                    loc.range.start = Position(structDecl->location.line - 1, structDecl->location.column);
+                    loc.range.end = Position(structDecl->location.line - 1, structDecl->location.column + identifier.length());
+                    locations.push_back(loc);
+                    return locations;
+                }
+            }
+        }
+        
+        if (auto typedefDecl = std::dynamic_pointer_cast<TypeDefDecl>(decl)) {
+            if (typedefDecl->name == identifier) {
+                Location loc;
+                loc.uri = uri;
+                loc.range.start = Position(typedefDecl->location.line - 1, typedefDecl->location.column);
+                loc.range.end = Position(typedefDecl->location.line - 1, typedefDecl->location.column + identifier.length());
+                locations.push_back(loc);
+                return locations;
+            }
+        }
+    }
+    
     return locations;
+}
+
+static std::string extractIdentifierAtPosition(const std::string& text, Position pos) {
+    std::vector<std::string> lines;
+    std::string line;
+    std::istringstream stream(text);
+    while (std::getline(stream, line)) {
+        lines.push_back(line);
+    }
+    
+    if (pos.line >= static_cast<int>(lines.size())) {
+        return "";
+    }
+    
+    const std::string& currentLine = lines[pos.line];
+    if (pos.character >= static_cast<int>(currentLine.length())) {
+        return "";
+    }
+    
+    int start = pos.character;
+    int end = pos.character;
+    
+    while (start > 0 && (std::isalnum(currentLine[start - 1]) || currentLine[start - 1] == '_')) {
+        start--;
+    }
+    
+    while (end < static_cast<int>(currentLine.length()) && 
+           (std::isalnum(currentLine[end]) || currentLine[end] == '_')) {
+        end++;
+    }
+    
+    if (start >= end) {
+        return "";
+    }
+    
+    return currentLine.substr(start, end - start);
 }
 
 std::string LanguageServer::handleTextDocumentDefinition(const std::string& params) {
@@ -582,7 +673,164 @@ std::string LanguageServer::handleTextDocumentDefinition(const std::string& para
 
 std::vector<Location> LanguageServer::getReferences(const std::string& uri, Position pos) {
     std::vector<Location> locations;
-    // TODO: Implement reference lookup
+    
+    auto docIt = documents.find(uri);
+    if (docIt == documents.end() || !docIt->second.ast) {
+        return locations;
+    }
+    
+    auto& doc = docIt->second;
+    std::string identifier = extractIdentifierAtPosition(doc.text, pos);
+    if (identifier.empty()) {
+        return locations;
+    }
+    
+    std::function<void(std::shared_ptr<Expr>)> searchExprForReferences;
+    searchExprForReferences = [&](std::shared_ptr<Expr> expr) {
+        if (!expr) return;
+        
+        if (auto idExpr = std::dynamic_pointer_cast<IdentifierExpr>(expr)) {
+            if (idExpr->name == identifier) {
+                Location loc;
+                loc.uri = uri;
+                loc.range.start = Position(idExpr->location.line - 1, idExpr->location.column);
+                loc.range.end = Position(idExpr->location.line - 1, idExpr->location.column + identifier.length());
+                locations.push_back(loc);
+            }
+        }
+        else if (auto binExpr = std::dynamic_pointer_cast<BinaryExpr>(expr)) {
+            searchExprForReferences(binExpr->left);
+            searchExprForReferences(binExpr->right);
+        }
+        else if (auto unaryExpr = std::dynamic_pointer_cast<UnaryExpr>(expr)) {
+            searchExprForReferences(unaryExpr->operand);
+        }
+        else if (auto callExpr = std::dynamic_pointer_cast<CallExpr>(expr)) {
+            searchExprForReferences(callExpr->callee);
+            for (auto& arg : callExpr->arguments) {
+                searchExprForReferences(arg);
+            }
+        }
+        else if (auto memberExpr = std::dynamic_pointer_cast<MemberAccessExpr>(expr)) {
+            searchExprForReferences(memberExpr->object);
+        }
+        else if (auto structExpr = std::dynamic_pointer_cast<StructInitExpr>(expr)) {
+            for (auto& fieldVal : structExpr->fieldValues) {
+                searchExprForReferences(fieldVal);
+            }
+        }
+        else if (auto arrayExpr = std::dynamic_pointer_cast<ArrayLiteralExpr>(expr)) {
+            for (auto& elem : arrayExpr->elements) {
+                searchExprForReferences(elem);
+            }
+        }
+        else if (auto indexExpr = std::dynamic_pointer_cast<IndexExpr>(expr)) {
+            searchExprForReferences(indexExpr->array);
+            searchExprForReferences(indexExpr->index);
+        }
+    };
+    
+    std::function<void(std::shared_ptr<Stmt>)> searchStmtForReferences;
+    searchStmtForReferences = [&](std::shared_ptr<Stmt> stmt) {
+        if (!stmt) return;
+        
+        if (auto exprStmt = std::dynamic_pointer_cast<ExprStmt>(stmt)) {
+            searchExprForReferences(exprStmt->expression);
+        }
+        else if (auto varDecl = std::dynamic_pointer_cast<VarDeclStmt>(stmt)) {
+            if (varDecl->name == identifier) {
+                Location loc;
+                loc.uri = uri;
+                loc.range.start = Position(varDecl->location.line - 1, varDecl->location.column);
+                loc.range.end = Position(varDecl->location.line - 1, varDecl->location.column + identifier.length());
+                locations.push_back(loc);
+            }
+            searchExprForReferences(varDecl->initializer);
+        }
+        else if (auto assignStmt = std::dynamic_pointer_cast<AssignmentStmt>(stmt)) {
+            if (assignStmt->target == identifier) {
+                Location loc;
+                loc.uri = uri;
+                loc.range.start = Position(assignStmt->location.line - 1, assignStmt->location.column);
+                loc.range.end = Position(assignStmt->location.line - 1, assignStmt->location.column + identifier.length());
+                locations.push_back(loc);
+            }
+            searchExprForReferences(assignStmt->value);
+        }
+        else if (auto returnStmt = std::dynamic_pointer_cast<ReturnStmt>(stmt)) {
+            searchExprForReferences(returnStmt->value);
+        }
+        else if (auto ifStmt = std::dynamic_pointer_cast<IfStmt>(stmt)) {
+            searchExprForReferences(ifStmt->condition);
+            for (auto& s : ifStmt->thenBranch) searchStmtForReferences(s);
+            for (auto& s : ifStmt->elseBranch) searchStmtForReferences(s);
+        }
+        else if (auto whileStmt = std::dynamic_pointer_cast<WhileStmt>(stmt)) {
+            searchExprForReferences(whileStmt->condition);
+            for (auto& s : whileStmt->body) searchStmtForReferences(s);
+        }
+        else if (auto forStmt = std::dynamic_pointer_cast<ForStmt>(stmt)) {
+            if (forStmt->iteratorVar == identifier) {
+                Location loc;
+                loc.uri = uri;
+                loc.range.start = Position(forStmt->location.line - 1, forStmt->location.column);
+                loc.range.end = Position(forStmt->location.line - 1, forStmt->location.column + identifier.length());
+                locations.push_back(loc);
+            }
+            searchExprForReferences(forStmt->rangeStart);
+            searchExprForReferences(forStmt->rangeEnd);
+            searchExprForReferences(forStmt->iterable);
+            for (auto& s : forStmt->body) searchStmtForReferences(s);
+        }
+        else if (auto blockStmt = std::dynamic_pointer_cast<BlockStmt>(stmt)) {
+            for (auto& s : blockStmt->statements) searchStmtForReferences(s);
+        }
+    };
+    
+    for (auto& decl : doc.ast->declarations) {
+        if (auto funcDecl = std::dynamic_pointer_cast<FunctionDecl>(decl)) {
+            if (funcDecl->name == identifier) {
+                Location loc;
+                loc.uri = uri;
+                loc.range.start = Position(funcDecl->location.line - 1, funcDecl->location.column);
+                loc.range.end = Position(funcDecl->location.line - 1, funcDecl->location.column + identifier.length());
+                locations.push_back(loc);
+            }
+            
+            for (const auto& param : funcDecl->parameters) {
+                if (param.name == identifier) {
+                    Location loc;
+                    loc.uri = uri;
+                    loc.range.start = Position(funcDecl->location.line - 1, funcDecl->location.column);
+                    loc.range.end = Position(funcDecl->location.line - 1, funcDecl->location.column + identifier.length());
+                    locations.push_back(loc);
+                }
+            }
+            
+            for (auto& stmt : funcDecl->body) {
+                searchStmtForReferences(stmt);
+            }
+        }
+        else if (auto structDecl = std::dynamic_pointer_cast<StructDecl>(decl)) {
+            if (structDecl->name == identifier) {
+                Location loc;
+                loc.uri = uri;
+                loc.range.start = Position(structDecl->location.line - 1, structDecl->location.column);
+                loc.range.end = Position(structDecl->location.line - 1, structDecl->location.column + identifier.length());
+                locations.push_back(loc);
+            }
+        }
+        else if (auto typedefDecl = std::dynamic_pointer_cast<TypeDefDecl>(decl)) {
+            if (typedefDecl->name == identifier) {
+                Location loc;
+                loc.uri = uri;
+                loc.range.start = Position(typedefDecl->location.line - 1, typedefDecl->location.column);
+                loc.range.end = Position(typedefDecl->location.line - 1, typedefDecl->location.column + identifier.length());
+                locations.push_back(loc);
+            }
+        }
+    }
+    
     return locations;
 }
 

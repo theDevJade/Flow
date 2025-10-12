@@ -36,7 +36,6 @@ enum class TypeKind {
     VOID,
     STRUCT,
     FUNCTION,
-    OPTION,
     ARRAY,
     UNKNOWN
 };

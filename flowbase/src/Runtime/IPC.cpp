@@ -107,9 +107,9 @@ IPCValue CAdapter::call(const std::string& function, const std::vector<IPCValue>
         return IPCValue();
     }
     
-    // For demonstration, handle printf specially
+
     if (function == "printf" && !args.empty()) {
-        // Simple printf call
+
         if (args[0].type == IPCValue::Type::STRING) {
             printf("%s", args[0].stringValue.c_str());
             fflush(stdout);
@@ -117,7 +117,7 @@ IPCValue CAdapter::call(const std::string& function, const std::vector<IPCValue>
         }
     }
     
-    // For other functions, we'd need proper type marshalling
+
     // This is a simplified implementation
     std::cerr << "Warning: Generic C function calling not fully implemented" << std::endl;
     return IPCValue();
@@ -130,18 +130,18 @@ void CAdapter::shutdown() {
     }
 }
 
-// ===== Python Adapter Implementation =====
+
 
 bool PythonAdapter::initialize(const std::string& module) {
     moduleName = module;
     
-    // Create pipe for IPC
+
     if (pipe(pipeFd) == -1) {
         std::cerr << "Failed to create pipe" << std::endl;
         return false;
     }
     
-    // Fork child process for Python
+
     childPid = fork();
     
     if (childPid == -1) {

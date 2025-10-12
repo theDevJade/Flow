@@ -25,6 +25,7 @@ set(FLOW_COMMON_SOURCES
     src/Sema/SemanticAnalyzer.cpp
     src/Codegen/CodeGenerator.cpp
     src/Driver/Driver.cpp
+    src/Driver/MultiFileBuilder.cpp
     src/Runtime/IPC.cpp
     src/Runtime/Interop.cpp
     src/Runtime/JVMInterop.cpp

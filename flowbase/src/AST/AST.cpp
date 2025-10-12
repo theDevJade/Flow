@@ -5,7 +5,7 @@ namespace flow {
 
 
 
-// ============================================================
+
 
 std::string Type::toString() const {
     switch (kind) {
@@ -14,13 +14,18 @@ std::string Type::toString() const {
         case TypeKind::STRING: return "string";
         case TypeKind::BOOL: return "bool";
         case TypeKind::VOID: return "void";
-        case TypeKind::STRUCT: return name;
-        case TypeKind::FUNCTION: return "function";
-        case TypeKind::OPTION:
+        case TypeKind::STRUCT:
             if (!typeParams.empty()) {
-                return "Option<" + typeParams[0]->toString() + ">";
+                std::string result = name + "<";
+                for (size_t i = 0; i < typeParams.size(); i++) {
+                    if (i > 0) result += ", ";
+                    result += typeParams[i]->toString();
+                }
+                result += ">";
+                return result;
             }
-            return "Option";
+            return name;
+        case TypeKind::FUNCTION: return "function";
         case TypeKind::ARRAY:
             if (!typeParams.empty()) {
                 return typeParams[0]->toString() + "[]";
@@ -31,9 +36,9 @@ std::string Type::toString() const {
     }
 }
 
-// ============================================================
-// VISITOR IMPLEMENTATIONS (stub)
-// ============================================================
+
+
+
 
 void IntLiteralExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }
 void FloatLiteralExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }

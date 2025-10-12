@@ -78,12 +78,14 @@ private:
 public:
     SemanticAnalyzer() : currentFunctionReturnType(nullptr), currentDirectory(".") {}
     
-    // TODO: Implement semantic analysis
     void analyze(std::shared_ptr<Program> program);
     void setCurrentFile(const std::string& filePath);
     
     const std::vector<std::string>& getErrors() const { return errors; }
     bool hasErrors() const { return !errors.empty(); }
+    
+    // Get loaded modules for multi-file compilation
+    const std::map<std::string, std::shared_ptr<Program>>& getLoadedModules() const { return loadedModules; }
     
     // Expression visitors
     void visit(IntLiteralExpr& node) override;

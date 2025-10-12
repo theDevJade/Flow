@@ -10,9 +10,9 @@
 
 namespace flow {
 
-// ============================================================
-// SYMBOL TABLE
-// ============================================================
+
+
+
 
 void SymbolTable::enterScope() {
     scopes.emplace_back();
@@ -49,9 +49,9 @@ bool SymbolTable::isMutable(const std::string& name) {
     return symbol ? symbol->isMutable : false;
 }
 
-// ============================================================
-// SEMANTIC ANALYZER
-// ============================================================
+
+
+
 
 void SemanticAnalyzer::reportError(const std::string& message, const SourceLocation& loc) {
     ErrorReporter::instance().reportError("Semantic", message, loc);
@@ -60,8 +60,43 @@ void SemanticAnalyzer::reportError(const std::string& message, const SourceLocat
 
 bool SemanticAnalyzer::typesMatch(std::shared_ptr<Type> t1, std::shared_ptr<Type> t2) {
     if (!t1 || !t2) return false;
-    // TODO: Implement proper type checking including coercion rules
-    return t1->kind == t2->kind && t1->name == t2->name;
+    
+    t1 = resolveTypeAlias(t1);
+    t2 = resolveTypeAlias(t2);
+    
+    if (t1->kind == t2->kind && t1->name == t2->name) {
+        if (!t1->typeParams.empty() || !t2->typeParams.empty()) {
+            if (t1->typeParams.size() != t2->typeParams.size()) {
+                return false;
+            }
+            for (size_t i = 0; i < t1->typeParams.size(); i++) {
+                if (!typesMatch(t1->typeParams[i], t2->typeParams[i])) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
+    // Type coercion: int <-> float
+    if ((t1->kind == TypeKind::INT && t2->kind == TypeKind::FLOAT) ||
+        (t1->kind == TypeKind::FLOAT && t2->kind == TypeKind::INT)) {
+        return true;
+    }
+    
+    // Coercion to string
+    if (t2->kind == TypeKind::STRING && (t1->kind == TypeKind::INT || 
+                                          t1->kind == TypeKind::FLOAT || 
+                                          t1->kind == TypeKind::BOOL)) {
+        return true;
+    }
+    
+    // bool to numeric
+    if (t1->kind == TypeKind::BOOL && (t2->kind == TypeKind::INT || t2->kind == TypeKind::FLOAT)) {
+        return true;
+    }
+    
+    return false;
 }
 
 void SemanticAnalyzer::setCurrentFile(const std::string& filePath) {
@@ -80,10 +115,15 @@ void SemanticAnalyzer::analyze(std::shared_ptr<Program> program) {
     auto stringType = std::make_shared<Type>(TypeKind::STRING, "string");
     auto boolType = std::make_shared<Type>(TypeKind::BOOL, "bool");
     
-    // Register print function
+
+
+    auto optionType = std::make_shared<Type>(TypeKind::STRUCT, "Option");
+    symbolTable.define("Option", optionType, false);
+    
+
     symbolTable.define("print", voidType, false, true);
     
-    // Register println function
+
     symbolTable.define("println", voidType, false, true);
     
     symbolTable.define("len", intType, false, true);
@@ -111,9 +151,9 @@ void SemanticAnalyzer::analyze(std::shared_ptr<Program> program) {
     }
 }
 
-// ============================================================
-// VISITOR IMPLEMENTATIONS - TODO: Implement semantic checks
-// ============================================================
+
+
+
 
 void SemanticAnalyzer::visit(IntLiteralExpr& node) {
     node.type = std::make_shared<Type>(TypeKind::INT, "int");
@@ -132,7 +172,6 @@ void SemanticAnalyzer::visit(BoolLiteralExpr& node) {
 }
 
 void SemanticAnalyzer::visit(IdentifierExpr& node) {
-    // TODO: Look up identifier in symbol table
     auto* symbol = symbolTable.lookup(node.name);
     if (symbol) {
         node.type = symbol->type;
@@ -150,7 +189,7 @@ void SemanticAnalyzer::visit(BinaryExpr& node) {
     // Infer result type
     if (node.left && node.left->type) {
         // For arithmetic and comparison operators, result follows left operand type
-        // (simplified - real implementation would check operator and do coercion)
+
         switch (node.op) {
             case TokenType::LT:
             case TokenType::LE:
@@ -226,10 +265,42 @@ void SemanticAnalyzer::visit(MemberAccessExpr& node) {
 }
 
 void SemanticAnalyzer::visit(StructInitExpr& node) {
-    // TODO: Implement struct initialization type checking
     for (auto& field : node.fieldValues) {
         if (field) field->accept(*this);
     }
+    
+    auto structIt = structFields.find(node.structName);
+    if (structIt == structFields.end()) {
+        reportError("Unknown struct type: " + node.structName, node.location);
+        node.type = std::make_shared<Type>(TypeKind::UNKNOWN, "unknown");
+        return;
+    }
+    
+    const auto& expectedFields = structIt->second;
+    if (node.fieldValues.size() != expectedFields.size()) {
+        reportError("Struct '" + node.structName + "' expects " + 
+                    std::to_string(expectedFields.size()) + " fields, but got " + 
+                    std::to_string(node.fieldValues.size()), node.location);
+        node.type = std::make_shared<Type>(TypeKind::STRUCT, node.structName);
+        return;
+    }
+    
+    size_t i = 0;
+    for (const auto& [fieldName, fieldType] : expectedFields) {
+        if (i >= node.fieldValues.size()) break;
+        
+        auto& fieldValue = node.fieldValues[i];
+        if (fieldValue && fieldValue->type) {
+            if (!typesMatch(fieldValue->type, fieldType)) {
+                reportError("Field '" + fieldName + "' of struct '" + node.structName + 
+                            "' expects type '" + fieldType->name + "' but got '" + 
+                            fieldValue->type->name + "'", node.location);
+            }
+        }
+        i++;
+    }
+    
+    node.type = std::make_shared<Type>(TypeKind::STRUCT, node.structName);
 }
 
 void SemanticAnalyzer::visit(ArrayLiteralExpr& node) {
@@ -338,15 +409,45 @@ void SemanticAnalyzer::visit(AssignmentStmt& node) {
 }
 
 void SemanticAnalyzer::visit(ReturnStmt& node) {
-    // TODO: Check return type matches function return type
     if (node.value) {
         node.value->accept(*this);
+    }
+    
+    if (!currentFunctionReturnType) {
+        reportError("Return statement outside of function", node.location);
+        return;
+    }
+    
+    if (currentFunctionReturnType->isVoid()) {
+        if (node.value) {
+            reportError("Void function should not return a value", node.location);
+        }
+    } else {
+        if (!node.value) {
+            reportError("Non-void function must return a value", node.location);
+        } else if (node.value->type) {
+            if (!typesMatch(node.value->type, currentFunctionReturnType)) {
+                reportError("Return type '" + node.value->type->name + 
+                            "' does not match function return type '" + 
+                            currentFunctionReturnType->name + "'", node.location);
+            }
+        }
     }
 }
 
 void SemanticAnalyzer::visit(IfStmt& node) {
     if (node.condition) {
         node.condition->accept(*this);
+        
+        if (node.condition->type) {
+            auto condType = resolveTypeAlias(node.condition->type);
+            if (condType->kind != TypeKind::BOOL && 
+                condType->kind != TypeKind::INT && 
+                condType->kind != TypeKind::FLOAT) {
+                reportError("If condition must be a boolean expression, got '" + 
+                            condType->name + "'", node.location);
+            }
+        }
     }
     
     symbolTable.enterScope();
@@ -392,10 +493,18 @@ void SemanticAnalyzer::visit(ForStmt& node) {
 }
 
 void SemanticAnalyzer::visit(WhileStmt& node) {
-    // Check condition is boolean
     if (node.condition) {
         node.condition->accept(*this);
-        // TODO: Verify condition type is boolean
+        
+        if (node.condition->type) {
+            auto condType = resolveTypeAlias(node.condition->type);
+            if (condType->kind != TypeKind::BOOL && 
+                condType->kind != TypeKind::INT && 
+                condType->kind != TypeKind::FLOAT) {
+                reportError("While condition must be a boolean expression, got '" + 
+                            condType->name + "'", node.location);
+            }
+        }
     }
     
     // Check body statements
@@ -415,7 +524,6 @@ void SemanticAnalyzer::visit(BlockStmt& node) {
 }
 
 void SemanticAnalyzer::visit(FunctionDecl& node) {
-    // TODO: Implement function declaration checking
     symbolTable.define(node.name, node.returnType, false, true);
     
     symbolTable.enterScope();
@@ -467,10 +575,43 @@ std::shared_ptr<Type> SemanticAnalyzer::resolveTypeAlias(std::shared_ptr<Type> t
 }
 
 void SemanticAnalyzer::visit(LinkDecl& node) {
-    // TODO: Implement link declaration checking
-    // Register foreign functions
+    std::vector<std::string> validAdapters = {"c", "python", "js", "jvm", "inline"};
+    bool isValidAdapter = false;
+    for (const auto& adapter : validAdapters) {
+        if (node.adapter == adapter) {
+            isValidAdapter = true;
+            break;
+        }
+    }
+    
+    if (!isValidAdapter) {
+        reportError("Unknown FFI adapter '" + node.adapter + "'. Valid adapters are: c, python, js, jvm, inline", 
+                    node.location);
+    }
+    
+    if (node.adapter != "inline" && node.adapter != "c" && node.module.empty()) {
+        reportError("Link declaration with adapter '" + node.adapter + "' must specify a module", 
+                    node.location);
+    }
+    
+    if (node.adapter == "inline" && node.inlineCode.empty()) {
+        reportError("Inline link declaration must provide code block", node.location);
+    }
+    
     for (auto& func : node.functions) {
-        if (func) func->accept(*this);
+        if (!func) continue;
+        
+        for (const auto& param : func->parameters) {
+            if (param.type) {
+                auto paramType = resolveTypeAlias(param.type);
+                if (paramType->kind == TypeKind::UNKNOWN) {
+                    reportError("Foreign function '" + func->name + "' parameter '" + 
+                                param.name + "' has unknown type", func->location);
+                }
+            }
+        }
+        
+        symbolTable.define(func->name, func->returnType, false, true);
     }
 }
 
@@ -538,22 +679,52 @@ void SemanticAnalyzer::importSymbolsFrom(std::shared_ptr<Program> module,
                                           const std::string& alias) {
     if (!module) return;
     
-    // If alias is provided, we need to track imported symbols under that namespace
-    // For now, implement simple direct import of specified symbols
-    
     for (auto& decl : module->declarations) {
         FunctionDecl* funcDecl = dynamic_cast<FunctionDecl*>(decl.get());
         if (funcDecl) {
-            // Check if this symbol should be imported
             if (symbols.empty() || std::find(symbols.begin(), symbols.end(), funcDecl->name) != symbols.end()) {
                 std::string importName = alias.empty() ? funcDecl->name : alias + "." + funcDecl->name;
                 symbolTable.define(importName, funcDecl->returnType, false, true);
-                
                 std::cout << "  Imported function: " << importName << std::endl;
             }
         }
         
-        // TODO: Handle struct declarations, type definitions, etc.
+        StructDecl* structDecl = dynamic_cast<StructDecl*>(decl.get());
+        if (structDecl) {
+            if (symbols.empty() || std::find(symbols.begin(), symbols.end(), structDecl->name) != symbols.end()) {
+                std::string importName = alias.empty() ? structDecl->name : alias + "." + structDecl->name;
+                auto structType = std::make_shared<Type>(TypeKind::STRUCT, importName);
+                symbolTable.define(importName, structType, false);
+                
+                std::map<std::string, std::shared_ptr<Type>> fields;
+                for (const auto& field : structDecl->fields) {
+                    fields[field.name] = field.type;
+                }
+                structFields[importName] = fields;
+                std::cout << "  Imported struct: " << importName << std::endl;
+            }
+        }
+        
+        TypeDefDecl* typedefDecl = dynamic_cast<TypeDefDecl*>(decl.get());
+        if (typedefDecl) {
+            if (symbols.empty() || std::find(symbols.begin(), symbols.end(), typedefDecl->name) != symbols.end()) {
+                std::string importName = alias.empty() ? typedefDecl->name : alias + "." + typedefDecl->name;
+                typeAliases[importName] = typedefDecl->aliasedType;
+                std::cout << "  Imported type alias: " << importName << std::endl;
+            }
+        }
+        
+        LinkDecl* linkDecl = dynamic_cast<LinkDecl*>(decl.get());
+        if (linkDecl) {
+            for (auto& func : linkDecl->functions) {
+                if (!func) continue;
+                if (symbols.empty() || std::find(symbols.begin(), symbols.end(), func->name) != symbols.end()) {
+                    std::string importName = alias.empty() ? func->name : alias + "." + func->name;
+                    symbolTable.define(importName, func->returnType, false, true);
+                    std::cout << "  Imported foreign function: " << importName << std::endl;
+                }
+            }
+        }
     }
 }
 

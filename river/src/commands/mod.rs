@@ -8,4 +8,5 @@ pub mod search;
 pub mod list;
 pub mod update;
 pub mod clean;
+pub mod flow_manager;
 

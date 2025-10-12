@@ -108,5 +108,5 @@ const char* readFile_impl(const char* path) {
 }
 
 }
-} // namespace flow
+}
 
