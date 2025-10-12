@@ -93,18 +93,23 @@ impl Builder {
             return Ok(nested);
         }
         
-        // 3. Check in current dir/flowbase/build/flowbase
+        
         let current = PathBuf::from("flowbase/build/flowbase");
         if current.exists() {
             return Ok(current);
         }
         
-        // 4. Check in PATH
+
         if let Ok(path) = which::which("flowbase") {
             return Ok(path);
         }
         
-        // 5. Check FLOW_HOME environment variable
+        
+        if let Ok(path) = which::which("flow") {
+            return Ok(path);
+        }
+        
+        
         if let Ok(flow_home) = std::env::var("FLOW_HOME") {
             let flow_bin = PathBuf::from(&flow_home).join("build/flowbase");
             if flow_bin.exists() {
@@ -115,9 +120,19 @@ impl Builder {
             if flow_bin.exists() {
                 return Ok(flow_bin);
             }
+            // Also try build/flow
+            let flow_bin = PathBuf::from(&flow_home).join("build/flow");
+            if flow_bin.exists() {
+                return Ok(flow_bin);
+            }
+            // Also try bin/flow
+            let flow_bin = PathBuf::from(&flow_home).join("bin/flow");
+            if flow_bin.exists() {
+                return Ok(flow_bin);
+            }
         }
         
-        Err("Flow compiler (flowbase) not found. Please set FLOW_HOME or ensure flowbase is in PATH".into())
+        Err("Flow compiler (flowbase or flow) not found. Please set FLOW_HOME or ensure flowbase/flow is in PATH".into())
     }
 }
 
