@@ -2,6 +2,7 @@
 #include "../../include/Common/ErrorReporter.h"
 #include "../../include/Lexer/Lexer.h"
 #include "../../include/Parser/Parser.h"
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <sstream>
