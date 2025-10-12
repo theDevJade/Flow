@@ -22,7 +22,7 @@ sha2 = "0.10"
 tar = "0.4"
 flate2 = "1.0"
 dirs = "5.0"
-indicatif = "0.17"
+indicatif = "0.18"
 console = "0.15"
 which = "4.4"
 
