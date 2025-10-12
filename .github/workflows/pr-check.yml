@@ -17,11 +17,28 @@ jobs:
       with:
         node-version: '20'
     
+    - name: Cache frontend node modules
+      uses: actions/cache@v4
+      with:
+        path: frontend/node_modules
+        key: ${{ runner.os }}-frontend-node-${{ hashFiles('frontend/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-frontend-node-
+    
     - name: Check Frontend
       working-directory: frontend
       run: |
         npm ci
         npm run check || echo "Frontend check completed with warnings"
+
+    
+    - name: Cache VSCode extension node modules
+      uses: actions/cache@v4
+      with:
+        path: flowvscode/node_modules
+        key: ${{ runner.os }}-vscode-node-${{ hashFiles('flowvscode/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vscode-node-
         
     - name: Check VSCode Extension
       working-directory: flowvscode
@@ -54,6 +71,14 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
+    
+    - name: Cache node modules
+      uses: actions/cache@v4
+      with:
+        path: frontend/node_modules
+        key: ${{ runner.os }}-frontend-node-${{ hashFiles('frontend/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-frontend-node-
         
     - name: Build Frontend and Check Size
       working-directory: frontend
