@@ -26,3 +26,7 @@ indicatif = "0.17"
 console = "0.15"
 which = "4.4"
 
+[lints.rust]
+unused_variables = "allow"
+dead_code = "allow"
+

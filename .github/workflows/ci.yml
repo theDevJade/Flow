@@ -193,7 +193,7 @@ jobs:
         
     - name: Build with Gradle
       working-directory: javabindings
-      run: ./gradlew build
+      run: chmod +x gradlew && ./gradlew build --no-daemon
       
     - name: Upload Java Bindings Artifact
       uses: actions/upload-artifact@v4

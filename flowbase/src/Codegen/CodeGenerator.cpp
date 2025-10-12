@@ -301,8 +301,8 @@ void CodeGenerator::compileToObject(const std::string& filename) {
     llvm::InitializeNativeTargetAsmParser();
     
     // Get the target triple - use the module's triple or get default
-    const llvm::Triple& moduleTriple = module->getTargetTriple();
-    llvm::Triple targetTriple = moduleTriple;
+    std::string moduleTripleStr = module->getTargetTriple();
+    llvm::Triple targetTriple(moduleTripleStr);
     
     if (targetTriple.str().empty()) {
         #ifdef __APPLE__
@@ -312,7 +312,7 @@ void CodeGenerator::compileToObject(const std::string& filename) {
         #else
             targetTriple = llvm::Triple("x86_64-unknown-unknown");
         #endif
-        module->setTargetTriple(targetTriple);
+        module->setTargetTriple(targetTriple.str());
     }
     
     // Look up the target
