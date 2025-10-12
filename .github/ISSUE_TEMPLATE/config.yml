@@ -1,0 +1,12 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/USERNAME/Flow/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📖 Documentation
+    url: https://USERNAME.github.io/Flow/
+    about: Read the official documentation
+  - name: 🔒 Security Vulnerability
+    url: https://github.com/USERNAME/Flow/security/advisories/new
+    about: Report security vulnerabilities privately
+

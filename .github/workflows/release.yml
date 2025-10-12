@@ -1,0 +1,173 @@
+name: Release - Build Artifacts
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for release'
+        required: true
+        default: 'v0.1.0'
+
+jobs:
+  build-release-artifacts:
+    name: Build Release - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x86_64
+            archive: tar.gz
+          - os: macos-latest
+            target: macos-x86_64
+            archive: tar.gz
+          - os: windows-latest
+            target: windows-x86_64
+            archive: zip
+            
+    steps:
+    - uses: actions/checkout@v4
+    
+    # Build Flow Compiler & LSP
+    - name: Install LLVM (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 18
+        sudo apt-get install -y llvm-18-dev libclang-18-dev
+        
+    - name: Install LLVM (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install llvm@18
+        echo "LLVM_DIR=$(brew --prefix llvm@18)" >> $GITHUB_ENV
+        
+    - name: Install LLVM (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install llvm --version=18.1.8
+        echo "LLVM_DIR=C:\Program Files\LLVM" >> $env:GITHUB_ENV
+        
+    - name: Build Flowbase (Unix)
+      if: matrix.os != 'windows-latest'
+      working-directory: flowbase
+      run: |
+        mkdir -p build
+        cd build
+        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR=/usr/lib/llvm-18/cmake
+        else
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR=$(brew --prefix llvm@18)/lib/cmake/llvm
+        fi
+        make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+        
+    - name: Build Flowbase (Windows)
+      if: matrix.os == 'windows-latest'
+      working-directory: flowbase
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="C:\Program Files\LLVM\lib\cmake\llvm"
+        cmake --build . --config Release
+        
+    # Build River
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+        
+    - name: Build River
+      working-directory: river
+      run: cargo build --release
+      
+    # Build VSCode Extension
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Build VSCode Extension
+      working-directory: flowvscode
+      run: |
+        npm ci
+        npm run compile
+        npm run package
+        
+    # Build Java Bindings
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Build Java Bindings (Unix)
+      if: matrix.os != 'windows-latest'
+      working-directory: javabindings
+      run: ./gradlew build
+      
+    - name: Build Java Bindings (Windows)
+      if: matrix.os == 'windows-latest'
+      working-directory: javabindings
+      run: .\gradlew.bat build
+        
+    # Package everything
+    - name: Create Release Directory
+      run: |
+        mkdir -p release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}/bin
+        mkdir -p release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}/lib
+        mkdir -p release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}/examples
+        mkdir -p release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}/vscode
+        
+    - name: Copy Binaries (Unix)
+      if: matrix.os != 'windows-latest'
+      run: |
+        cp flowbase/build/flowbase release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}/bin/
+        cp flowbase/build/flow-lsp release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}/bin/
+        cp river/target/release/river release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}/bin/
+        cp flowbase/examples/*.flow release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}/examples/
+        cp flowvscode/*.vsix release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}/vscode/
+        cp javabindings/build/libs/*.jar release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}/lib/ || true
+        cp README.md LICENSE release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}/
+        
+    - name: Copy Binaries (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        copy flowbase\build\Release\flowbase.exe release\flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}\bin\
+        copy flowbase\build\Release\flow-lsp.exe release\flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}\bin\
+        copy river\target\release\river.exe release\flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}\bin\
+        xcopy flowbase\examples\*.flow release\flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}\examples\
+        copy flowvscode\*.vsix release\flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}\vscode\
+        copy javabindings\build\libs\*.jar release\flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}\lib\ || exit 0
+        copy README.md release\flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}\
+        copy LICENSE release\flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}\
+        
+    - name: Create Archive (Unix)
+      if: matrix.archive == 'tar.gz'
+      working-directory: release
+      run: tar czf flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}.tar.gz flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}
+      
+    - name: Create Archive (Windows)
+      if: matrix.archive == 'zip'
+      working-directory: release
+      run: |
+        powershell Compress-Archive -Path flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }} -DestinationPath flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}.zip
+        
+    - name: Upload Release Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: flow-${{ matrix.target }}
+        path: release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}.${{ matrix.archive }}
+        retention-days: 30
+        
+    - name: Upload to Release
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/flow-${{ github.event.inputs.tag_name || github.ref_name }}-${{ matrix.target }}.${{ matrix.archive }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

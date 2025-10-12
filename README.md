@@ -448,9 +448,9 @@ Flow is built with and inspired by:
 
 ## 🔗 Links
 
-- **Repository**: https://github.com/yourusername/Flow
-- **Issues**: https://github.com/yourusername/Flow/issues
-- **Discussions**: https://github.com/yourusername/Flow/discussions
+- **Repository**: https://github.com/theDevJade/Flow
+- **Issues**: https://github.com/theDevJade/Flow/issues
+- **Discussions**: https://github.com/theDevJade/Flow/discussions
 
 ---
 
@@ -460,4 +460,4 @@ For questions, suggestions, or contributions, please open an issue or start a di
 
 ---
 
-**Flow - Write once, run anywhere, interoperate with everything.** 🚀
+**Flow - Write once, run anywhere, interoperate with everything, well everything in the future ofc.** 🚀

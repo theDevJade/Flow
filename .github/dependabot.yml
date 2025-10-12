@@ -1,0 +1,51 @@
+version: 2
+updates:
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      
+  # Frontend NPM dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "frontend"
+    open-pull-requests-limit: 10
+      
+  # VSCode Extension NPM dependencies
+  - package-ecosystem: "npm"
+    directory: "/flowvscode"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "vscode-extension"
+    open-pull-requests-limit: 10
+      
+  # River Cargo dependencies
+  - package-ecosystem: "cargo"
+    directory: "/river"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "rust"
+    open-pull-requests-limit: 10
+      
+  # Java Gradle dependencies
+  - package-ecosystem: "gradle"
+    directory: "/javabindings"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "java"
+    open-pull-requests-limit: 10
+
