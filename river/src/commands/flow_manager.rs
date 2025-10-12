@@ -4,7 +4,7 @@ use std::process::Command;
 use std::error::Error;
 use colored::*;
 
-const FLOW_REPO: &str = "https://github.com/yourusername/flow.git";
+const FLOW_REPO: &str = "https://github.com/thedevjade/flow.git";
 
 pub fn install_flow(version: String) -> Result<(), Box<dyn Error>> {
     println!("\n{}", "Installing Flow compiler...".cyan().bold());
