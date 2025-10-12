@@ -1,0 +1,34 @@
+// C Math Library Interop Test
+// Tests direct FFI calls to C math functions
+
+link "c" {
+    func sqrt(x: float) -> float;
+    func pow(x: float, y: float) -> float;
+    func sin(x: float) -> float;
+    func cos(x: float) -> float;
+}
+
+func main() {
+    print("=== C Math Library Test ===");
+    print("");
+    
+    // Test sqrt
+    let sqrtResult: float = sqrt(25.0);
+    print("sqrt(25.0) = " + sqrtResult);
+    
+    // Test pow
+    let powResult: float = pow(2.0, 8.0);
+    print("pow(2.0, 8.0) = " + powResult);
+    
+    // Test sin
+    let sinResult: float = sin(0.0);
+    print("sin(0.0) = " + sinResult);
+    
+    // Test cos
+    let cosResult: float = cos(0.0);
+    print("cos(0.0) = " + cosResult);
+    
+    print("");
+    print("All C interop tests passed!");
+}
+

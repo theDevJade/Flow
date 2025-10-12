@@ -1,0 +1,59 @@
+// Mutable vs Immutable Variables in Flow
+
+func increment(n: int) -> int {
+    let result: int = n + 1;
+    return result;
+}
+
+func main() {
+    print("=== Flow Variable Mutability ===");
+    print("");
+    
+    // IMMUTABLE: Use 'let' keyword (default)
+    print("--- Immutable Variables (let) ---");
+    let x: int = 10;
+    let name: string = "Flow";
+    let pi: float = 3.14159;
+    
+    print("x = " + x);
+    print("name = " + name);
+    print("pi = " + pi);
+    
+    // x = 20;  // ERROR! Cannot reassign immutable variable
+    
+    print("");
+    
+    // MUTABLE: Use 'let mut' keywords
+    print("--- Mutable Variables (let mut) ---");
+    let mut counter: int = 0;
+    let mut temperature: float = 20.5;
+    let mut status: string = "starting";
+    
+    print("Initial counter = " + counter);
+    print("Initial temperature = " + temperature);
+    print("Initial status = " + status);
+    
+    print("");
+    
+    // Can reassign mutable variables
+    counter = 1;
+    counter = 2;
+    counter = 3;
+    
+    temperature = 25.0;
+    status = "running";
+    
+    print("Updated counter = " + counter);
+    print("Updated temperature = " + temperature);
+    print("Updated status = " + status);
+    
+    print("");
+    
+    // Function parameters and return values
+    let result: int = increment(counter);
+    print("increment(3) = " + result);
+    
+    print("");
+    print("✓ Mutability demo complete!");
+}
+

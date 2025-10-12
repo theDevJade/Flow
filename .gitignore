@@ -1,0 +1,107 @@
+# git gud
+
+# === Build Artifacts ===
+build/
+target/
+out/
+dist/
+cmake-build-*/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# === Compiled Executables ===
+flowbase/build/flowbase
+flowbase/build/flow-lsp
+river/target/debug/river
+river/target/release/river
+
+# === CMake ===
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# === Cargo/Rust ===
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# === Java/Gradle ===
+.gradle/
+build/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# === Node.js/NPM ===
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+*.vsix
+
+# === IDE Files ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+
+# === Logs ===
+*.log
+*.out
+
+# === Test Outputs ===
+test-output/
+*.test
+
+# === Temporary Files ===
+*.tmp
+*.temp
+tmp/
+temp/
+
+# === OS Files ===
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# === River Package Manager ===
+River.lock
+.river/
+
+# === LLVM IR ===
+*.ll
+*.bc
+
+# === Debug Files ===
+*.dSYM/
+*.pdb
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# === Coverage ===
+*.gcov
+*.gcda
+*.gcno
+
+# Keep important files
+!README.md
+!LICENSE
+!.gitignore
+

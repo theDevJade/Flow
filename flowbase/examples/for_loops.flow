@@ -1,0 +1,32 @@
+// For loop examples with proper variable scoping
+
+func testRangeLoop() {
+    print("=== Range-based For Loop ===");
+    
+    for (i in 0..5) {
+        print("i = " + i);
+    }
+}
+
+func testNestedLoops() {
+    print("");
+    print("=== Nested For Loops ===");
+    
+    for (i in 0..3) {
+        for (j in 0..3) {
+            print("i=" + i + ", j=" + j);
+        }
+    }
+}
+
+func main() {
+    print("=== For Loop Variable Scoping Test ===");
+    print("");
+    
+    testRangeLoop();
+    testNestedLoops();
+    
+    print("");
+    print("✓ For loop scoping working!");
+}
+

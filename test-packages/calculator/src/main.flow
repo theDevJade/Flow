@@ -1,0 +1,44 @@
+// Calculator - Flow executable using mathlib
+// Demonstrates using a library dependency
+
+// import mathlib;  // Would be used when import system is implemented
+
+func main() {
+    print("╔══════════════════════════════════╗");
+    print("║  Flow Calculator Demo            ║");
+    print("╚══════════════════════════════════╝");
+    print("");
+    
+    // For now, inline implementations until import system works
+    print("Testing mathematical operations:");
+    print("");
+    
+    let a: int = 10;
+    let b: int = 5;
+    
+    print("Numbers: a = 10, b = 5");
+    print("");
+    
+    // Addition
+    let sum: int = a + b;
+    print("Addition: 10 + 5 = " + sum);
+    
+    // Subtraction
+    let diff: int = a - b;
+    print("Subtraction: 10 - 5 = " + diff);
+    
+    // Multiplication
+    let prod: int = a * b;
+    print("Multiplication: 10 * 5 = " + prod);
+    
+    // Division
+    let quot: int = a / b;
+    print("Division: 10 / 5 = " + quot);
+    
+    print("");
+    print("✓ Calculator working with local math!");
+    print("");
+    print("Note: Once import system is complete,");
+    print("this will use the mathlib dependency.");
+}
+

@@ -1,0 +1,6 @@
+// Simple Hello World program in Flow
+
+func main() {
+    print("Hello, Flow!");
+}
+

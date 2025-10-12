@@ -1,0 +1,107 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group = 'com.flowlang'
+version = '0.1.0'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+    withSourcesJar()
+    withJavadocJar()
+}
+
+dependencies {
+    // JUnit for testing
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}
+
+// Task to compile native library
+task compileNative(type: Exec) {
+    description = 'Compile the JNI native library'
+    workingDir '../flowbase/build'
+    
+    // On macOS
+    if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+        commandLine 'make', 'flowbase'
+    } 
+    // On Linux
+    else if (System.getProperty('os.name').toLowerCase().contains('linux')) {
+        commandLine 'make', 'flowbase'
+    }
+    // On Windows
+    else {
+        commandLine 'cmd', '/c', 'cmake', '--build', '.', '--config', 'Release'
+    }
+}
+
+// Copy native library to resources
+task copyNativeLib(type: Copy, dependsOn: compileNative) {
+    description = 'Copy native library to resources'
+    from '../flowbase/build'
+    into 'src/main/resources/native'
+    
+    if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+        include '*.dylib', 'flowbase'
+    } else if (System.getProperty('os.name').toLowerCase().contains('linux')) {
+        include '*.so', 'flowbase'
+    } else {
+        include '*.dll', 'flowbase.exe'
+    }
+}
+
+// Ensure native library is built before compiling Java
+compileJava.dependsOn copyNativeLib
+
+// Publishing configuration
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            
+            pom {
+                name = 'Flow Java Bindings'
+                description = 'Java bindings for the Flow programming language'
+                url = 'https://github.com/yourusername/flow'
+                
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Configuration for IDE
+idea {
+    module {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+
+eclipse {
+    classpath {
+        downloadJavadoc = true
+        downloadSources = true
+    }
+}
+

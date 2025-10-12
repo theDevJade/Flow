@@ -1,0 +1,11 @@
+[package]
+name = "river-test"
+version = "0.1.0"
+authors = ["Your Name <you@example.com>"]
+license = "MIT"
+type = "bin"
+entry = "src/main.flow"
+
+[dependencies]
+
+[dev_dependencies]

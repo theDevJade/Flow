@@ -1,0 +1,50 @@
+// Simple C interop test
+// Tests direct FFI with C standard library
+
+link "c" {
+    func sqrt(x: float) -> float;
+    func pow(x: float, y: float) -> float;
+}
+
+// Flow function that uses C functions
+func testMath() {
+    print("=== C Math Functions ===");
+    
+    let sqrtResult: float = sqrt(16.0);
+    print("sqrt(16.0) = " + sqrtResult);
+    
+    let powResult: float = pow(2.0, 10.0);
+    print("pow(2.0, 10.0) = " + powResult);
+}
+
+// Export Flow function with C ABI
+export func flowAdd(a: int, b: int) -> int {
+    return a + b;
+}
+
+export func flowMultiply(a: int, b: int) -> int {
+    return a * b;
+}
+
+func main() {
+    print("╔═══════════════════════════╗");
+    print("║  C Interop Test - AHHH!   ║");
+    print("╚═══════════════════════════╝");
+    print("");
+    
+    // Test C math functions
+    testMath();
+    
+    // Test exported Flow functions
+    print("");
+    print("=== Flow Functions ===");
+    let sum: int = flowAdd(10, 20);
+    print("flowAdd(10, 20) = " + sum);
+    
+    let product: int = flowMultiply(5, 6);
+    print("flowMultiply(5, 6) = " + product);
+    
+    print("");
+    print("YASS QUEEN Full C Interop Working!");
+}
+

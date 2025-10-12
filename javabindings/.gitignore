@@ -1,0 +1,46 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+
+# macOS
+.DS_Store
+
+# Java
+*.class
+*.jar
+!gradle/wrapper/*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+
+# Log files
+*.log
+
+# Test results
+/test-results/
+/test-output/
+
+# Native libraries
+*.so
+*.dylib
+*.dll
+src/main/resources/native/
+

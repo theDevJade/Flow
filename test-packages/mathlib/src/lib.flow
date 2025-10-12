@@ -1,0 +1,48 @@
+// MathLib - Flow library
+// Mathematical utility functions
+
+/// Add two integers
+func add(a: int, b: int) -> int {
+    return a + b;
+}
+
+/// Subtract two integers
+func subtract(a: int, b: int) -> int {
+    return a - b;
+}
+
+/// Multiply two integers
+func multiply(a: int, b: int) -> int {
+    return a * b;
+}
+
+/// Divide two integers
+func divide(a: int, b: int) -> int {
+    if (b == 0) {
+        print("Error: Division by zero!");
+        return 0;
+    }
+    return a / b;
+}
+
+/// Calculate power
+func power(base: int, exp: int) -> int {
+    let mut result: int = 1;
+    let mut i: int = 0;
+    
+    while (i < exp) {
+        result = result * base;
+        i = i + 1;
+    }
+    
+    return result;
+}
+
+/// Calculate factorial
+func factorial(n: int) -> int {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+

@@ -1,0 +1,12 @@
+[package]
+name = "c-math"
+version = "0.1.0"
+authors = ["Flow Team"]
+license = "MIT"
+type = "bin"
+entry = "src/main.flow"
+
+[dependencies]
+
+[dev_dependencies]
+

@@ -1,0 +1,15 @@
+// Simple arithmetic example
+
+func add(a: int, b: int) -> int {
+    return a + b;
+}
+
+func multiply(x: int, y: int) -> int {
+    return x * y;
+}
+
+func main() {
+    let sum: int = add(5, 3);
+    let product: int = multiply(4, 7);
+}
+

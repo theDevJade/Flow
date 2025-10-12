@@ -1,0 +1,73 @@
+{
+  "name": "flow-lang",
+  "displayName": "Flow Language Support",
+  "description": "Language support for Flow programming language with LSP integration",
+  "version": "0.1.0",
+  "publisher": "flow-lang",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "flow",
+        "aliases": [
+          "Flow",
+          "flow"
+        ],
+        "extensions": [
+          ".flow"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "flow",
+        "scopeName": "source.flow",
+        "path": "./syntaxes/flow.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Flow",
+      "properties": {
+        "flow.languageServer.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Flow language server executable (flow-lsp). If empty, will search in PATH."
+        },
+        "flow.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the Flow language server."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.75.0",
+    "@vscode/vsce": "^2.22.0",
+    "typescript": "^5.3.0"
+  }
+}
+

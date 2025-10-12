@@ -1,0 +1,11 @@
+[package]
+name = "hello-world"
+version = "0.1.0"
+authors = ["Flow Team <team@flow-lang.org>"]
+description = "A simple hello world executable"
+license = "MIT"
+type = "bin"
+entry = "src/main.flow"
+
+[dependencies]
+

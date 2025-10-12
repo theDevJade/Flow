@@ -1,0 +1,12 @@
+[package]
+name = "calculator"
+version = "0.1.0"
+authors = ["Flow Team <team@flow-lang.org>"]
+description = "A calculator using the mathlib library"
+license = "MIT"
+type = "bin"
+entry = "src/main.flow"
+
+[dependencies]
+mathlib = { path = "../mathlib" }
+

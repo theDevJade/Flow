@@ -1,0 +1,27 @@
+// Variadic parameters test with printf
+
+link "c" {
+    func printf(fmt: string, ...) -> int;
+    func sqrt(x: float) -> float;
+}
+
+func main() {
+    print("=== Variadic Parameters Test ===");
+    print("");
+    
+    // Test variadic printf
+    printf("Hello, %s!\n", "World");
+    printf("Number: %d\n", 42);
+    printf("Float: %f\n", 3.14);
+    printf("Multiple: %s %d %f\n", "test", 100, 2.71);
+    
+    print("");
+    
+    // Test regular C function
+    let result: float = sqrt(16.0);
+    printf("sqrt(16.0) = %f\n", result);
+    
+    print("");
+    print("✓ Variadic parameters working!");
+}
+

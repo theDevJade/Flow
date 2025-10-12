@@ -1,0 +1,15 @@
+// Variable declaration examples
+
+func main() {
+    let x: int = 10;           // immutable (default)
+    let mut y: float = 3.14;   // mutable (explicit)
+    let name: string = "Alice";
+    
+    print("x = " + x);
+    print("y = " + y);
+    print("name = " + name);
+    
+    y = 2.71;  // OK, y is mutable
+    print("y = " + y);
+}
+
