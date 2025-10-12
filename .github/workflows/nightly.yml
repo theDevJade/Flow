@@ -23,19 +23,19 @@ jobs:
       run: |
         wget https://apt.llvm.org/llvm.sh
         chmod +x llvm.sh
-        sudo ./llvm.sh 18
-        sudo apt-get install -y llvm-18-dev libclang-18-dev
+        sudo ./llvm.sh 21
+        sudo apt-get install -y llvm-21-dev libclang-21-dev
         
     - name: Install LLVM (macOS)
       if: matrix.os == 'macos-latest'
       run: |
-        brew install llvm@18
-        echo "LLVM_DIR=$(brew --prefix llvm@18)" >> $GITHUB_ENV
+        brew install llvm
+        echo "LLVM_DIR=$(brew --prefix llvm)" >> $GITHUB_ENV
         
     - name: Install LLVM (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        choco install llvm --version=18.1.8
+        choco install llvm
         echo "LLVM_DIR=C:\Program Files\LLVM" >> $env:GITHUB_ENV
         
     - name: Configure CMake (Unix)
@@ -46,9 +46,9 @@ jobs:
         mkdir -p build
         cd build
         if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR=/usr/lib/llvm-18/cmake
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR=/usr/lib/llvm-21/cmake
         else
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR=$(brew --prefix llvm@18)/lib/cmake/llvm
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR=$(brew --prefix llvm)/lib/cmake/llvm
         fi
         
     - name: Configure CMake (Windows)
