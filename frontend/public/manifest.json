@@ -1,0 +1,26 @@
+{
+  "name": "Flow Programming Language",
+  "short_name": "Flow",
+  "description": "A modern, efficient systems programming language with seamless C interoperability, powerful type inference, and an intuitive package manager.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0e27",
+  "theme_color": "#06b6d4",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "development",
+    "productivity",
+    "utilities"
+  ],
+  "lang": "en",
+  "dir": "ltr"
+}
+

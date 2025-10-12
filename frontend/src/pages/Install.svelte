@@ -1,3 +1,38 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  
+  let platform: 'macos' | 'linux' | 'windows' = 'linux';
+  let installCommand = '';
+  
+  const installCommands = {
+    macos: "curl --proto '=https' --tlsv1.2 -sSf https://install.flowc.dev | sh",
+    linux: "curl --proto '=https' --tlsv1.2 -sSf https://install.flowc.dev | sh",
+    windows: "iwr -useb https://installwindows.flowc.dev/init.ps1 | iex"
+  };
+  
+  onMount(() => {
+    // Detect platform
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (userAgent.indexOf('mac') !== -1) {
+      platform = 'macos';
+    } else if (userAgent.indexOf('win') !== -1) {
+      platform = 'windows';
+    } else {
+      platform = 'linux';
+    }
+    installCommand = installCommands[platform];
+  });
+  
+  function selectPlatform(p: 'macos' | 'linux' | 'windows') {
+    platform = p;
+    installCommand = installCommands[p];
+  }
+  
+  function copyCommand() {
+    navigator.clipboard.writeText(installCommand);
+  }
+</script>
+
 <div class="install-page">
   <div class="container">
     <div class="install-header">
@@ -6,6 +41,50 @@
     </div>
 
     <div class="install-content">
+      <div class="quick-install">
+        <h2>⚡ Quick Install</h2>
+        <p class="quick-install-subtitle">Install Flow with a single command</p>
+        
+        <div class="platform-selector">
+          <button 
+            class="platform-btn" 
+            class:active={platform === 'macos'}
+            on:click={() => selectPlatform('macos')}
+          >
+            🍎 macOS
+          </button>
+          <button 
+            class="platform-btn" 
+            class:active={platform === 'linux'}
+            on:click={() => selectPlatform('linux')}
+          >
+            🐧 Linux
+          </button>
+          <button 
+            class="platform-btn" 
+            class:active={platform === 'windows'}
+            on:click={() => selectPlatform('windows')}
+          >
+            🪟 Windows
+          </button>
+        </div>
+        
+        <div class="install-command-box">
+          <code>{installCommand}</code>
+          <button class="copy-btn" on:click={copyCommand}>
+            📋 Copy
+          </button>
+        </div>
+        
+        <p class="install-note">
+          This will install the Flow compiler, LSP server, and River package manager
+        </p>
+      </div>
+      <div class="manual-install-section">
+        <h2>🔧 Manual Installation</h2>
+        <p class="section-subtitle">Or build from source for development</p>
+      </div>
+
       <div class="step-box">
         <div class="step-number">1</div>
         <div class="step-content">
@@ -308,6 +387,123 @@
     border-color: var(--ocean-cyan);
   }
 
+  .quick-install {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(34, 211, 238, 0.1) 100%);
+    border: 2px solid var(--ocean-cyan);
+    border-radius: 16px;
+    padding: 2.5rem;
+    margin-bottom: 4rem;
+    text-align: center;
+    animation: slideUp 0.6s ease;
+  }
+
+  .quick-install h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 2rem;
+    background: linear-gradient(135deg, var(--ocean-cyan) 0%, var(--ocean-foam) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .quick-install-subtitle {
+    color: var(--text-secondary);
+    margin: 0 0 2rem 0;
+    font-size: 1.1rem;
+  }
+
+  .platform-selector {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .platform-btn {
+    padding: 0.75rem 1.5rem;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .platform-btn:hover {
+    border-color: var(--ocean-cyan);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+  }
+
+  .platform-btn.active {
+    background: var(--ocean-medium);
+    border-color: var(--ocean-cyan);
+    color: var(--ocean-cyan);
+  }
+
+  .install-command-box {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: #0a0e27;
+    border: 1px solid var(--ocean-cyan);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 0 auto;
+    max-width: 800px;
+  }
+
+  .install-command-box code {
+    flex: 1;
+    color: var(--ocean-foam);
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    text-align: left;
+    word-break: break-all;
+  }
+
+  .copy-btn {
+    flex-shrink: 0;
+    padding: 0.5rem 1rem;
+    background: var(--ocean-cyan);
+    border: none;
+    border-radius: 6px;
+    color: var(--bg-primary);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .copy-btn:hover {
+    background: var(--ocean-foam);
+    transform: scale(1.05);
+  }
+
+  .install-note {
+    margin: 1rem 0 0 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+
+  .manual-install-section {
+    text-align: center;
+    margin: 4rem 0 2rem 0;
+  }
+
+  .manual-install-section h2 {
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+  }
+
+  .section-subtitle {
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
   @media (max-width: 768px) {
     .install-page {
       padding: 2rem 0;
@@ -341,6 +537,34 @@
       flex-direction: column;
       align-items: stretch;
     }
+
+    .quick-install {
+      padding: 1.5rem;
+    }
+
+    .quick-install h2 {
+      font-size: 1.5rem;
+    }
+
+    .platform-selector {
+      flex-direction: column;
+    }
+
+    .platform-btn {
+      width: 100%;
+    }
+
+    .install-command-box {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .install-command-box code {
+      font-size: 0.85rem;
+    }
+
+    .copy-btn {
+      width: 100%;
+    }
   }
 </style>
-

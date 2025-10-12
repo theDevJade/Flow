@@ -22,7 +22,7 @@ Lake is a toolchain manager for Flow that:
 
 - 📦 **Downloads prebuilt binaries** when available (fast!)
 - 🔨 **Builds from source** as a fallback
-- 🔄 **Manages multiple Flow versions** 
+- 🔄 **Manages multiple Flow versions**
 - ⚡ **Updates automatically**
 - 🎯 **Just works** - no configuration needed
 
@@ -66,7 +66,7 @@ lake self update
 ### Toolchain Management
 
 - `lake toolchain install <version>` - Install a specific version
-- `lake toolchain list` - List installed toolchains  
+- `lake toolchain list` - List installed toolchains
 - `lake toolchain uninstall <version>` - Remove a toolchain
 
 ### Utility Commands
@@ -80,13 +80,13 @@ lake self update
 Lake tries to install in this order:
 
 1. **Download prebuilt binaries** from GitHub releases
-   - Fastest option (~10 seconds)
-   - Works for most common platforms
+    - Fastest option (~10 seconds)
+    - Works for most common platforms
 
 2. **Build from source** if prebuilts unavailable
-   - Takes 2-5 minutes
-   - Requires: LLVM, CMake, Rust, Git
-   - Automatically checks dependencies
+    - Takes 2-5 minutes
+    - Requires: LLVM, CMake, Rust, Git
+    - Automatically checks dependencies
 
 ## Directory Structure
 
@@ -133,6 +133,7 @@ source ~/.flow/env
 ### Source Build Supported
 
 All platforms with:
+
 - LLVM 12+
 - CMake 3.15+
 - C++17 compiler (GCC 7+, Clang 5+, MSVC 2019+)
@@ -273,14 +274,14 @@ export https_proxy=http://proxy.example.com:8080
 
 ## Comparison with Other Tools
 
-| Feature | Lake | Rustup | NVM | pyenv |
-|---------|------|--------|-----|-------|
-| Prebuilt binaries | ✓ | ✓ | ✓ | ✗ |
-| Source builds | ✓ | ✓ | ✗ | ✓ |
-| Multiple versions | ✓ | ✓ | ✓ | ✓ |
-| Auto PATH setup | ✓ | ✓ | ✓ | ✓ |
-| Shell completions | ✓ | ✓ | ✓ | ✓ |
-| Self-update | ✓ | ✓ | ✗ | ✗ |
+| Feature           | Lake | Rustup | NVM | pyenv |
+|-------------------|------|--------|-----|-------|
+| Prebuilt binaries | ✓    | ✓      | ✓   | ✗     |
+| Source builds     | ✓    | ✓      | ✗   | ✓     |
+| Multiple versions | ✓    | ✓      | ✓   | ✓     |
+| Auto PATH setup   | ✓    | ✓      | ✓   | ✓     |
+| Shell completions | ✓    | ✓      | ✓   | ✓     |
+| Self-update       | ✓    | ✓      | ✗   | ✗     |
 
 ## Advanced Usage
 

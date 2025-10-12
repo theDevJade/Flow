@@ -1,12 +1,11 @@
 import * as path from 'path';
-import { workspace, ExtensionContext, window } from 'vscode';
+import {ExtensionContext, window, workspace} from 'vscode';
 import {
+    Executable,
+    ExecutableOptions,
     LanguageClient,
     LanguageClientOptions,
-    ServerOptions,
-    TransportKind,
-    ExecutableOptions,
-    Executable
+    ServerOptions
 } from 'vscode-languageclient/node';
 
 let client: LanguageClient | undefined;
@@ -17,7 +16,7 @@ export function activate(context: ExtensionContext) {
 
     const config = workspace.getConfiguration('flow');
     let serverPath = config.get<string>('languageServer.path');
-    
+
     if (!serverPath) {
 
         const workspaceFolders = workspace.workspaceFolders;

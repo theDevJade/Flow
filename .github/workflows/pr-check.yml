@@ -2,7 +2,7 @@ name: PR Checks
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [ opened, synchronize, reopened ]
 
 jobs:
   lint-and-format:
@@ -10,103 +10,103 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-    
-    - name: Cache frontend node modules
-      uses: actions/cache@v4
-      with:
-        path: frontend/node_modules
-        key: ${{ runner.os }}-frontend-node-${{ hashFiles('frontend/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-frontend-node-
-    
-    - name: Check Frontend
-      working-directory: frontend
-      run: |
-        npm ci
-        npm run check || echo "Frontend check completed with warnings"
+      - uses: actions/checkout@v4
 
-    
-    - name: Cache VSCode extension node modules
-      uses: actions/cache@v4
-      with:
-        path: flowvscode/node_modules
-        key: ${{ runner.os }}-vscode-node-${{ hashFiles('flowvscode/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-vscode-node-
-        
-    - name: Check VSCode Extension
-      working-directory: flowvscode
-      run: |
-        npm ci
-        npm run compile
-        
-    - name: Setup Rust
-      uses: actions-rust-lang/setup-rust-toolchain@v1
-      with:
-        toolchain: stable
-        components: clippy, rustfmt
-        
-    - name: Rust Format Check
-      working-directory: river
-      run: cargo fmt --check || echo "Rust format check completed"
-      
-    - name: Rust Clippy
-      working-directory: river
-      run: cargo clippy -- -D warnings || echo "Clippy completed with warnings"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache frontend node modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-frontend-node-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-frontend-node-
+
+      - name: Check Frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run check || echo "Frontend check completed with warnings"
+
+
+      - name: Cache VSCode extension node modules
+        uses: actions/cache@v4
+        with:
+          path: flowvscode/node_modules
+          key: ${{ runner.os }}-vscode-node-${{ hashFiles('flowvscode/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vscode-node-
+
+      - name: Check VSCode Extension
+        working-directory: flowvscode
+        run: |
+          npm ci
+          npm run compile
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+
+      - name: Rust Format Check
+        working-directory: river
+        run: cargo fmt --check || echo "Rust format check completed"
+
+      - name: Rust Clippy
+        working-directory: river
+        run: cargo clippy -- -D warnings || echo "Clippy completed with warnings"
 
   size-check:
     name: Build Size Check
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-    
-    - name: Cache node modules
-      uses: actions/cache@v4
-      with:
-        path: frontend/node_modules
-        key: ${{ runner.os }}-frontend-node-${{ hashFiles('frontend/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-frontend-node-
-        
-    - name: Build Frontend and Check Size
-      working-directory: frontend
-      run: |
-        npm ci
-        npm run build
-        echo "Frontend build size:"
-        du -sh dist/
-        
-    - name: Comment PR with Build Info
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const fs = require('fs');
-          const { execSync } = require('child_process');
-          
-          let size = 'Unknown';
-          try {
-            size = execSync('du -sh frontend/dist/').toString().split('\t')[0];
-          } catch(e) {
-            console.log('Could not get size');
-          }
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: `### 📦 Build Size Report\n\n**Frontend build size:** ${size}\n\n✅ Build completed successfully!`
-          });
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-frontend-node-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-frontend-node-
+
+      - name: Build Frontend and Check Size
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          echo "Frontend build size:"
+          du -sh dist/
+
+      - name: Comment PR with Build Info
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+            
+            let size = 'Unknown';
+            try {
+              size = execSync('du -sh frontend/dist/').toString().split('\t')[0];
+            } catch(e) {
+              console.log('Could not get size');
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### 📦 Build Size Report\n\n**Frontend build size:** ${size}\n\n✅ Build completed successfully!`
+            });
 

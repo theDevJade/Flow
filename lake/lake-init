@@ -4,6 +4,9 @@
 
 set -e
 
+# Save the script path before any directory changes
+SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+
 # Colors
 if [ -t 1 ]; then
     BOLD='\033[1m'
@@ -234,7 +237,7 @@ build_from_source() {
 
 install_lake() {
     # Copy this script to the bin directory
-    cp "$0" "$LAKE_BIN/lake"
+    cp "$SCRIPT_PATH" "$LAKE_BIN/lake"
     chmod +x "$LAKE_BIN/lake"
 }
 

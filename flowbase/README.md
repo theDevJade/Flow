@@ -192,34 +192,39 @@ if (result has value) {
 The following components have skeleton implementations with TODOs marked for full implementation:
 
 1. **Documentation**
-   - TODO: Write language specification
-   - TODO: Create tutorial
-   - TODO: Add API documentation
-   - TODO: Write contributor guide
+    - TODO: Write language specification
+    - TODO: Create tutorial
+    - TODO: Add API documentation
+    - TODO: Write contributor guide
 
 ## Development Roadmap
 
 ### Phase 1: Core Language (Done)
+
 - Complete parser implementation
 - Finish basic code generation
 - Support primitive types and basic operations
 
 ### Phase 2: Advanced Features (Done)
+
 - Implement struct support fully
 - Add arrays and collections
 - Complete control flow constructs
 
 ### Phase 3: Foreign Function Interface (Done)
+
 - C ABI support
 - Python bindings
 - JavaScript bindings
 
 ### Phase 4: Async/Await (TO-DO)
+
 - Design async runtime
 - Implement coroutines
 - Add promise-based FFI
 
 ### Phase 5: Optimization & Tooling (Semi-done)
+
 - LLVM optimization passes AHHHHH
 - Debugger support DONE-ISH
 - Package manager DONE

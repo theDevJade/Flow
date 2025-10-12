@@ -1,8 +1,9 @@
 {
-  "name": "frontend",
+  "name": "flow-website",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "description": "Official website for Flow Programming Language",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

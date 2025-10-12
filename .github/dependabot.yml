@@ -8,7 +8,7 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
-      
+
   # Frontend NPM dependencies
   - package-ecosystem: "npm"
     directory: "/frontend"
@@ -18,7 +18,7 @@ updates:
       - "dependencies"
       - "frontend"
     open-pull-requests-limit: 10
-      
+
   # VSCode Extension NPM dependencies
   - package-ecosystem: "npm"
     directory: "/flowvscode"
@@ -28,7 +28,7 @@ updates:
       - "dependencies"
       - "vscode-extension"
     open-pull-requests-limit: 10
-      
+
   # River Cargo dependencies
   - package-ecosystem: "cargo"
     directory: "/river"
@@ -38,7 +38,7 @@ updates:
       - "dependencies"
       - "rust"
     open-pull-requests-limit: 10
-      
+
   # Java Gradle dependencies
   - package-ecosystem: "gradle"
     directory: "/javabindings"

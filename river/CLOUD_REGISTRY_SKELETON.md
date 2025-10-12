@@ -1,8 +1,9 @@
-
 ## API Structure
 
 ### Base URL
+
 ### Flowlang.org is just a placeholder
+
 ```
 https://registry.flowlang.org/api/v1
 ```
@@ -14,6 +15,7 @@ https://registry.flowlang.org/api/v1
 **Endpoint:** `GET /api/v1/packages/{name}`
 
 **Response:**
+
 ```json
 {
   "name": "http",
@@ -23,10 +25,17 @@ https://registry.flowlang.org/api/v1
   "license": "MIT",
   "download_url": "https://registry.flowlang.org/packages/http-2.0.0.tar.gz",
   "checksum": "abc123...",
-  "dependencies": ["json", "tls"],
+  "dependencies": [
+    "json",
+    "tls"
+  ],
   "repository": "https://github.com/flowlang/http",
   "homepage": "https://flowlang.org/packages/http",
-  "keywords": ["http", "client", "rest"],
+  "keywords": [
+    "http",
+    "client",
+    "rest"
+  ],
   "published_at": "2025-10-11T12:00:00Z"
 }
 ```
@@ -38,6 +47,7 @@ https://registry.flowlang.org/api/v1
 **Response:** Binary `.tar.gz` file
 
 **Headers:**
+
 - `Content-Type: application/gzip`
 - `Content-Length: {size}`
 - `X-Checksum: {sha256}`
@@ -47,10 +57,12 @@ https://registry.flowlang.org/api/v1
 **Endpoint:** `POST /api/v1/publish`
 
 **Headers:**
+
 - `Authorization: Bearer {token}`
 - `Content-Type: multipart/form-data`
 
 **Body:**
+
 ```
 package: <binary .tar.gz file>
 name: "mypackage"
@@ -59,6 +71,7 @@ checksum: "abc123..."
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -72,6 +85,7 @@ checksum: "abc123..."
 **Endpoint:** `GET /api/v1/search?q={query}&limit={limit}`
 
 **Response:**
+
 ```json
 {
   "results": [
@@ -91,6 +105,7 @@ checksum: "abc123..."
 **Endpoint:** `GET /api/v1/packages/{name}/versions`
 
 **Response:**
+
 ```json
 {
   "versions": [
@@ -111,6 +126,7 @@ checksum: "abc123..."
 **File:** `river/src/registry.rs`
 
 **Add to Registry struct:**
+
 ```rust
 use reqwest::blocking::Client;
 
@@ -138,6 +154,7 @@ impl Registry {
 ### Phase 2: Get Package Info
 
 **Implement:**
+
 ```rust
 pub fn get_package_info(&self, name: &str) -> Result<PackageInfo, Box<dyn std::error::Error>> {
     let url = format!("{}/api/v1/packages/{}", self.url, name);
@@ -160,6 +177,7 @@ pub fn get_package_info(&self, name: &str) -> Result<PackageInfo, Box<dyn std::e
 ### Phase 3: Download Package
 
 **Implement with progress tracking:**
+
 ```rust
 use std::fs::File;
 use std::io::{Read, Write};
@@ -207,6 +225,7 @@ pub fn download_package(
 ### Phase 4: Checksum Verification
 
 **Implement:**
+
 ```rust
 use sha2::{Sha256, Digest};
 
@@ -224,6 +243,7 @@ fn verify_checksum(&self, path: &PathBuf, expected: &str) -> Result<bool, Box<dy
 ### Phase 5: Tarball Extraction
 
 **Implement:**
+
 ```rust
 use flate2::read::GzDecoder;
 use tar::Archive;
@@ -243,6 +263,7 @@ fn extract_tarball(tarball: &PathBuf, dest: &PathBuf) -> Result<(), Box<dyn std:
 ### Phase 6: Publishing
 
 **Implement:**
+
 ```rust
 use reqwest::multipart;
 
@@ -296,6 +317,7 @@ river install http
 ```
 
 **Output:**
+
 ```
 → Installing package 'http'...
 
@@ -321,6 +343,7 @@ SUCCESS Successfully installed http @ 2.0.0
 ```
 
 **Current Implementation:**
+
 - Creates placeholder directories
 - Shows beautiful animated UI
 - Demonstrates the expected flow
@@ -335,40 +358,44 @@ stuff need server yayy
 ### 1. Database Schema
 
 ```sql
-CREATE TABLE packages (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL,
+CREATE TABLE packages
+(
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
-    author VARCHAR(255) NOT NULL,
-    license VARCHAR(50),
-    repository TEXT,
-    homepage TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+    author      VARCHAR(255)        NOT NULL,
+    license     VARCHAR(50),
+    repository  TEXT,
+    homepage    TEXT,
+    created_at  TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE package_versions (
-    id SERIAL PRIMARY KEY,
-    package_id INTEGER REFERENCES packages(id),
-    version VARCHAR(50) NOT NULL,
-    download_url TEXT NOT NULL,
-    checksum VARCHAR(64) NOT NULL,
+CREATE TABLE package_versions
+(
+    id           SERIAL PRIMARY KEY,
+    package_id   INTEGER REFERENCES packages (id),
+    version      VARCHAR(50) NOT NULL,
+    download_url TEXT        NOT NULL,
+    checksum     VARCHAR(64) NOT NULL,
     published_at TIMESTAMP DEFAULT NOW(),
-    downloads INTEGER DEFAULT 0,
-    UNIQUE(package_id, version)
+    downloads    INTEGER   DEFAULT 0,
+    UNIQUE (package_id, version)
 );
 
-CREATE TABLE dependencies (
-    id SERIAL PRIMARY KEY,
-    package_version_id INTEGER REFERENCES package_versions(id),
-    dependency_name VARCHAR(255) NOT NULL,
+CREATE TABLE dependencies
+(
+    id                 SERIAL PRIMARY KEY,
+    package_version_id INTEGER REFERENCES package_versions (id),
+    dependency_name    VARCHAR(255) NOT NULL,
     version_constraint VARCHAR(50)
 );
 
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(255) UNIQUE NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    api_token VARCHAR(64) UNIQUE,
+CREATE TABLE users
+(
+    id         SERIAL PRIMARY KEY,
+    username   VARCHAR(255) UNIQUE NOT NULL,
+    email      VARCHAR(255) UNIQUE NOT NULL,
+    api_token  VARCHAR(64) UNIQUE,
     created_at TIMESTAMP DEFAULT NOW()
 );
 ```
@@ -376,6 +403,7 @@ CREATE TABLE users (
 ### 2. REST API Server
 
 **Technologies:**
+
 - **Backend:** idc
 - **Database:** PostgreSQL (preferably)
 - **Storage:** S3 or similar for package files
@@ -455,12 +483,14 @@ river login
 ```
 
 **Prompts:**
+
 ```
 Email: user@example.com
 Password: ********
 ```
 
 **Flow:**
+
 1. POST `/api/v1/auth/login` with credentials
 2. Receive JWT token
 3. Store in `~/.river/config.toml`
@@ -472,6 +502,7 @@ river publish
 ```
 
 **Flow:**
+
 1. Read token from config
 2. Include in `Authorization: Bearer {token}` header
 3. Upload package
@@ -481,6 +512,7 @@ river publish
 ## Dependencies to Add
 
 **Update Cargo.toml:**
+
 ```toml
 [dependencies]
 reqwest = { version = "0.11", features = ["blocking", "json", "multipart"] }

@@ -1,6 +1,7 @@
 # River - Flow Package Manager
 
-**River** is the official package manager for the Flow programming language. It handles package creation, dependency management, building, and distribution.
+**River** is the official package manager for the Flow programming language. It handles package creation, dependency
+management, building, and distribution.
 
 ---
 
@@ -91,9 +92,11 @@ river init <name> [--kind <bin|lib>]
 ```
 
 **Options:**
+
 - `--kind`, `-k`: Package type - `bin` for executable, `lib` for library (default: `bin`)
 
 **Examples:**
+
 ```bash
 river init my-app                    # Create executable in ./my-app
 river init my-lib --kind lib         # Create library
@@ -111,6 +114,7 @@ river build
 Compiles the package and places the output in `target/`.
 
 **Output:**
+
 - **Executable:** `target/<package-name>`
 - **Library:** `target/lib<package-name>`
 
@@ -123,6 +127,7 @@ river add <package> [--version <version>]
 ```
 
 **Examples:**
+
 ```bash
 river add http                      # Add latest version
 river add json --version "2.0.0"    # Add specific version
@@ -157,6 +162,7 @@ river publish
 ```
 
 **Requirements:**
+
 - Valid `River.toml`
 - Authentication token (run `river login` first)
 - Package must build successfully
@@ -202,6 +208,7 @@ river clean
 A binary package produces an executable that can be run directly.
 
 **Manifest:**
+
 ```toml
 [package]
 type = "bin"
@@ -209,6 +216,7 @@ entry = "src/main.flow"
 ```
 
 **Entry Point (`src/main.flow`):**
+
 ```flow
 func main() {
     print("Hello, World!");
@@ -222,6 +230,7 @@ func main() {
 A library package can be imported by other packages.
 
 **Manifest:**
+
 ```toml
 [package]
 type = "lib"
@@ -229,6 +238,7 @@ entry = "src/lib.flow"
 ```
 
 **Entry Point (`src/lib.flow`):**
+
 ```flow
 /// Public API function
 func greet(name: string) -> string {
@@ -237,6 +247,7 @@ func greet(name: string) -> string {
 ```
 
 **Usage in Another Package:**
+
 ```flow
 import my-lib;
 
@@ -327,12 +338,14 @@ cache = "/Users/you/.river/cache"
 River uses the Flow compiler (`flowbase`) to build packages.
 
 **Compiler Discovery:**
+
 1. `../flowbase/build/flowbase` (relative to package)
 2. `flowbase/build/flowbase` (in current directory)
 3. `flowbase` in PATH
 4. `$FLOW_HOME/bin/flowbase`
 
 **Set Flow Home:**
+
 ```bash
 export FLOW_HOME=/path/to/Flow/flowbase
 ```
@@ -423,29 +436,29 @@ river build
 
 ## Comparison with Other Package Managers
 
-| Feature | River | Cargo (Rust) | npm (Node.js) | pip (Python) |
-|---------|-------|--------------|---------------|--------------|
-| Manifest | River.toml | Cargo.toml | package.json | setup.py |
-| Lock file | River.lock | Cargo.lock | package-lock.json | Pipfile.lock |
-| Build system | ✓ | ✓ | ✗ | ✗ |
-| Registry | Coming soon | crates.io | npmjs.com | pypi.org |
-| Binary/Lib types | ✓ | ✓ | Partial | ✗ |
+| Feature          | River       | Cargo (Rust) | npm (Node.js)     | pip (Python) |
+|------------------|-------------|--------------|-------------------|--------------|
+| Manifest         | River.toml  | Cargo.toml   | package.json      | setup.py     |
+| Lock file        | River.lock  | Cargo.lock   | package-lock.json | Pipfile.lock |
+| Build system     | ✓           | ✓            | ✗                 | ✗            |
+| Registry         | Coming soon | crates.io    | npmjs.com         | pypi.org     |
+| Binary/Lib types | ✓           | ✓            | Partial           | ✗            |
 
 ---
 
 ## Development Status
 
-| Feature | Status |
-|---------|--------|
-| Package initialization | ✅ Complete |
-| Build system | ✅ Complete |
-| Dependency management | ✅ Complete |
-| Local dependencies | ✅ Complete |
-| Version resolution | ⚠️ Basic |
-| Registry integration | 🚧 In Progress |
-| Package publishing | 🚧 Planned |
-| Git dependencies | 🚧 Planned |
-| Workspace support | 🚧 Planned |
+| Feature                | Status         |
+|------------------------|----------------|
+| Package initialization | ✅ Complete     |
+| Build system           | ✅ Complete     |
+| Dependency management  | ✅ Complete     |
+| Local dependencies     | ✅ Complete     |
+| Version resolution     | ⚠️ Basic       |
+| Registry integration   | 🚧 In Progress |
+| Package publishing     | 🚧 Planned     |
+| Git dependencies       | 🚧 Planned     |
+| Workspace support      | 🚧 Planned     |
 
 ---
 

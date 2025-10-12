@@ -1,0 +1,17 @@
+# robots.txt for Flow Programming Language
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://flowc.dev/sitemap.xml
+
+# Crawl-delay (be nice to our servers)
+Crawl-delay: 1
+
+# Block specific bots (optional)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+

@@ -27,12 +27,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+
       - name: Cache node modules
         uses: actions/cache@v4
         with:
@@ -40,15 +40,15 @@ jobs:
           key: ${{ runner.os }}-frontend-node-${{ hashFiles('frontend/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-frontend-node-
-          
+
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
-        
+
       - name: Build
         working-directory: frontend
         run: npm run build
-        
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

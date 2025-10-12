@@ -19,13 +19,10 @@
 using namespace flow;
 
 
-
-
-
 struct FlowRuntime {
     std::string lastError;
     bool initialized;
-    
+
     FlowRuntime() : initialized(false) {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
@@ -36,49 +33,51 @@ struct FlowRuntime {
 };
 
 struct FlowModule {
-    FlowRuntime* runtime;
+    FlowRuntime *runtime;
     std::string name;
     std::shared_ptr<Program> ast;
     std::unique_ptr<CodeGenerator> codegen;
     std::unique_ptr<llvm::ExecutionEngine> engine;
-    std::map<std::string, FlowFunction*> functions;
-    
+    std::map<std::string, FlowFunction *> functions;
+
     ~FlowModule() {
-        for (auto& pair : functions) {
+        for (auto &pair: functions) {
             delete pair.second;
         }
     }
 };
 
 struct FlowFunction {
-    FlowModule* module;
+    FlowModule *module;
     std::string name;
-    FunctionDecl* decl;
-    void* nativePtr;
-    
-    FlowFunction(FlowModule* m, const std::string& n, FunctionDecl* d)
-        : module(m), name(n), decl(d), nativePtr(nullptr) {}
-    
-    ~FlowFunction() {}
+    FunctionDecl *decl;
+    void *nativePtr;
+
+    FlowFunction(FlowModule *m, const std::string &n, FunctionDecl *d)
+        : module(m), name(n), decl(d), nativePtr(nullptr) {
+    }
+
+    ~FlowFunction() {
+    }
 };
 
 struct FlowValue {
     FlowValueType type;
+
     union {
         int64_t int_value;
         double float_value;
         int bool_value;
     };
+
     std::string string_value;
-    
-    FlowValue(FlowValueType t) : type(t), int_value(0) {}
+
+    FlowValue(FlowValueType t) : type(t), int_value(0) {
+    }
 };
 
 
-
-
-
-FlowRuntime* flow_runtime_new() {
+FlowRuntime *flow_runtime_new() {
     try {
         return new FlowRuntime();
     } catch (...) {
@@ -86,34 +85,31 @@ FlowRuntime* flow_runtime_new() {
     }
 }
 
-void flow_runtime_free(FlowRuntime* runtime) {
+void flow_runtime_free(FlowRuntime *runtime) {
     delete runtime;
 }
 
-const char* flow_runtime_get_error(FlowRuntime* runtime) {
+const char *flow_runtime_get_error(FlowRuntime *runtime) {
     if (!runtime) return "Invalid runtime";
     return runtime->lastError.c_str();
 }
 
 
-
-
-
-FlowModule* flow_module_compile(FlowRuntime* runtime, const char* source, const char* module_name) {
+FlowModule *flow_module_compile(FlowRuntime *runtime, const char *source, const char *module_name) {
     if (!runtime || !source || !module_name) {
         if (runtime) runtime->lastError = "Invalid parameters";
         return nullptr;
     }
-    
+
     try {
         // Lexical analysis
         Lexer lexer(source, module_name);
         auto tokens = lexer.tokenize();
-        
+
         // Parsing
         Parser parser(tokens);
         auto program = parser.parse();
-        
+
         // Semantic analysis
         SemanticAnalyzer analyzer;
         analyzer.analyze(program);
@@ -121,80 +117,75 @@ FlowModule* flow_module_compile(FlowRuntime* runtime, const char* source, const 
             runtime->lastError = "Semantic analysis failed";
             return nullptr;
         }
-        
+
         // Code generation
         auto codegen = std::make_unique<CodeGenerator>(module_name);
         codegen->generate(program);
-        
+
         // Create module
-        FlowModule* module = new FlowModule();
+        FlowModule *module = new FlowModule();
         module->runtime = runtime;
         module->name = module_name;
         module->ast = program;
         module->codegen = std::move(codegen);
-        
+
         // Index functions
-        for (auto& decl : program->declarations) {
-            if (FunctionDecl* funcDecl = dynamic_cast<FunctionDecl*>(decl.get())) {
-                FlowFunction* func = new FlowFunction(module, funcDecl->name, funcDecl);
+        for (auto &decl: program->declarations) {
+            if (FunctionDecl *funcDecl = dynamic_cast<FunctionDecl *>(decl.get())) {
+                FlowFunction *func = new FlowFunction(module, funcDecl->name, funcDecl);
                 module->functions[funcDecl->name] = func;
             }
         }
-        
+
         return module;
-        
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         runtime->lastError = std::string("Compilation error: ") + e.what();
         return nullptr;
     }
 }
 
-FlowModule* flow_module_load_file(FlowRuntime* runtime, const char* file_path) {
+FlowModule *flow_module_load_file(FlowRuntime *runtime, const char *file_path) {
     if (!runtime || !file_path) {
         if (runtime) runtime->lastError = "Invalid parameters";
         return nullptr;
     }
-    
+
     try {
         std::ifstream file(file_path);
         if (!file.is_open()) {
             runtime->lastError = std::string("Failed to open file: ") + file_path;
             return nullptr;
         }
-        
+
         std::stringstream buffer;
         buffer << file.rdbuf();
         std::string source = buffer.str();
-        
+
         return flow_module_compile(runtime, source.c_str(), file_path);
-        
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         runtime->lastError = std::string("File load error: ") + e.what();
         return nullptr;
     }
 }
 
-void flow_module_free(FlowModule* module) {
+void flow_module_free(FlowModule *module) {
     delete module;
 }
 
 
-
-
-
-FlowFunction* flow_module_get_function(FlowModule* module, const char* function_name) {
+FlowFunction *flow_module_get_function(FlowModule *module, const char *function_name) {
     if (!module || !function_name) return nullptr;
-    
+
     auto it = module->functions.find(function_name);
     if (it != module->functions.end()) {
         return it->second;
     }
-    
+
     module->runtime->lastError = std::string("Function not found: ") + function_name;
     return nullptr;
 }
 
-int flow_function_get_param_count(FlowFunction* function) {
+int flow_function_get_param_count(FlowFunction *function) {
     if (!function || !function->decl) return -1;
     return function->decl->parameters.size();
 }
@@ -203,68 +194,68 @@ int flow_function_get_param_count(FlowFunction* function) {
 // VALUE MANAGEMENT
 // ============================================================
 
-FlowValue* flow_value_new_int(FlowRuntime* runtime, int64_t value) {
+FlowValue *flow_value_new_int(FlowRuntime *runtime, int64_t value) {
     if (!runtime) return nullptr;
-    FlowValue* v = new FlowValue(FLOW_TYPE_INT);
+    FlowValue *v = new FlowValue(FLOW_TYPE_INT);
     v->int_value = value;
     return v;
 }
 
-FlowValue* flow_value_new_float(FlowRuntime* runtime, double value) {
+FlowValue *flow_value_new_float(FlowRuntime *runtime, double value) {
     if (!runtime) return nullptr;
-    FlowValue* v = new FlowValue(FLOW_TYPE_FLOAT);
+    FlowValue *v = new FlowValue(FLOW_TYPE_FLOAT);
     v->float_value = value;
     return v;
 }
 
-FlowValue* flow_value_new_string(FlowRuntime* runtime, const char* value) {
+FlowValue *flow_value_new_string(FlowRuntime *runtime, const char *value) {
     if (!runtime || !value) return nullptr;
-    FlowValue* v = new FlowValue(FLOW_TYPE_STRING);
+    FlowValue *v = new FlowValue(FLOW_TYPE_STRING);
     v->string_value = value;
     return v;
 }
 
-FlowValue* flow_value_new_bool(FlowRuntime* runtime, int value) {
+FlowValue *flow_value_new_bool(FlowRuntime *runtime, int value) {
     if (!runtime) return nullptr;
-    FlowValue* v = new FlowValue(FLOW_TYPE_BOOL);
+    FlowValue *v = new FlowValue(FLOW_TYPE_BOOL);
     v->bool_value = value ? 1 : 0;
     return v;
 }
 
-FlowValue* flow_value_new_null(FlowRuntime* runtime) {
+FlowValue *flow_value_new_null(FlowRuntime *runtime) {
     if (!runtime) return nullptr;
     return new FlowValue(FLOW_TYPE_NULL);
 }
 
-void flow_value_free(FlowValue* value) {
+void flow_value_free(FlowValue *value) {
     delete value;
 }
 
-FlowValueType flow_value_get_type(FlowValue* value) {
+FlowValueType flow_value_get_type(FlowValue *value) {
     if (!value) return FLOW_TYPE_NULL;
     return value->type;
 }
 
-FlowResult flow_value_get_int(FlowValue* value, int64_t* out) {
+FlowResult flow_value_get_int(FlowValue *value, int64_t *out) {
     if (!value || !out) return FLOW_ERROR_INVALID_ARGS;
     if (value->type != FLOW_TYPE_INT) return FLOW_ERROR_TYPE_MISMATCH;
     *out = value->int_value;
     return FLOW_OK;
 }
 
-FlowResult flow_value_get_float(FlowValue* value, double* out) {
+FlowResult flow_value_get_float(FlowValue *value, double *out) {
     if (!value || !out) return FLOW_ERROR_INVALID_ARGS;
     if (value->type != FLOW_TYPE_FLOAT) return FLOW_ERROR_TYPE_MISMATCH;
     *out = value->float_value;
     return FLOW_OK;
 }
 
-const char* flow_value_get_string(FlowValue* value) {
+const char *flow_value_get_string(FlowValue *value) {
     if (!value || value->type != FLOW_TYPE_STRING) return nullptr;
     return value->string_value.c_str();
 }
 
-FlowResult flow_value_get_bool(FlowValue* value, int* out) {
+FlowResult flow_value_get_bool(FlowValue *value, int *out) {
     if (!value || !out) return FLOW_ERROR_INVALID_ARGS;
     if (value->type != FLOW_TYPE_BOOL) return FLOW_ERROR_TYPE_MISMATCH;
     *out = value->bool_value;
@@ -275,62 +266,62 @@ FlowResult flow_value_get_bool(FlowValue* value, int* out) {
 // FUNCTION EXECUTION
 // ============================================================
 
-FlowResult flow_function_call(FlowRuntime* runtime, FlowFunction* function,
-                               FlowValue** args, int arg_count, FlowValue** result) {
+FlowResult flow_function_call(FlowRuntime *runtime, FlowFunction *function,
+                              FlowValue **args, int arg_count, FlowValue **result) {
     if (!runtime || !function || !result) return FLOW_ERROR_INVALID_ARGS;
-    
-    FlowModule* module = function->module;
+
+    FlowModule *module = function->module;
     if (!module || !module->codegen) {
         runtime->lastError = "Invalid module or code generator";
         return FLOW_ERROR_INVALID_ARGS;
     }
-    
+
     try {
         // Get LLVM module
-        llvm::Module* llvmModule = module->codegen->getModule();
+        llvm::Module *llvmModule = module->codegen->getModule();
         if (!llvmModule) {
             runtime->lastError = "LLVM module not available";
             return FLOW_ERROR_INVALID_ARGS;
         }
-        
+
         // Create execution engine if not already created
         if (!module->engine) {
             std::string errorStr;
-            
+
             // Clone the module for the execution engine since ExecutionEngine takes ownership
             std::unique_ptr<llvm::Module> moduleClone = llvm::CloneModule(*llvmModule);
-            
+
             llvm::EngineBuilder builder(std::move(moduleClone));
             builder.setErrorStr(&errorStr);
             builder.setEngineKind(llvm::EngineKind::JIT);
-            
-            llvm::ExecutionEngine* engine = builder.create();
+
+            llvm::ExecutionEngine *engine = builder.create();
             if (!engine) {
                 runtime->lastError = "Failed to create execution engine: " + errorStr;
                 return FLOW_ERROR_INVALID_ARGS;
             }
-            
+
             module->engine.reset(engine);
             module->engine->finalizeObject();
         }
-        
+
         // Get the LLVM function from the execution engine's module
-        llvm::Function* llvmFunc = module->engine->FindFunctionNamed(function->name.c_str());
+        llvm::Function *llvmFunc = module->engine->FindFunctionNamed(function->name.c_str());
         if (!llvmFunc) {
             runtime->lastError = "Function not found in LLVM module: " + function->name;
             return FLOW_ERROR_NOT_FOUND;
         }
-        
+
         // Get function address
         uint64_t funcAddr = module->engine->getFunctionAddress(function->name);
         if (!funcAddr) {
             runtime->lastError = "Failed to get function address";
             return FLOW_ERROR_NOT_FOUND;
         }
-        
+
         // Determine the function's return type and call it appropriately
-        llvm::Type* returnType = llvmFunc->getReturnType();
-        
+        llvm::Type *returnType = llvmFunc->getReturnType();
+
         // For now, support simple function signatures
         // This is a simplified approach - a full implementation would need more sophisticated handling
         if (returnType->isIntegerTy()) {
@@ -377,9 +368,9 @@ FlowResult flow_function_call(FlowRuntime* runtime, FlowFunction* function,
         } else if (returnType->isPointerTy()) {
             // pointer return type (string)
             if (arg_count == 2) {
-                typedef const char* (*FuncType)(const char*, const char*);
+                typedef const char * (*FuncType)(const char *, const char *);
                 FuncType func = reinterpret_cast<FuncType>(funcAddr);
-                const char* result_value = func(args[0]->string_value.c_str(), args[1]->string_value.c_str());
+                const char *result_value = func(args[0]->string_value.c_str(), args[1]->string_value.c_str());
                 *result = flow_value_new_string(runtime, result_value ? result_value : "");
             } else {
                 runtime->lastError = "Unsupported number of arguments for string return type";
@@ -391,10 +382,9 @@ FlowResult flow_function_call(FlowRuntime* runtime, FlowFunction* function,
             runtime->lastError = "Unsupported return type";
             return FLOW_ERROR_TYPE_MISMATCH;
         }
-        
-    return FLOW_OK;
-        
-    } catch (const std::exception& e) {
+
+        return FLOW_OK;
+    } catch (const std::exception &e) {
         runtime->lastError = std::string("Execution error: ") + e.what();
         return FLOW_ERROR_INVALID_ARGS;
     } catch (...) {
@@ -403,13 +393,12 @@ FlowResult flow_function_call(FlowRuntime* runtime, FlowFunction* function,
     }
 }
 
-FlowResult flow_call(FlowRuntime* runtime, FlowModule* module, const char* function_name,
-                      FlowValue** args, int arg_count, FlowValue** result) {
+FlowResult flow_call(FlowRuntime *runtime, FlowModule *module, const char *function_name,
+                     FlowValue **args, int arg_count, FlowValue **result) {
     if (!runtime || !module || !function_name) return FLOW_ERROR_INVALID_ARGS;
-    
-    FlowFunction* func = flow_module_get_function(module, function_name);
+
+    FlowFunction *func = flow_module_get_function(module, function_name);
     if (!func) return FLOW_ERROR_NOT_FOUND;
-    
+
     return flow_function_call(runtime, func, args, arg_count, result);
 }
-

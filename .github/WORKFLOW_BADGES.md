@@ -3,21 +3,25 @@
 Add these badges to your main README.md to show workflow status:
 
 ## CI Status
+
 ```markdown
 [![CI - Build and Test](https://github.com/USERNAME/Flow/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/Flow/actions/workflows/ci.yml)
 ```
 
 ## GitHub Pages Deployment
+
 ```markdown
 [![Deploy to GitHub Pages](https://github.com/USERNAME/Flow/actions/workflows/pages.yml/badge.svg)](https://github.com/USERNAME/Flow/actions/workflows/pages.yml)
 ```
 
 ## PR Checks
+
 ```markdown
 [![PR Checks](https://github.com/USERNAME/Flow/actions/workflows/pr-check.yml/badge.svg)](https://github.com/USERNAME/Flow/actions/workflows/pr-check.yml)
 ```
 
 ## CodeQL Analysis
+
 ```markdown
 [![CodeQL](https://github.com/USERNAME/Flow/actions/workflows/codeql.yml/badge.svg)](https://github.com/USERNAME/Flow/actions/workflows/codeql.yml)
 ```

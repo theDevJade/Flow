@@ -2,26 +2,26 @@
 #include <iostream>
 #include <cstring>
 
-void printUsage(const char* programName) {
+void printUsage(const char *programName) {
     std::cout << "Flow Compiler v0.1.0\n"
-              << "Usage: " << programName << " [options] <input-file>\n"
-              << "\nOptions:\n"
-              << "  -o <file>        Write output to <file>\n"
-              << "  --emit-llvm      Emit LLVM IR (.ll file)\n"
-              << "  --emit-ast       Print AST\n"
-              << "  -O<level>        Optimization level (0-3)\n"
-              << "  -v, --verbose    Verbose output\n"
-              << "  -h, --help       Display this help message\n"
-              << std::endl;
+            << "Usage: " << programName << " [options] <input-file>\n"
+            << "\nOptions:\n"
+            << "  -o <file>        Write output to <file>\n"
+            << "  --emit-llvm      Emit LLVM IR (.ll file)\n"
+            << "  --emit-ast       Print AST\n"
+            << "  -O<level>        Optimization level (0-3)\n"
+            << "  -v, --verbose    Verbose output\n"
+            << "  -h, --help       Display this help message\n"
+            << std::endl;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     flow::CompilerOptions options;
-    
+
     // Parse command-line arguments
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
-        
+
         if (arg == "-h" || arg == "--help") {
             printUsage(argv[0]);
             return 0;
@@ -52,14 +52,14 @@ int main(int argc, char** argv) {
             options.inputFile = arg;
         }
     }
-    
+
     // Check if input file was provided
     if (options.inputFile.empty()) {
         std::cerr << "Error: No input file specified" << std::endl;
         printUsage(argv[0]);
         return 1;
     }
-    
+
     // Create driver and compile
     flow::Driver driver(options);
     return driver.compile();
