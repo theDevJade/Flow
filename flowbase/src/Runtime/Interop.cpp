@@ -3,7 +3,11 @@
 #include <iostream>
 #include <dlfcn.h>
 #include <cstring>
+#ifdef __APPLE__
 #include <ffi/ffi.h>
+#else
+#include <ffi.h>
+#endif
 
 
 #ifdef HAS_PYTHON
