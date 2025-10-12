@@ -42,6 +42,7 @@ jobs:
       if: matrix.os != 'windows-latest'
       working-directory: flowbase
       run: |
+        rm -rf build
         mkdir -p build
         cd build
         if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
