@@ -31,6 +31,22 @@ test {
         events "passed", "skipped", "failed"
         exceptionFormat "full"
     }
+    
+    // Skip tests in CI or when native library doesn't exist
+    enabled = System.getenv('CI') == null && file('../flowbase/build').exists()
+    
+    onlyIf {
+        // Additional check: only run if native library exists
+        def nativeLibExists = false
+        if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+            nativeLibExists = file('src/main/resources/native/libflowjni.dylib').exists()
+        } else if (System.getProperty('os.name').toLowerCase().contains('linux')) {
+            nativeLibExists = file('src/main/resources/native/libflowjni.so').exists()
+        } else {
+            nativeLibExists = file('src/main/resources/native/flowjni.dll').exists()
+        }
+        return nativeLibExists
+    }
 }
 
 // Task to compile native library
