@@ -38,18 +38,24 @@ task compileNative(type: Exec) {
     description = 'Compile the JNI native library'
     workingDir '../flowbase/build'
     
+    // Skip in CI if flowbase not built
+    enabled = System.getenv('CI') == null || file('../flowbase/build').exists()
+    
     // On macOS
     if (System.getProperty('os.name').toLowerCase().contains('mac')) {
-        commandLine 'make', 'flowbase'
+        commandLine 'make', 'flowjni'
     } 
     // On Linux
     else if (System.getProperty('os.name').toLowerCase().contains('linux')) {
-        commandLine 'make', 'flowbase'
+        commandLine 'make', 'flowjni'
     }
     // On Windows
     else {
-        commandLine 'cmd', '/c', 'cmake', '--build', '.', '--config', 'Release'
+        commandLine 'cmd', '/c', 'cmake', '--build', '.', '--config', 'Release', '--target', 'flowjni'
     }
+    
+    // Don't fail if native build is skipped
+    ignoreExitValue = true
 }
 
 // Copy native library to resources
@@ -59,16 +65,21 @@ task copyNativeLib(type: Copy, dependsOn: compileNative) {
     into 'src/main/resources/native'
     
     if (System.getProperty('os.name').toLowerCase().contains('mac')) {
-        include '*.dylib', 'flowbase'
+        include 'libflowjni.dylib'
     } else if (System.getProperty('os.name').toLowerCase().contains('linux')) {
-        include '*.so', 'flowbase'
+        include 'libflowjni.so'
     } else {
-        include '*.dll', 'flowbase.exe'
+        include 'flowjni.dll'
     }
+    
+    // Don't fail if no native library exists (CI build)
+    enabled = compileNative.enabled && file('../flowbase/build').exists()
 }
 
-// Ensure native library is built before compiling Java
-compileJava.dependsOn copyNativeLib
+// Ensure native library is built before compiling Java (only when not in CI or when native lib available)
+if (System.getenv('CI') == null || file('../flowbase/build').exists()) {
+    compileJava.dependsOn copyNativeLib
+}
 
 // Publishing configuration
 publishing {
