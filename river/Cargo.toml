@@ -23,7 +23,7 @@ tar = "0.4"
 flate2 = "1.0"
 dirs = "5.0"
 indicatif = "0.17"
-console = "0.15"
+console = "0.16"
 which = "4.4"
 
 [lints.rust]
