@@ -24,7 +24,7 @@ flate2 = "1.0"
 dirs = "5.0"
 indicatif = "0.17"
 console = "0.15"
-which = "4.4"
+which = "8.0"
 
 [lints.rust]
 unused_variables = "allow"
