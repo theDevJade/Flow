@@ -14,6 +14,40 @@ include_directories(${LLVM_INCLUDE_DIRS})
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
 
+# Find libffi
+if(WIN32)
+    # On Windows, use vcpkg's pkg-config or find the library manually
+    find_package(PkgConfig)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(FFI libffi)
+    endif()
+    
+    # If pkg-config didn't find it, try to find it via vcpkg
+    if(NOT FFI_FOUND)
+        find_path(FFI_INCLUDE_DIR ffi.h)
+        find_library(FFI_LIBRARY NAMES ffi libffi)
+        
+        if(FFI_INCLUDE_DIR AND FFI_LIBRARY)
+            set(FFI_FOUND TRUE)
+            set(FFI_INCLUDE_DIRS ${FFI_INCLUDE_DIR})
+            set(FFI_LIBRARIES ${FFI_LIBRARY})
+            message(STATUS "Found libffi: ${FFI_LIBRARY}")
+        endif()
+    endif()
+else()
+    # On Unix systems, use pkg-config
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(FFI REQUIRED libffi)
+endif()
+
+if(FFI_FOUND)
+    include_directories(${FFI_INCLUDE_DIRS})
+    message(STATUS "libffi include dirs: ${FFI_INCLUDE_DIRS}")
+    message(STATUS "libffi libraries: ${FFI_LIBRARIES}")
+else()
+    message(WARNING "libffi not found - C interop features may not work")
+endif()
+
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
@@ -65,8 +99,8 @@ llvm_map_components_to_libnames(llvm_libs
         native
 )
 
-target_link_libraries(flowbase ${llvm_libs})
-target_link_libraries(flow-lsp ${llvm_libs})
+target_link_libraries(flowbase ${llvm_libs} ${FFI_LIBRARIES})
+target_link_libraries(flow-lsp ${llvm_libs} ${FFI_LIBRARIES})
 
 
 find_package(JNI)
@@ -80,7 +114,7 @@ if (JNI_FOUND)
             ${FLOW_COMMON_SOURCES}
     )
 
-    target_link_libraries(flowjni ${llvm_libs} ${JNI_LIBRARIES})
+    target_link_libraries(flowjni ${llvm_libs} ${JNI_LIBRARIES} ${FFI_LIBRARIES})
 
     # Set output directory for JNI library
     set_target_properties(flowjni PROPERTIES
