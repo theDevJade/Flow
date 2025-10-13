@@ -3,13 +3,55 @@
 #include <iostream>
 #include <cstring>
 
+// Platform-specific dynamic library loading
+#ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+    #define NOMINMAX
+    #define NOGDI
+    #include <windows.h>
+    #ifdef ERROR
+        #undef ERROR
+    #endif
+    #ifdef CALLBACK
+        #undef CALLBACK
+    #endif
+    #define RTLD_DEFAULT ((void*)0)
+    #define RTLD_LAZY 0
+    #define RTLD_GLOBAL 0
+    
+    // Windows wrappers for dlopen/dlsym/dlclose
+    static void* dlopen(const char* filename, int flags) {
+        if (filename == nullptr) return GetModuleHandle(NULL);
+        return (void*)LoadLibraryA(filename);
+    }
+    
+    static void* dlsym(void* handle, const char* symbol) {
+        if (handle == RTLD_DEFAULT) handle = GetModuleHandle(NULL);
+        return (void*)GetProcAddress((HMODULE)handle, symbol);
+    }
+    
+    static int dlclose(void* handle) {
+        if (handle == RTLD_DEFAULT || handle == nullptr) return 0;
+        return FreeLibrary((HMODULE)handle) ? 0 : -1;
+    }
+    
+    static const char* dlerror() {
+        static char buf[256];
+        DWORD err = GetLastError();
+        if (err == 0) return nullptr;
+        FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                      NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                      buf, sizeof(buf), NULL);
+        return buf;
+    }
+#else
+    #include <dlfcn.h>
+#endif
+
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
-#include <dlfcn.h>
-#else
-#include <windows.h>
 #endif
 
 namespace flow {
@@ -64,7 +106,6 @@ namespace flow {
     }
 
 
-#ifndef _WIN32
     bool CAdapter::initialize(const std::string &module) {
         moduleName = module;
 
@@ -76,9 +117,15 @@ namespace flow {
 
 
         std::string libPath = module;
-        if (libPath.find(".so") == std::string::npos &&
-            libPath.find(".dylib") == std::string::npos) {
-#ifdef __APPLE__
+        // Check if the path already has an extension
+        bool hasExtension = (libPath.find(".so") != std::string::npos ||
+                            libPath.find(".dylib") != std::string::npos ||
+                            libPath.find(".dll") != std::string::npos);
+        
+        if (!hasExtension) {
+#ifdef _WIN32
+            libPath = libPath + ".dll";
+#elif defined(__APPLE__)
             libPath = "lib" + libPath + ".dylib";
 #else
             libPath = "lib" + libPath + ".so";
@@ -123,30 +170,11 @@ namespace flow {
     }
 
     void CAdapter::shutdown() {
-        if (libHandle &&libHandle
-        
-        !=
-        RTLD_DEFAULT
-        )
-        {
+        if (libHandle && libHandle != RTLD_DEFAULT) {
             dlclose(libHandle);
             libHandle = nullptr;
         }
     }
-#else
-    // Windows stubs for CAdapter
-    bool CAdapter::initialize(const std::string &module) {
-        std::cerr << "CAdapter not fully supported on Windows" << std::endl;
-        return false;
-    }
-
-    IPCValue CAdapter::call(const std::string &function, const std::vector<IPCValue> &args) {
-        std::cerr << "CAdapter not supported on Windows" << std::endl;
-        return IPCValue();
-    }
-
-    void CAdapter::shutdown() {}
-#endif
 
 #ifndef _WIN32
     bool PythonAdapter::initialize(const std::string &module) {

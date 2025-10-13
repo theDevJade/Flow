@@ -9,12 +9,14 @@
 
 // Platform-specific includes and types
 #ifdef _WIN32
-    #include <windows.h>
-    // Define pid_t for Windows
+    // Forward declare Windows types to avoid including windows.h in header
+    // This prevents macro pollution in files that include IPC.h
+    typedef unsigned long DWORD;
+    typedef void* HANDLE;
     typedef DWORD pid_t;
     typedef HANDLE pipe_t;
     #define INVALID_PID ((pid_t)-1)
-    #define INVALID_PIPE INVALID_HANDLE_VALUE
+    #define INVALID_PIPE ((HANDLE)-1)
 #else
     #include <unistd.h>
     #include <sys/types.h>
@@ -28,8 +30,8 @@ namespace flow {
     enum class IPCMessageType {
         CALL_FUNCTION, // Call a foreign function
         RETURN_VALUE, // Return value from foreign function
-        IPC_CALLBACK, // Callback from foreign code to Flow (renamed to avoid Windows CALLBACK macro)
-        ERROR, // Error occurred
+        FLOW_CALLBACK, // Callback from foreign code to Flow (renamed to avoid Windows CALLBACK macro)
+        FLOW_ERROR, // Error occurred (renamed to avoid Windows ERROR macro)
         INIT, // Initialize adapter
         SHUTDOWN // Shutdown adapter
     };

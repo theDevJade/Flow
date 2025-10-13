@@ -5,7 +5,16 @@
 
 // Platform-specific dynamic library loading
 #ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+    #define NOMINMAX
+    #define NOGDI
     #include <windows.h>
+    #ifdef ERROR
+        #undef ERROR
+    #endif
+    #ifdef CALLBACK
+        #undef CALLBACK
+    #endif
     #define RTLD_DEFAULT ((void*)0)
     #define RTLD_LAZY 0
     #define RTLD_GLOBAL 0
