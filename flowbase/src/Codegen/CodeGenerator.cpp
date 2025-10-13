@@ -355,21 +355,19 @@ namespace flow {
         llvm::InitializeNativeTargetAsmPrinter();
         llvm::InitializeNativeTargetAsmParser();
 
-        // Get the target triple string from the module (LLVM 21 returns llvm::Triple)
-        std::string targetTripleStr = module->getTargetTriple().getTriple();
-        
+        std::string targetTripleStr = module->getTargetTriple().str();
+
         if (targetTripleStr.empty()) {
-#ifdef __APPLE__
+        #ifdef __APPLE__
             targetTripleStr = "arm64-apple-darwin"; // macOS ARM
-#elif __linux__
+        #elif __linux__
             targetTripleStr = "x86_64-unknown-linux-gnu";
-#elif _WIN32
+        #elif _WIN32
             targetTripleStr = "x86_64-pc-windows-msvc";
-#else
+        #else
             targetTripleStr = "x86_64-unknown-unknown";
-#endif
-            module->setTargetTriple(llvm::Triple(targetTripleStr));
-        }
+        #endif
+        module->setTargetTriple(targetTripleStr);
         
         // Create Triple object for target lookup
         llvm::Triple targetTriple(targetTripleStr);
