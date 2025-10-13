@@ -355,9 +355,9 @@ namespace flow {
         llvm::InitializeNativeTargetAsmPrinter();
         llvm::InitializeNativeTargetAsmParser();
 
-        
+
         std::string targetTripleStr = module->getTargetTriple().getTriple();
-        
+
         if (targetTripleStr.empty()) {
 #ifdef __APPLE__
             targetTripleStr = "arm64-apple-darwin"; // macOS ARM
@@ -368,9 +368,9 @@ namespace flow {
 #else
             targetTripleStr = "x86_64-unknown-unknown";
 #endif
-            module->setTargetTriple(targetTripleStr);
+            module->setTargetTriple(llvm::Triple(targetTripleStr).getTriple());
         }
-        
+
         // Create Triple object for target lookup
         llvm::Triple targetTriple(targetTripleStr);
 
@@ -1372,7 +1372,7 @@ namespace flow {
                     // Continue to next library path
                 }
             }
-            
+
             // If all library paths fail, return the original path
             return fullPath.string();
         }
