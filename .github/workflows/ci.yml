@@ -68,14 +68,36 @@ jobs:
           
           Write-Host "LLVM installation complete"
 
-      - name: Install DIA SDK
+      - name: Setup DIA SDK Path (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          choco install windows-sdk-10.1
+          # Find the DIA SDK location in Visual Studio 2022
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          
+          if ($vsPath) {
+            $diaSdkPath = Join-Path $vsPath "DIA SDK\lib\amd64"
+            if (Test-Path $diaSdkPath) {
+              Write-Host "Found DIA SDK at: $diaSdkPath"
+              Add-Content $env:GITHUB_ENV "DIA_SDK_DIR=$diaSdkPath"
+            } else {
+              Write-Host "DIA SDK not found in VS installation, checking Windows Kits..."
+              # Try Windows Kits location
+              $kitsPath = "C:\Program Files (x86)\Windows Kits\10\Lib"
+              if (Test-Path $kitsPath) {
+                $latestKit = Get-ChildItem $kitsPath | Where-Object { $_.Name -match '10\.0\.\d+\.\d+' } | Sort-Object Name -Descending | Select-Object -First 1
+                if ($latestKit) {
+                  $diaSdkPath = Join-Path $latestKit.FullName "um\x64"
+                  Write-Host "Using Windows Kit DIA SDK at: $diaSdkPath"
+                  Add-Content $env:GITHUB_ENV "DIA_SDK_DIR=$diaSdkPath"
+                }
+              }
+            }
+          }
 
-      - name: Cache vcpkg packages (Windows)
+      - name: Restore vcpkg packages (Windows)
         if: matrix.os == 'windows-latest'
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             ${{ env.VCPKG_INSTALLATION_ROOT }}\installed
@@ -113,9 +135,9 @@ jobs:
           New-Item -ItemType Directory -Path build
           cd build
           Write-Host "Using LLVM CMake config at: $env:LLVM_DIR"
+          Write-Host "Using DIA SDK at: $env:DIA_SDK_DIR"
           $vcpkgToolchain = "$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake"
-          $diaSdkPath = "C:\Program Files (x86)\Windows Kits\10\Lib\10.0.26100.0\um\x64"
-          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="$env:LLVM_DIR" -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" -DMSVC_DIA_SDK_DIR="$diaSdkPath"
+          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="$env:LLVM_DIR" -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" -DMSVC_DIA_SDK_DIR="$env:DIA_SDK_DIR"
 
       - name: Build (Unix)
         if: matrix.os != 'windows-latest'
@@ -158,6 +180,15 @@ jobs:
           name: flow-lsp-${{ matrix.os }}
           path: flowbase/build/Release/flow-lsp.exe
           retention-days: 7
+
+      - name: Save vcpkg packages (Windows)
+        if: always() && matrix.os == 'windows-latest'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ env.VCPKG_INSTALLATION_ROOT }}\installed
+            ${{ env.VCPKG_INSTALLATION_ROOT }}\packages
+          key: ${{ runner.os }}-vcpkg-libffi-${{ hashFiles('**/vcpkg.json') }}
 
   test-flowbase:
     name: Test Flow Examples
