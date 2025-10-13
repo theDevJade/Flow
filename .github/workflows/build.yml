@@ -1,0 +1,129 @@
+name: Build Flow Compiler & LSP
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build Flow Compiler & LSP (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # ===== Linux Setup =====
+    - name: Install LLVM (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 20
+        sudo apt-get install -y llvm-20-dev libclang-20-dev
+        echo "LLVM_DIR=/usr/lib/llvm-20/lib/cmake/llvm" >> $GITHUB_ENV
+
+    # ===== macOS Setup =====
+    - name: Install LLVM (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install llvm@20 || brew install llvm
+        LLVM_PATH=$(brew --prefix llvm)
+        echo "LLVM_DIR=$LLVM_PATH/lib/cmake/llvm" >> $GITHUB_ENV
+        echo "$LLVM_PATH/bin" >> $GITHUB_PATH
+
+    # ===== Windows Setup =====
+    - name: Install LLVM (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        Write-Host "Downloading LLVM binary distribution for Windows..."
+        $llvmVersion = "20.1.8"
+        $tarballUrl = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$llvmVersion/clang+llvm-$llvmVersion-x86_64-pc-windows-msvc.tar.xz"
+        $tarballPath = "$env:TEMP\llvm.tar.xz"
+        $extractPath = "C:\llvm"
+        
+        Write-Host "Downloading from: $tarballUrl"
+        Invoke-WebRequest -Uri $tarballUrl -OutFile $tarballPath
+        
+        Write-Host "Extracting LLVM to: $extractPath"
+        New-Item -ItemType Directory -Path $extractPath -Force
+        tar -xf $tarballPath -C $extractPath --strip-components=1
+        
+        Write-Host "Verifying LLVM installation..."
+        $llvmDir = "$extractPath\lib\cmake\llvm"
+        if (Test-Path "$llvmDir\LLVMConfig.cmake") {
+          Write-Host "✓ Found LLVMConfig.cmake at: $llvmDir"
+        } else {
+          Write-Host "✗ ERROR: LLVMConfig.cmake not found!"
+          Write-Host "Contents of lib/cmake:"
+          Get-ChildItem "$extractPath\lib\cmake" -Recurse | Select-Object FullName
+          exit 1
+        }
+        
+        # Add LLVM to PATH
+        Add-Content $env:GITHUB_PATH "$extractPath\bin"
+        
+        # Set LLVM_DIR for CMake
+        Add-Content $env:GITHUB_ENV "LLVM_DIR=$llvmDir"
+        
+        Write-Host "LLVM installation complete"
+
+    # ===== Build Flow =====
+    - name: Configure CMake (Linux/macOS)
+      if: runner.os != 'Windows'
+      working-directory: flowbase
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="$LLVM_DIR"
+
+    - name: Configure CMake (Windows)
+      if: runner.os == 'Windows'
+      working-directory: flowbase
+      shell: pwsh
+      run: |
+        if (Test-Path build) { Remove-Item -Recurse -Force build }
+        New-Item -ItemType Directory -Path build
+        cd build
+        Write-Host "Using LLVM CMake config at: $env:LLVM_DIR"
+        cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="$env:LLVM_DIR"
+
+    - name: Build
+      working-directory: flowbase/build
+      run: cmake --build . --config Release
+
+    # ===== Upload Artifacts =====
+    - name: Upload flowbase binary (Linux/macOS)
+      if: runner.os != 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: flowbase-${{ runner.os }}
+        path: flowbase/build/flowbase
+
+    - name: Upload flow-lsp binary (Linux/macOS)
+      if: runner.os != 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: flow-lsp-${{ runner.os }}
+        path: flowbase/build/flow-lsp
+
+    - name: Upload flowbase binary (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: flowbase-Windows
+        path: flowbase/build/Release/flowbase.exe
+
+    - name: Upload flow-lsp binary (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: flow-lsp-Windows
+        path: flowbase/build/Release/flow-lsp.exe
+
