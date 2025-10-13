@@ -355,8 +355,8 @@ namespace flow {
         llvm::InitializeNativeTargetAsmPrinter();
         llvm::InitializeNativeTargetAsmParser();
 
-        // Get the target triple string from the module
-        std::string targetTripleStr = module->getTargetTriple();
+        // Get the target triple string from the module (LLVM 21 returns llvm::Triple)
+        std::string targetTripleStr = module->getTargetTriple().getTriple();
         
         if (targetTripleStr.empty()) {
 #ifdef __APPLE__
@@ -938,8 +938,8 @@ namespace flow {
             // Print error message using printf
             llvm::Function *printfFunc = module->getFunction("printf");
             if (printfFunc) {
-                llvm::Value *errorMsg = builder->CreateGlobalStringPtr("Runtime Error: Array index out of bounds!\n",
-                                                                       "errmsg");
+                llvm::Value *errorMsg = builder->CreateGlobalString("Runtime Error: Array index out of bounds!\n",
+                                                                     "errmsg");
                 builder->CreateCall(printfFunc, {errorMsg});
             }
 
