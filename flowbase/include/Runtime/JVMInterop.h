@@ -94,8 +94,8 @@ namespace flow {
         std::string languageName;
         std::string executable; // e.g., "java", "kotlin", "dotnet", "ruby"
         pid_t childPid;
-        int pipeIn[2]; // Flow -> Subprocess
-        int pipeOut[2]; // Subprocess -> Flow
+        pipe_t pipeIn[2]; // Flow -> Subprocess
+        pipe_t pipeOut[2]; // Subprocess -> Flow
         std::thread readerThread;
         bool running;
 

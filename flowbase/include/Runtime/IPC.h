@@ -7,6 +7,22 @@
 #include <memory>
 #include <functional>
 
+// Platform-specific includes and types
+#ifdef _WIN32
+    #include <windows.h>
+    // Define pid_t for Windows
+    typedef DWORD pid_t;
+    typedef HANDLE pipe_t;
+    #define INVALID_PID ((pid_t)-1)
+    #define INVALID_PIPE INVALID_HANDLE_VALUE
+#else
+    #include <unistd.h>
+    #include <sys/types.h>
+    typedef int pipe_t;
+    #define INVALID_PID ((pid_t)-1)
+    #define INVALID_PIPE (-1)
+#endif
+
 namespace flow {
     // Message types for IPC
     enum class IPCMessageType {
@@ -119,12 +135,12 @@ namespace flow {
     // Python Language Adapter (IPC-based)
     class PythonAdapter : public LanguageAdapter {
     private:
-        int pipeFd[2]; // Pipe for IPC
+        pipe_t pipeFd[2]; // Pipe for IPC
         pid_t childPid;
         std::string moduleName;
 
     public:
-        PythonAdapter() : childPid(-1) { pipeFd[0] = pipeFd[1] = -1; }
+        PythonAdapter() : childPid(INVALID_PID) { pipeFd[0] = pipeFd[1] = INVALID_PIPE; }
         ~PythonAdapter() override { shutdown(); }
 
         bool initialize(const std::string &module) override;
@@ -139,12 +155,12 @@ namespace flow {
     // JavaScript/Node.js Language Adapter (IPC-based)
     class JavaScriptAdapter : public LanguageAdapter {
     private:
-        int pipeFd[2];
+        pipe_t pipeFd[2];
         pid_t childPid;
         std::string moduleName;
 
     public:
-        JavaScriptAdapter() : childPid(-1) { pipeFd[0] = pipeFd[1] = -1; }
+        JavaScriptAdapter() : childPid(INVALID_PID) { pipeFd[0] = pipeFd[1] = INVALID_PIPE; }
         ~JavaScriptAdapter() override { shutdown(); }
 
         bool initialize(const std::string &module) override;

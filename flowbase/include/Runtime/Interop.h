@@ -93,7 +93,7 @@ namespace flow {
         bool isEmbedded;
 
         // IPC for subprocess mode
-        int pipeFd[2];
+        pipe_t pipeFd[2];
         pid_t childPid;
         std::thread messageThread;
         std::queue<IPCMessage> messageQueue;
@@ -139,7 +139,7 @@ namespace flow {
         bool useV8; // If false, use Node.js subprocess
 
         // IPC for subprocess mode
-        int pipeFd[2];
+        pipe_t pipeFd[2];
         pid_t childPid;
         std::thread messageThread;
         std::queue<IPCMessage> messageQueue;

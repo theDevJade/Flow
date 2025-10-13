@@ -1,8 +1,44 @@
 #include "../../include/Runtime/Interop.h"
 #include "../../include/Runtime/JVMInterop.h"
 #include <iostream>
-#include <dlfcn.h>
 #include <cstring>
+
+// Platform-specific dynamic library loading
+#ifdef _WIN32
+    #include <windows.h>
+    #define RTLD_DEFAULT ((void*)0)
+    #define RTLD_LAZY 0
+    #define RTLD_GLOBAL 0
+    
+    // Windows wrappers for dlopen/dlsym/dlclose
+    static void* dlopen(const char* filename, int flags) {
+        if (filename == nullptr) return GetModuleHandle(NULL);
+        return (void*)LoadLibraryA(filename);
+    }
+    
+    static void* dlsym(void* handle, const char* symbol) {
+        if (handle == RTLD_DEFAULT) handle = GetModuleHandle(NULL);
+        return (void*)GetProcAddress((HMODULE)handle, symbol);
+    }
+    
+    static int dlclose(void* handle) {
+        if (handle == RTLD_DEFAULT || handle == nullptr) return 0;
+        return FreeLibrary((HMODULE)handle) ? 0 : -1;
+    }
+    
+    static const char* dlerror() {
+        static char buf[256];
+        DWORD err = GetLastError();
+        if (err == 0) return nullptr;
+        FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                      NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                      buf, sizeof(buf), NULL);
+        return buf;
+    }
+#else
+    #include <dlfcn.h>
+#endif
+
 #ifdef __APPLE__
 #include <ffi/ffi.h>
 #else
@@ -315,8 +351,8 @@ namespace flow {
     // ============================================================
 
     EnhancedPythonAdapter::EnhancedPythonAdapter(bool embed)
-        : pythonState(nullptr), isEmbedded(embed), childPid(-1) {
-        pipeFd[0] = pipeFd[1] = -1;
+        : pythonState(nullptr), isEmbedded(embed), childPid(INVALID_PID) {
+        pipeFd[0] = pipeFd[1] = INVALID_PIPE;
     }
 
     bool EnhancedPythonAdapter::initialize(const std::string &module) {
@@ -331,7 +367,7 @@ namespace flow {
 
         // Fall back to subprocess mode
         initializeSubprocess();
-        return childPid != -1;
+        return childPid != INVALID_PID;
     }
 
 #ifdef HAS_PYTHON
@@ -512,9 +548,9 @@ namespace flow {
         }
 #endif
 
-        if (childPid != -1) {
+        if (childPid != INVALID_PID) {
             // Cleanup subprocess
-            childPid = -1;
+            childPid = INVALID_PID;
         }
     }
 
@@ -523,8 +559,8 @@ namespace flow {
     // ============================================================
 
     EnhancedJavaScriptAdapter::EnhancedJavaScriptAdapter(bool useV8Engine)
-        : isolate(nullptr), context(nullptr), useV8(useV8Engine), childPid(-1) {
-        pipeFd[0] = pipeFd[1] = -1;
+        : isolate(nullptr), context(nullptr), useV8(useV8Engine), childPid(INVALID_PID) {
+        pipeFd[0] = pipeFd[1] = INVALID_PIPE;
     }
 
     bool EnhancedJavaScriptAdapter::initialize(const std::string &module) {
@@ -539,7 +575,7 @@ namespace flow {
 
         // Fall back to Node.js subprocess
         initializeNodeJS();
-        return childPid != -1;
+        return childPid != INVALID_PID;
     }
 
     void EnhancedJavaScriptAdapter::initializeV8() {
@@ -577,8 +613,8 @@ namespace flow {
     void EnhancedJavaScriptAdapter::shutdown() {
         isolate = nullptr;
         context = nullptr;
-        if (childPid != -1) {
-            childPid = -1;
+        if (childPid != INVALID_PID) {
+            childPid = INVALID_PID;
         }
     }
 
