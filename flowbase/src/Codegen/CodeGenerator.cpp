@@ -356,22 +356,25 @@ namespace flow {
         llvm::InitializeNativeTargetAsmParser();
 
         // Get the target triple - use the module's triple or get default
-        llvm::Triple targetTriple = module->getTargetTriple();
-
-        if (targetTriple.str().empty()) {
+        std::string targetTripleStr = module->getTargetTriple();
+        
+        if (targetTripleStr.empty()) {
 #ifdef __APPLE__
-            targetTriple = llvm::Triple("arm64-apple-darwin"); // macOS ARM
+            targetTripleStr = "arm64-apple-darwin"; // macOS ARM
 #elif __linux__
-            targetTriple = llvm::Triple("x86_64-unknown-linux-gnu");
+            targetTripleStr = "x86_64-unknown-linux-gnu";
+#elif _WIN32
+            targetTripleStr = "x86_64-pc-windows-msvc";
 #else
-            targetTriple = llvm::Triple("x86_64-unknown-unknown");
+            targetTripleStr = "x86_64-unknown-unknown";
 #endif
-            module->setTargetTriple(targetTriple);
+            module->setTargetTriple(targetTripleStr);
         }
+        
+        llvm::Triple targetTriple(targetTripleStr);
 
         // Look up the target
         std::string error;
-        std::string targetTripleStr = targetTriple.str();
         const llvm::Target *target = llvm::TargetRegistry::lookupTarget(targetTripleStr, error);
 
         if (!target) {
