@@ -1,9 +1,12 @@
 #include "../../include/Runtime/JVMInterop.h"
 #include <iostream>
+#include <cstring>
+
+#ifndef _WIN32
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
-#include <cstring>
+#endif
 
 #ifdef HAS_JNI
 #include <jni.h>
@@ -254,6 +257,7 @@ namespace flow {
     // SUBPROCESS ADAPTER - Generic for any language
     // ============================================================
 
+#ifndef _WIN32
     SubprocessAdapter::SubprocessAdapter(const std::string &lang, const std::string &exec)
         : languageName(lang), executable(exec), childPid(-1), running(false) {
         pipeIn[0] = pipeIn[1] = -1;
@@ -364,6 +368,35 @@ namespace flow {
         if (pipeIn[1] != -1) close(pipeIn[1]);
         if (pipeOut[0] != -1) close(pipeOut[0]);
     }
+#else
+    // Windows stubs for SubprocessAdapter
+    SubprocessAdapter::SubprocessAdapter(const std::string &lang, const std::string &exec)
+        : languageName(lang), executable(exec), childPid(-1), running(false) {
+        std::cerr << "SubprocessAdapter not supported on Windows" << std::endl;
+    }
+
+    SubprocessAdapter::~SubprocessAdapter() {}
+
+    bool SubprocessAdapter::initialize(const std::string &module) {
+        std::cerr << languageName << " subprocess adapter not supported on Windows" << std::endl;
+        return false;
+    }
+
+    void SubprocessAdapter::messageLoop() {}
+
+    IPCValue SubprocessAdapter::call(const std::string &function, const std::vector<IPCValue> &args) {
+        std::cerr << languageName << " subprocess adapter not supported on Windows" << std::endl;
+        return IPCValue();
+    }
+
+    void SubprocessAdapter::sendMessage(const IPCMessage &msg) {}
+
+    IPCMessage SubprocessAdapter::receiveMessage() {
+        return IPCMessage();
+    }
+
+    void SubprocessAdapter::shutdown() {}
+#endif
 
     // ============================================================
     // GRPC ADAPTER - For any language supporting gRPC

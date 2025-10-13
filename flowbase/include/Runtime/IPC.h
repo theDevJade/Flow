@@ -28,7 +28,7 @@ namespace flow {
     enum class IPCMessageType {
         CALL_FUNCTION, // Call a foreign function
         RETURN_VALUE, // Return value from foreign function
-        CALLBACK, // Callback from foreign code to Flow
+        IPC_CALLBACK, // Callback from foreign code to Flow (renamed to avoid Windows CALLBACK macro)
         ERROR, // Error occurred
         INIT, // Initialize adapter
         SHUTDOWN // Shutdown adapter

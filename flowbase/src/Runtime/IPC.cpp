@@ -1,11 +1,16 @@
 #include "../../include/Runtime/IPC.h"
 #include <sstream>
 #include <iostream>
+#include <cstring>
+
+#ifndef _WIN32
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
 #include <dlfcn.h>
-#include <cstring>
+#else
+#include <windows.h>
+#endif
 
 namespace flow {
     std::string IPCMessage::serialize() const {
@@ -59,6 +64,7 @@ namespace flow {
     }
 
 
+#ifndef _WIN32
     bool CAdapter::initialize(const std::string &module) {
         moduleName = module;
 
@@ -127,8 +133,22 @@ namespace flow {
             libHandle = nullptr;
         }
     }
+#else
+    // Windows stubs for CAdapter
+    bool CAdapter::initialize(const std::string &module) {
+        std::cerr << "CAdapter not fully supported on Windows" << std::endl;
+        return false;
+    }
 
+    IPCValue CAdapter::call(const std::string &function, const std::vector<IPCValue> &args) {
+        std::cerr << "CAdapter not supported on Windows" << std::endl;
+        return IPCValue();
+    }
 
+    void CAdapter::shutdown() {}
+#endif
+
+#ifndef _WIN32
     bool PythonAdapter::initialize(const std::string &module) {
         moduleName = module;
 
@@ -206,9 +226,22 @@ namespace flow {
             childPid = -1;
         }
     }
+#else
+    // Windows stubs for PythonAdapter
+    bool PythonAdapter::initialize(const std::string &module) {
+        std::cerr << "PythonAdapter not supported on Windows" << std::endl;
+        return false;
+    }
 
+    IPCValue PythonAdapter::call(const std::string &function, const std::vector<IPCValue> &args) {
+        std::cerr << "PythonAdapter not supported on Windows" << std::endl;
+        return IPCValue();
+    }
 
+    void PythonAdapter::shutdown() {}
+#endif
 
+#ifndef _WIN32
     bool JavaScriptAdapter::initialize(const std::string &module) {
         moduleName = module;
 
@@ -276,8 +309,20 @@ namespace flow {
             childPid = -1;
         }
     }
+#else
+    // Windows stubs for JavaScriptAdapter
+    bool JavaScriptAdapter::initialize(const std::string &module) {
+        std::cerr << "JavaScriptAdapter not supported on Windows" << std::endl;
+        return false;
+    }
 
+    IPCValue JavaScriptAdapter::call(const std::string &function, const std::vector<IPCValue> &args) {
+        std::cerr << "JavaScriptAdapter not supported on Windows" << std::endl;
+        return IPCValue();
+    }
 
+    void JavaScriptAdapter::shutdown() {}
+#endif
 
     LanguageAdapter *IPCRuntime::getAdapter(const std::string &adapterType, const std::string &module) {
         std::string key = adapterType + ":" + module;
