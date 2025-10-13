@@ -236,6 +236,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install LLVM Runtime Dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 21
+          sudo apt-get install -y llvm-21 llvm-21-runtime
+
+      - name: Install LLVM Runtime Dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install llvm
+          echo "LLVM_DIR=$(brew --prefix llvm)" >> $GITHUB_ENV
+
       - name: Download Compiler (Unix)
         if: matrix.os != 'windows-latest'
         uses: actions/download-artifact@v4
