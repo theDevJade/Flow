@@ -355,7 +355,7 @@ namespace flow {
         llvm::InitializeNativeTargetAsmPrinter();
         llvm::InitializeNativeTargetAsmParser();
 
-        // Get the target triple - use the module's triple or get default
+        // Get the target triple string from the module
         std::string targetTripleStr = module->getTargetTriple();
         
         if (targetTripleStr.empty()) {
@@ -371,7 +371,7 @@ namespace flow {
             module->setTargetTriple(targetTripleStr);
         }
         
-        // Create Triple object for lookupTarget
+        // Create Triple object for target lookup
         llvm::Triple targetTriple(targetTripleStr);
 
         // Look up the target

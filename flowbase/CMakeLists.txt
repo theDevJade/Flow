@@ -14,38 +14,31 @@ include_directories(${LLVM_INCLUDE_DIRS})
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
 
-# Find libffi
+# Find libffi (required for FFI interop)
 if(WIN32)
-    # On Windows, use vcpkg's pkg-config or find the library manually
-    find_package(PkgConfig)
-    if(PkgConfig_FOUND)
-        pkg_check_modules(FFI libffi)
+    # On Windows with vcpkg, use find_package
+    find_package(libffi CONFIG REQUIRED)
+    set(FFI_LIBRARIES libffi)
+else()
+    # On Unix systems, libffi is typically available system-wide
+    if(APPLE)
+        # macOS has libffi in /usr/local or via Homebrew
+        find_path(FFI_INCLUDE_DIR ffi/ffi.h PATHS /usr/local/include /opt/homebrew/include)
+        find_library(FFI_LIBRARY ffi PATHS /usr/local/lib /opt/homebrew/lib)
+    else()
+        # Linux typically has libffi in standard locations
+        find_path(FFI_INCLUDE_DIR ffi.h)
+        find_library(FFI_LIBRARY ffi)
     endif()
     
-    # If pkg-config didn't find it, try to find it via vcpkg
-    if(NOT FFI_FOUND)
-        find_path(FFI_INCLUDE_DIR ffi.h)
-        find_library(FFI_LIBRARY NAMES ffi libffi)
-        
-        if(FFI_INCLUDE_DIR AND FFI_LIBRARY)
-            set(FFI_FOUND TRUE)
-            set(FFI_INCLUDE_DIRS ${FFI_INCLUDE_DIR})
-            set(FFI_LIBRARIES ${FFI_LIBRARY})
-            message(STATUS "Found libffi: ${FFI_LIBRARY}")
-        endif()
+    if(FFI_INCLUDE_DIR AND FFI_LIBRARY)
+        message(STATUS "Found libffi: ${FFI_LIBRARY}")
+        include_directories(${FFI_INCLUDE_DIR})
+        set(FFI_LIBRARIES ${FFI_LIBRARY})
+    else()
+        message(WARNING "libffi not found - FFI interop may not work")
+        set(FFI_LIBRARIES "")
     endif()
-else()
-    # On Unix systems, use pkg-config
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(FFI REQUIRED libffi)
-endif()
-
-if(FFI_FOUND)
-    include_directories(${FFI_INCLUDE_DIRS})
-    message(STATUS "libffi include dirs: ${FFI_INCLUDE_DIRS}")
-    message(STATUS "libffi libraries: ${FFI_LIBRARIES}")
-else()
-    message(WARNING "libffi not found - C interop features may not work")
 endif()
 
 # Include directories
