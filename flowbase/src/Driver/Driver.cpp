@@ -10,10 +10,47 @@
 #include <iostream>
 #include <cstdlib>
 #include <filesystem>
+#include <ctime>
+#include <random>
 
 namespace flow {
+    // ANSI color codes
+    const std::string COLOR_RED = "\033[1;31m";
+    const std::string COLOR_GREEN = "\033[1;32m";
+    const std::string COLOR_YELLOW = "\033[1;33m";
+    const std::string COLOR_BLUE = "\033[1;34m";
+    const std::string COLOR_MAGENTA = "\033[1;35m";
+    const std::string COLOR_CYAN = "\033[1;36m";
+    const std::string COLOR_RESET = "\033[0m";
+    const std::string COLOR_BOLD = "\033[1m";
+
+    std::string getRandomSuccessMessage() {
+        static std::vector<std::string> messages = {
+            "such a good program~",
+            "your so sensual program~",
+            "i love the way you flow~"
+        };
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, messages.size() - 1);
+        return messages[dis(gen)];
+    }
+
+    std::string getRandomFailureMessage() {
+        static std::vector<std::string> messages = {
+            "fuck you",
+            "AHHHHHH",
+            "your code sucks girl"
+        };
+        static std::random_device rd;
+        static std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, messages.size() - 1);
+        return messages[dis(gen)];
+    }
+
     void Driver::reportError(const std::string &message) {
-        std::cerr << "Error: " << message << std::endl;
+        std::cerr << COLOR_RED << COLOR_BOLD << "error: " << COLOR_RESET 
+                  << COLOR_BOLD << message << COLOR_RESET << std::endl;
         errors.push_back(message);
     }
 
@@ -62,6 +99,8 @@ namespace flow {
         std::string source = readFile(options.inputFile);
         if (source.empty() && hasErrors()) {
             printErrors();
+            std::cerr << "\n" << COLOR_RED << COLOR_BOLD << getRandomFailureMessage() 
+                      << COLOR_RESET << std::endl;
             return 1;
         }
 
@@ -79,6 +118,8 @@ namespace flow {
         if (tokens.empty() || tokens.back().type == TokenType::INVALID) {
             reportError("Lexical analysis failed");
             printErrors();
+            std::cerr << "\n" << COLOR_RED << COLOR_BOLD << getRandomFailureMessage() 
+                      << COLOR_RESET << std::endl;
             return 1;
         }
 
@@ -97,6 +138,8 @@ namespace flow {
         if (!program) {
             reportError("Parsing failed");
             printErrors();
+            std::cerr << "\n" << COLOR_RED << COLOR_BOLD << getRandomFailureMessage() 
+                      << COLOR_RESET << std::endl;
             return 1;
         }
 
@@ -119,6 +162,9 @@ namespace flow {
             for (const auto &err: analyzer.getErrors()) {
                 std::cerr << "  " << err << std::endl;
             }
+            printErrors();
+            std::cerr << "\n" << COLOR_RED << COLOR_BOLD << getRandomFailureMessage() 
+                      << COLOR_RESET << std::endl;
             return 1;
         }
 
@@ -155,8 +201,10 @@ namespace flow {
         if (options.objectOnly) {
             if (options.verbose) {
                 std::cout << "  Object file kept: " << objectFile << std::endl;
-                std::cout << "Compilation successful (object-only mode)" << std::endl;
             }
+            std::cout << COLOR_GREEN << COLOR_BOLD << "Compilation successful (object-only mode)" 
+                      << COLOR_RESET << std::endl;
+            std::cout << COLOR_CYAN << getRandomSuccessMessage() << COLOR_RESET << std::endl;
             return 0;
         }
 
@@ -199,6 +247,9 @@ namespace flow {
         int linkResult = system(linkCmd.c_str());
         if (linkResult != 0) {
             reportError("Linking failed");
+            printErrors();
+            std::cerr << "\n" << COLOR_RED << COLOR_BOLD << getRandomFailureMessage() 
+                      << COLOR_RESET << std::endl;
             return 1;
         }
 
@@ -207,8 +258,9 @@ namespace flow {
 
         if (options.verbose) {
             std::cout << "  Executable written to: " << options.outputFile << std::endl;
-            std::cout << "Compilation successful" << std::endl;
         }
+        std::cout << COLOR_GREEN << COLOR_BOLD << "Compilation successful" << COLOR_RESET << std::endl;
+        std::cout << COLOR_CYAN << getRandomSuccessMessage() << COLOR_RESET << std::endl;
 
         return 0;
     }
