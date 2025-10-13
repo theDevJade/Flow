@@ -36,8 +36,15 @@ jobs:
       - name: Install LLVM (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          choco install llvm -y
-
+          $llvmVersion = "20.1.8"
+          $llvmUrl = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$llvmVersion/LLVM-$llvmVersion-win64.exe"
+          $llvmInstaller = "$env:TEMP\llvm-installer.exe"
+          Write-Host "Downloading LLVM $llvmVersion from GitHub releases..."
+          Invoke-WebRequest -Uri $llvmUrl -OutFile $llvmInstaller
+          Write-Host "Installing LLVM..."
+          Start-Process -FilePath $llvmInstaller -ArgumentList '/S' -Wait
+          Write-Host "LLVM installation complete"
+          
       - name: Configure CMake (Unix)
         if: matrix.os != 'windows-latest'
         working-directory: flowbase
@@ -58,16 +65,13 @@ jobs:
           if (Test-Path build) { Remove-Item -Recurse -Force build }
           New-Item -ItemType Directory -Path build
           cd build
-          $llvmPath = "C:\Program Files\LLVM"
-          $cmakePath = Get-ChildItem -Path $llvmPath -Recurse -Filter "LLVMConfig.cmake" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($cmakePath) {
-            $llvmDir = $cmakePath.DirectoryName
+          $llvmDir = "C:\Program Files\LLVM\lib\cmake\llvm"
+          if (Test-Path $llvmDir) {
             Write-Host "Found LLVM CMake config at: $llvmDir"
-            cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="$llvmDir"
           } else {
-            Write-Host "Searching in lib/cmake/llvm subdirectory..."
-            cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="$llvmPath\lib\cmake\llvm"
+            Write-Host "Warning: LLVM CMake config not found at expected location"
           }
+          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="$llvmDir"
 
       - name: Build (Unix)
         if: matrix.os != 'windows-latest'
