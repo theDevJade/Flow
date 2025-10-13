@@ -45,16 +45,41 @@ jobs:
           $tarballPath = "$env:TEMP\llvm.tar.xz"
           Invoke-WebRequest -Uri $tarballUrl -OutFile $tarballPath
           
-          Write-Host "Extracting CMake files from tarball..."
+          Write-Host "Extracting tarball..."
           tar -xf $tarballPath -C $env:TEMP
           
+          Write-Host "Checking extracted structure..."
+          $extractedPath = "$env:TEMP\llvm-$llvmVersion.src"
+          Write-Host "Extracted to: $extractedPath"
+          if (Test-Path $extractedPath) {
+            Write-Host "Contents of extracted directory:"
+            Get-ChildItem $extractedPath -Directory | ForEach-Object { Write-Host "  - $($_.Name)" }
+          }
+          
+          Write-Host "Looking for CMake config files..."
+          $cmakeFiles = Get-ChildItem -Path $extractedPath -Recurse -Filter "*Config.cmake" | Select-Object -First 5
+          $cmakeFiles | ForEach-Object { Write-Host "  Found: $($_.FullName)" }
+          
           Write-Host "Copying CMake files to LLVM installation..."
-          $cmakeSource = "$env:TEMP\llvm-$llvmVersion.src\cmake"
+          $cmakeSource = "$extractedPath\cmake"
           $cmakeDest = "C:\Program Files\LLVM\lib\cmake\llvm"
           New-Item -ItemType Directory -Path $cmakeDest -Force
-          Copy-Item -Path "$cmakeSource\*" -Destination $cmakeDest -Recurse -Force
           
-          Write-Host "LLVM setup complete with CMake files"
+          if (Test-Path $cmakeSource) {
+            Write-Host "Copying from: $cmakeSource"
+            Copy-Item -Path "$cmakeSource\*" -Destination $cmakeDest -Recurse -Force
+            Write-Host "Files copied to destination:"
+            Get-ChildItem $cmakeDest -Recurse -File | Select-Object -First 10 | ForEach-Object { Write-Host "  - $($_.Name)" }
+          } else {
+            Write-Host "ERROR: Source cmake directory not found at $cmakeSource"
+          }
+          
+          Write-Host "Checking final LLVM lib structure..."
+          if (Test-Path "C:\Program Files\LLVM\lib") {
+            Get-ChildItem "C:\Program Files\LLVM\lib" -Recurse -Depth 2 -Directory | ForEach-Object { Write-Host "  - $($_.FullName)" }
+          }
+          
+          Write-Host "LLVM setup complete"
           
       - name: Configure CMake (Unix)
         if: matrix.os != 'windows-latest'
