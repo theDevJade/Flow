@@ -71,28 +71,43 @@ jobs:
       - name: Setup DIA SDK Path (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          # Find the DIA SDK location in Visual Studio 2022
+          # LLVM binaries have hardcoded DIA SDK paths from when they were built
+          # We need to create the expected directory structure and copy the DIA SDK files
+          $expectedPath = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\DIA SDK\lib\amd64"
+          
+          # Find the actual DIA SDK location in Visual Studio 2022
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           
+          $actualDiaSdkPath = $null
           if ($vsPath) {
             $diaSdkPath = Join-Path $vsPath "DIA SDK\lib\amd64"
             if (Test-Path $diaSdkPath) {
               Write-Host "Found DIA SDK at: $diaSdkPath"
-              Add-Content $env:GITHUB_ENV "DIA_SDK_DIR=$diaSdkPath"
-            } else {
-              Write-Host "DIA SDK not found in VS installation, checking Windows Kits..."
-              # Try Windows Kits location
-              $kitsPath = "C:\Program Files (x86)\Windows Kits\10\Lib"
-              if (Test-Path $kitsPath) {
-                $latestKit = Get-ChildItem $kitsPath | Where-Object { $_.Name -match '10\.0\.\d+\.\d+' } | Sort-Object Name -Descending | Select-Object -First 1
-                if ($latestKit) {
-                  $diaSdkPath = Join-Path $latestKit.FullName "um\x64"
-                  Write-Host "Using Windows Kit DIA SDK at: $diaSdkPath"
-                  Add-Content $env:GITHUB_ENV "DIA_SDK_DIR=$diaSdkPath"
-                }
+              $actualDiaSdkPath = $diaSdkPath
+            }
+          }
+          
+          if (-not $actualDiaSdkPath) {
+            Write-Host "DIA SDK not found in VS installation, checking Windows Kits..."
+            $kitsPath = "C:\Program Files (x86)\Windows Kits\10\Lib"
+            if (Test-Path $kitsPath) {
+              $latestKit = Get-ChildItem $kitsPath | Where-Object { $_.Name -match '10\.0\.\d+\.\d+' } | Sort-Object Name -Descending | Select-Object -First 1
+              if ($latestKit) {
+                $actualDiaSdkPath = Join-Path $latestKit.FullName "um\x64"
+                Write-Host "Using Windows Kit DIA SDK at: $actualDiaSdkPath"
               }
             }
+          }
+          
+          if ($actualDiaSdkPath -and (Test-Path $actualDiaSdkPath)) {
+            Write-Host "Creating symlink from $expectedPath to $actualDiaSdkPath"
+            New-Item -ItemType Directory -Path (Split-Path $expectedPath -Parent) -Force | Out-Null
+            New-Item -ItemType SymbolicLink -Path $expectedPath -Target $actualDiaSdkPath -Force | Out-Null
+            Write-Host "DIA SDK symlink created successfully"
+          } else {
+            Write-Host "Error: Could not find DIA SDK"
+            exit 1
           }
 
       - name: Restore vcpkg packages (Windows)
@@ -135,9 +150,8 @@ jobs:
           New-Item -ItemType Directory -Path build
           cd build
           Write-Host "Using LLVM CMake config at: $env:LLVM_DIR"
-          Write-Host "Using DIA SDK at: $env:DIA_SDK_DIR"
           $vcpkgToolchain = "$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake"
-          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="$env:LLVM_DIR" -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" -DMSVC_DIA_SDK_DIR="$env:DIA_SDK_DIR"
+          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="$env:LLVM_DIR" -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain"
 
       - name: Build (Unix)
         if: matrix.os != 'windows-latest'
@@ -181,8 +195,28 @@ jobs:
           path: flowbase/build/Release/flow-lsp.exe
           retention-days: 7
 
-      - name: Save vcpkg packages (Windows)
+      - name: Check vcpkg paths (Windows)
         if: always() && matrix.os == 'windows-latest'
+        id: check_vcpkg
+        run: |
+          $installedPath = "$env:VCPKG_INSTALLATION_ROOT\installed"
+          $packagesPath = "$env:VCPKG_INSTALLATION_ROOT\packages"
+          
+          Write-Host "Checking vcpkg paths..."
+          Write-Host "VCPKG_INSTALLATION_ROOT: $env:VCPKG_INSTALLATION_ROOT"
+          Write-Host "Installed path: $installedPath - Exists: $(Test-Path $installedPath)"
+          Write-Host "Packages path: $packagesPath - Exists: $(Test-Path $packagesPath)"
+          
+          if ((Test-Path $installedPath) -or (Test-Path $packagesPath)) {
+            Write-Host "At least one vcpkg path exists, proceeding with cache save"
+            Add-Content $env:GITHUB_OUTPUT "should_cache=true"
+          } else {
+            Write-Host "No vcpkg paths exist, skipping cache save"
+            Add-Content $env:GITHUB_OUTPUT "should_cache=false"
+          }
+
+      - name: Save vcpkg packages (Windows)
+        if: always() && matrix.os == 'windows-latest' && steps.check_vcpkg.outputs.should_cache == 'true'
         uses: actions/cache/save@v4
         with:
           path: |
