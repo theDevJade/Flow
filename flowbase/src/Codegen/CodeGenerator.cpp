@@ -356,7 +356,7 @@ namespace flow {
         llvm::InitializeNativeTargetAsmParser();
 
         // Get the target triple - use the module's triple or get default
-        std::string targetTripleStr = module->getTargetTriple();
+        std::string targetTripleStr = module->getTargetTriple().str();
         
         if (targetTripleStr.empty()) {
 #ifdef __APPLE__
@@ -368,7 +368,7 @@ namespace flow {
 #else
             targetTripleStr = "x86_64-unknown-unknown";
 #endif
-            module->setTargetTriple(targetTripleStr);
+            module->setTargetTriple(llvm::Triple(targetTripleStr));
         }
         
         llvm::Triple targetTriple(targetTripleStr);
