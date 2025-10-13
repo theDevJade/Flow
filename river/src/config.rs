@@ -26,9 +26,13 @@ impl Default for Config {
         let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
         let river_home = home.join(".river");
         
+        // Use environment variable or default to production URL
+        let registry_url = std::env::var("RIVER_REGISTRY_URL")
+            .unwrap_or_else(|_| "https://registry.flowlang.org".to_string());
+        
         Config {
             registry: RegistryConfig {
-                url: "https://packages.flow-lang.org".to_string(),
+                url: registry_url,
                 token: None,
             },
             paths: PathsConfig {

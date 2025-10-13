@@ -1,4 +1,4 @@
-// Mock API for Flow Package Registry
+// API Client for Flow Package Registry
 
 export interface PackageInfo {
     name: string;
@@ -31,8 +31,8 @@ export interface SearchResponse {
     total: number;
 }
 
-// Mock data
-const mockPackages: PackageInfo[] = [
+// Fallback data (used if API is unavailable)
+const fallbackPackages: PackageInfo[] = [
     {
         name: "http",
         version: "2.0.0",
@@ -170,66 +170,43 @@ const mockPackages: PackageInfo[] = [
     }
 ];
 
-// Simulate API delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// API Configuration
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
 
-export const mockApi = {
+// API client
+export const api = {
     async getPackageInfo(name: string): Promise<PackageInfo> {
-        await delay(300);
-        const pkg = mockPackages.find(p => p.name === name);
-        if (!pkg) {
+        const response = await fetch(`${API_BASE_URL}/packages/${name}`);
+        if (!response.ok) {
             throw new Error(`Package '${name}' not found`);
         }
-        return pkg;
+        return await response.json();
     },
 
     async searchPackages(query: string, limit: number = 10): Promise<SearchResponse> {
-        await delay(400);
-        const lowerQuery = query.toLowerCase();
-        const results = mockPackages
-            .filter(pkg =>
-                pkg.name.toLowerCase().includes(lowerQuery) ||
-                pkg.description.toLowerCase().includes(lowerQuery) ||
-                pkg.keywords.some(k => k.toLowerCase().includes(lowerQuery))
-            )
-            .slice(0, limit)
-            .map(pkg => ({
-                name: pkg.name,
-                version: pkg.version,
-                description: pkg.description,
-                downloads: pkg.downloads || 0,
-                keywords: pkg.keywords,
-                license: pkg.license,
-                updated_at: pkg.published_at
-            }));
-
-        return {
-            results,
-            total: results.length
-        };
+        const params = new URLSearchParams({ q: query, limit: limit.toString() });
+        const response = await fetch(`${API_BASE_URL}/search?${params}`);
+        if (!response.ok) {
+            throw new Error('Search failed');
+        }
+        return await response.json();
     },
 
     async listVersions(name: string): Promise<string[]> {
-        await delay(200);
-        const pkg = mockPackages.find(p => p.name === name);
-        if (!pkg) {
+        const response = await fetch(`${API_BASE_URL}/packages/${name}/versions`);
+        if (!response.ok) {
             throw new Error(`Package '${name}' not found`);
         }
-        // Mock multiple versions
-        return [pkg.version, "1.9.5", "1.9.0", "1.8.3"];
+        const data = await response.json();
+        return data.versions;
     },
 
     async getAllPackages(): Promise<SearchResult[]> {
-        await delay(300);
-        return mockPackages.map(pkg => ({
-            name: pkg.name,
-            version: pkg.version,
-            description: pkg.description,
-            downloads: pkg.downloads || 0,
-            keywords: pkg.keywords,
-            license: pkg.license,
-            updated_at: pkg.published_at
-        }));
+        const response = await fetch(`${API_BASE_URL}/packages`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch packages');
+        }
+        return await response.json();
     }
 };
 

@@ -63,7 +63,7 @@ Java_com_flowlang_bindings_FlowRuntime_compile(JNIEnv *env, jobject obj, jstring
         return nullptr;
     }
 
-    // Create Java FlowModule object
+
     jclass moduleClass = env->FindClass("com/flowlang/bindings/FlowModule");
     jmethodID constructor = env->GetMethodID(moduleClass, "<init>", "(JLjava/lang/String;)V");
     return env->NewObject(moduleClass, constructor, reinterpret_cast<jlong>(module), jmoduleName);
@@ -91,7 +91,7 @@ Java_com_flowlang_bindings_FlowRuntime_loadFileNative(JNIEnv *env, jobject obj, 
         return nullptr;
     }
 
-    // Extract module name from file path
+
     size_t lastSlash = filePath.find_last_of("/\\");
     size_t lastDot = filePath.find_last_of('.');
     std::string moduleName = filePath.substr(lastSlash + 1, lastDot - lastSlash - 1);
@@ -116,7 +116,7 @@ Java_com_flowlang_bindings_FlowRuntime_getLastError(JNIEnv *env, jobject obj) {
     return error ? env->NewStringUTF(error) : nullptr;
 }
 
-// Value creation methods
+
 
 JNIEXPORT jobject
 
@@ -194,9 +194,9 @@ Java_com_flowlang_bindings_FlowRuntime_createNull(JNIEnv *env, jobject obj) {
     return env->NewObject(valueClass, constructor, reinterpret_cast<jlong>(val));
 }
 
-// ============================================================
-// FlowValue Native Methods
-// ============================================================
+
+
+
 
 JNIEXPORT jobject
 
@@ -313,9 +313,9 @@ Java_com_flowlang_bindings_FlowValue_freeNative(JNIEnv *env, jobject obj, jlong 
     }
 }
 
-// ============================================================
-// FlowModule Native Methods
-// ============================================================
+
+
+
 
 JNIEXPORT jobject
 
@@ -357,7 +357,7 @@ Java_com_flowlang_bindings_FlowModule_call(JNIEnv *env, jobject obj, jobject jru
 
     std::string functionName = jstring_to_string(env, jfunctionName);
 
-    // Convert Java args to FlowValue array
+
     int argCount = jargs ? env->GetArrayLength(jargs) : 0;
     FlowValue **args = new FlowValue *[argCount];
 
@@ -393,9 +393,9 @@ Java_com_flowlang_bindings_FlowModule_freeNative(JNIEnv *env, jobject obj, jlong
     }
 }
 
-// ============================================================
-// FlowFunction Native Methods
-// ============================================================
+
+
+
 
 JNIEXPORT jint
 

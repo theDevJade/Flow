@@ -264,6 +264,7 @@ namespace flow {
 
                 // Semantic analysis
                 SemanticAnalyzer analyzer;
+                analyzer.setLibraryPaths(libraryPaths);
                 analyzer.analyze(doc.ast);
 
                 if (analyzer.hasErrors()) {

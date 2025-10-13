@@ -132,7 +132,7 @@ namespace flow {
         builder->CreateRetVoid();
 
 
-        // For simplicity, len() will take a pointer and return a constant for now
+        // @TODO actually support length
 
         llvm::FunctionType *lenType = llvm::FunctionType::get(
             llvm::Type::getInt32Ty(*context),
@@ -153,8 +153,8 @@ namespace flow {
         llvm::Value *lenResult = llvm::ConstantInt::get(*context, llvm::APInt(32, 0));
         builder->CreateRet(lenResult);
 
-        // ===== Standard Library Functions =====
-        // Declare C++ stdlib implementations (will be linked)
+
+
 
         // String: strlen
         llvm::Function::Create(
@@ -350,7 +350,7 @@ namespace flow {
     }
 
     void CodeGenerator::compileToObject(const std::string &filename) {
-        // Initialize native target for code generation
+
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
         llvm::InitializeNativeTargetAsmParser();
@@ -379,7 +379,7 @@ namespace flow {
             return;
         }
 
-        // Create target machine (using new API for LLVM 21+)
+
         llvm::TargetOptions opt;
         llvm::TargetMachine *targetMachine = target->createTargetMachine(
             targetTriple,
@@ -413,9 +413,9 @@ namespace flow {
         delete targetMachine;
     }
 
-    // ============================================================
-    // VISITOR IMPLEMENTATIONS
-    // ============================================================
+
+
+
 
     void CodeGenerator::visit(IntLiteralExpr &node) {
         currentValue = llvm::ConstantInt::get(*context, llvm::APInt(32, node.value, true));
@@ -426,7 +426,7 @@ namespace flow {
     }
 
     void CodeGenerator::visit(StringLiteralExpr &node) {
-        // Create global string constant (LLVM 15+ uses CreateGlobalString)
+
         currentValue = builder->CreateGlobalString(node.value, "", 0, module.get());
     }
 
@@ -665,8 +665,8 @@ namespace flow {
         // Check if this is a foreign function call
         auto foreignIt = foreignFunctions.find(funcName);
         if (foreignIt != foreignFunctions.end()) {
-            // For AOT compilation, directly call the foreign function (no bridge needed)
-            // The foreign function should already be declared in the module
+
+
 
             // Evaluate arguments
             std::vector<llvm::Value *> args;
@@ -685,8 +685,8 @@ namespace flow {
                 return;
             }
 
-            // Make direct call to the foreign function
-            // Check if function returns void - if so, don't name the result
+
+
             if (foreignFunc->getReturnType()->isVoidTy()) {
                 builder->CreateCall(foreignFunc, args);
                 currentValue = nullptr;
@@ -715,7 +715,7 @@ namespace flow {
                 currentValue = llvm::ConstantInt::get(*context, llvm::APInt(32, lengthIt->second));
                 return;
             } else {
-                // Fallback: return 0 if length not tracked
+
                 std::cerr << "Warning: Array length not tracked for len() call" << std::endl;
                 currentValue = llvm::ConstantInt::get(*context, llvm::APInt(32, 0));
                 return;
@@ -1353,11 +1353,23 @@ namespace flow {
             return importPath;
         }
 
+        // First try: resolve relative to current directory
         fs::path fullPath = fs::path(currentDirectory) / importPath;
 
         try {
             return fs::canonical(fullPath).string();
-        } catch (const std::filesystem::filesystem_error &) {
+        } catch (const fs::filesystem_error &) {
+            // If that fails, try library paths
+            for (const auto &libPath : libraryPaths) {
+                fs::path libFullPath = fs::path(libPath) / importPath;
+                try {
+                    return fs::canonical(libFullPath).string();
+                } catch (const fs::filesystem_error &) {
+                    // Continue to next library path
+                }
+            }
+            
+            // If all library paths fail, return the original path
             return fullPath.string();
         }
     }

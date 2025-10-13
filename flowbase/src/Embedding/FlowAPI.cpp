@@ -191,8 +191,8 @@ int flow_function_get_param_count(FlowFunction *function) {
 }
 
 
-// VALUE MANAGEMENT
-// ============================================================
+
+
 
 FlowValue *flow_value_new_int(FlowRuntime *runtime, int64_t value) {
     if (!runtime) return nullptr;
@@ -262,9 +262,9 @@ FlowResult flow_value_get_bool(FlowValue *value, int *out) {
     return FLOW_OK;
 }
 
-// ============================================================
-// FUNCTION EXECUTION
-// ============================================================
+
+
+
 
 FlowResult flow_function_call(FlowRuntime *runtime, FlowFunction *function,
                               FlowValue **args, int arg_count, FlowValue **result) {
@@ -277,18 +277,18 @@ FlowResult flow_function_call(FlowRuntime *runtime, FlowFunction *function,
     }
 
     try {
-        // Get LLVM module
+
         llvm::Module *llvmModule = module->codegen->getModule();
         if (!llvmModule) {
             runtime->lastError = "LLVM module not available";
             return FLOW_ERROR_INVALID_ARGS;
         }
 
-        // Create execution engine if not already created
+
         if (!module->engine) {
             std::string errorStr;
 
-            // Clone the module for the execution engine since ExecutionEngine takes ownership
+
             std::unique_ptr<llvm::Module> moduleClone = llvm::CloneModule(*llvmModule);
 
             llvm::EngineBuilder builder(std::move(moduleClone));
@@ -305,29 +305,29 @@ FlowResult flow_function_call(FlowRuntime *runtime, FlowFunction *function,
             module->engine->finalizeObject();
         }
 
-        // Get the LLVM function from the execution engine's module
+
         llvm::Function *llvmFunc = module->engine->FindFunctionNamed(function->name.c_str());
         if (!llvmFunc) {
             runtime->lastError = "Function not found in LLVM module: " + function->name;
             return FLOW_ERROR_NOT_FOUND;
         }
 
-        // Get function address
+
         uint64_t funcAddr = module->engine->getFunctionAddress(function->name);
         if (!funcAddr) {
             runtime->lastError = "Failed to get function address";
             return FLOW_ERROR_NOT_FOUND;
         }
 
-        // Determine the function's return type and call it appropriately
+
         llvm::Type *returnType = llvmFunc->getReturnType();
 
-        // For now, support simple function signatures
-        // This is a simplified approach - a full implementation would need more sophisticated handling
+
+
         if (returnType->isIntegerTy()) {
-            // Integer return type (any bit width)
+
             if (returnType->getIntegerBitWidth() == 1) {
-                // bool return type
+
                 if (arg_count == 2) {
                     typedef bool (*FuncType)(int64_t, int64_t);
                     FuncType func = reinterpret_cast<FuncType>(funcAddr);
@@ -338,7 +338,7 @@ FlowResult flow_function_call(FlowRuntime *runtime, FlowFunction *function,
                     return FLOW_ERROR_TYPE_MISMATCH;
                 }
             } else {
-                // Generic integer return type (i32, i64, etc.)
+
                 if (arg_count == 2) {
                     typedef int64_t (*FuncType)(int64_t, int64_t);
                     FuncType func = reinterpret_cast<FuncType>(funcAddr);
@@ -355,7 +355,7 @@ FlowResult flow_function_call(FlowRuntime *runtime, FlowFunction *function,
                 }
             }
         } else if (returnType->isDoubleTy()) {
-            // double return type
+
             if (arg_count == 2) {
                 typedef double (*FuncType)(double, double);
                 FuncType func = reinterpret_cast<FuncType>(funcAddr);
@@ -366,7 +366,7 @@ FlowResult flow_function_call(FlowRuntime *runtime, FlowFunction *function,
                 return FLOW_ERROR_TYPE_MISMATCH;
             }
         } else if (returnType->isPointerTy()) {
-            // pointer return type (string)
+
             if (arg_count == 2) {
                 typedef const char * (*FuncType)(const char *, const char *);
                 FuncType func = reinterpret_cast<FuncType>(funcAddr);

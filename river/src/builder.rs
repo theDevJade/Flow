@@ -9,23 +9,45 @@ pub struct Builder {
     package: Package,
 }
 
+struct BuildResult {
+    output_path: PathBuf,
+    is_library: bool,
+}
+
 impl Builder {
     pub fn new(package: Package) -> Self {
         Builder { package }
     }
     
     pub fn build(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        // Resolve dependencies first
-        println!("  {} Resolving dependencies...", "→".cyan());
+        self.build_internal(false)
+    }
+    
+    fn build_internal(&self, is_dependency: bool) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        if !is_dependency {
+            println!("  {} Resolving dependencies...", "→".cyan());
+        }
         let resolver = Resolver::new(&self.package);
         let deps = resolver.resolve()?;
         
+        let mut dep_objects = Vec::new();
+        
         if deps.is_empty() {
-            println!("    {} No dependencies", "✓".green());
+            if !is_dependency {
+                println!("    {} No dependencies", "✓".green());
+            }
         } else {
-            println!("    {} {} dependencies", "✓".green(), deps.len());
+            if !is_dependency {
+                println!("    {} {} dependencies", "✓".green(), deps.len());
+                for dep in &deps {
+                    println!("      {} {}", "·".cyan(), dep.name.yellow());
+                }
+                println!();
+            }
+            
             for dep in &deps {
-                println!("      {} {}", "·".cyan(), dep.name.yellow());
+                let dep_output = self.build_dependency(&dep)?;
+                dep_objects.push(dep_output);
             }
         }
         
@@ -47,13 +69,26 @@ impl Builder {
         
         // Compile the package
         let output_path = self.package.output_path();
+        let is_library = self.package.is_library();
         
         let mut cmd = Command::new(&flow_compiler);
         cmd.arg(&entry_point);
         
+        // If library, add -c flag for object-only compilation
+        if is_library {
+            cmd.arg("-c");
+        }
+        
         // Add output flag if supported
         cmd.arg("-o");
         cmd.arg(&output_path);
+        
+        // Add dependency object files for linking (only for executables)
+        if !is_library {
+            for dep_obj in &dep_objects {
+                cmd.arg(dep_obj);
+            }
+        }
         
         // Add library paths for dependencies
         for dep in &deps {
@@ -133,6 +168,26 @@ impl Builder {
         }
         
         Err("Flow compiler (flowbase or flow) not found. Please set FLOW_HOME or ensure flowbase/flow is in PATH".into())
+    }
+    
+    fn build_dependency(&self, dep: &crate::resolver::ResolvedDependency) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        println!("  {} Building dependency: {}", "→".cyan(), dep.name.yellow());
+        
+        let dep_package = Package::load(&dep.path)?;
+        let dep_builder = Builder::new(dep_package);
+        
+        let output_path = dep_builder.build_internal(true)?;
+        
+        // For libraries, the object file will have .o extension
+        let object_path = if output_path.extension().is_none() {
+            PathBuf::from(format!("{}.o", output_path.display()))
+        } else {
+            output_path.clone()
+        };
+        
+        println!("    {} Built: {}", "✓".green(), object_path.display().to_string().cyan());
+        
+        Ok(object_path)
     }
 }
 

@@ -150,17 +150,30 @@ namespace flow {
     }
 
     Token Lexer::scanString() {
-        size_t start = current; // Don't include opening quote
+        size_t start = current;
+        std::string value;
 
         while (peek() != '"' && !isAtEnd()) {
             if (peek() == '\\') {
                 advance();
                 if (!isAtEnd()) {
-                    advance();
+                    char escaped = advance();
+                    switch (escaped) {
+                        case 'n': value += '\n'; break;
+                        case 't': value += '\t'; break;
+                        case 'r': value += '\r'; break;
+                        case '\\': value += '\\'; break;
+                        case '"': value += '"'; break;
+                        case '0': value += '\0'; break;
+                        default: 
+                            value += '\\';
+                            value += escaped;
+                            break;
+                    }
                 }
             } else {
                 if (peek() == '\n') line++;
-                advance();
+                value += advance();
             }
         }
 
@@ -168,7 +181,6 @@ namespace flow {
             return errorToken("Unterminated string");
         }
 
-        std::string value = source.substr(start, current - start);
         advance();
 
         return makeToken(TokenType::STRING_LITERAL, value);

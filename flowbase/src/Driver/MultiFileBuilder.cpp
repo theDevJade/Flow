@@ -24,11 +24,34 @@ namespace flow {
             return importPath;
         }
 
+        // First try: resolve relative to current directory
         fs::path fullPath = fs::path(currentDir) / importPath;
 
         try {
             return fs::canonical(fullPath).string();
         } catch (const fs::filesystem_error &) {
+            // If that fails, try library paths from environment
+            // Check FLOW_PATH or River packages directory
+            if (const char* flowPath = std::getenv("FLOW_PATH")) {
+                fs::path libFullPath = fs::path(flowPath) / importPath;
+                try {
+                    return fs::canonical(libFullPath).string();
+                } catch (const fs::filesystem_error &) {
+                    // Continue
+                }
+            }
+            
+            // Try ~/.river/packages/ as fallback
+            if (const char* home = std::getenv("HOME")) {
+                fs::path riverPath = fs::path(home) / ".river" / "packages";
+                fs::path libFullPath = riverPath / importPath;
+                try {
+                    return fs::canonical(libFullPath).string();
+                } catch (const fs::filesystem_error &) {
+                    // Continue
+                }
+            }
+            
             return fullPath.string();
         }
     }
@@ -184,7 +207,7 @@ namespace flow {
             CodeGenerator codegen(baseName);
 
             // For modules with imports, declare external functions from imported modules
-            // This allows the module to call functions defined in other modules
+
             const auto &loadedModules = analyzer.getLoadedModules();
             for (const auto &[importPath, importedProgram]: loadedModules) {
                 if (importedProgram) {

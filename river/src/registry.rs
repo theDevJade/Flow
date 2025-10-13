@@ -2,8 +2,13 @@ use crate::config::Config;
 use crate::package::Package;
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::fs::{self, File};
 use std::path::PathBuf;
+use std::io::{Read, Write};
+use reqwest::blocking::Client;
+use sha2::{Sha256, Digest};
+use flate2::read::GzDecoder;
+use tar::Archive;
 
 /// Package metadata from the cloud registry
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,20 +48,26 @@ pub struct SearchResult {
 /// - Support multiple registry mirrors
 pub struct Registry {
     url: String,
-    // TODO: Add authentication token field
-    // auth_token: Option<String>,
-    
-    // TODO: Add HTTP client (reqwest)
-    // client: reqwest::blocking::Client,
+    client: Client,
+    auth_token: Option<String>,
 }
 
 impl Registry {
     pub fn new(url: String) -> Self {
         Registry { 
             url,
-            // TODO: Initialize HTTP client
-            // client: reqwest::blocking::Client::new(),
+            client: Client::builder()
+                .user_agent("river-pm/0.1.0")
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .unwrap(),
+            auth_token: None,
         }
+    }
+    
+    pub fn with_auth(mut self, token: String) -> Self {
+        self.auth_token = Some(token);
+        self
     }
     
     /// Fetch package metadata from the cloud registry
@@ -80,19 +91,22 @@ impl Registry {
     /// }
     /// ```
     pub fn get_package_info(&self, name: &str) -> Result<PackageInfo, Box<dyn std::error::Error>> {
-        // SKELETON: This shows where the HTTP request would go
+        let url = format!("{}/api/v1/packages/{}", self.url, name);
         
-        println!("    {} Would fetch from: {}/api/v1/packages/{}", 
-            "→".dimmed(), 
-            self.url, 
-            name);
+        println!("    {} Fetching from: {}", "→".dimmed(), url);
         
-        // TODO: Replace with actual HTTP request
-        // For now, return an error indicating registry is not implemented
-        Err(format!(
-            "Registry not yet implemented. Would fetch package '{}' from cloud at: {}/api/v1/packages/{}", 
-            name, self.url, name
-        ).into())
+        let response = self.client
+            .get(&url)
+            .send()?;
+        
+        if response.status().is_success() {
+            let pkg_info: PackageInfo = response.json()?;
+            Ok(pkg_info)
+        } else if response.status() == 404 {
+            Err(format!("Package '{}' not found in registry", name).into())
+        } else {
+            Err(format!("Registry error: {}", response.status()).into())
+        }
     }
     
     /// Download package from cloud registry
@@ -143,30 +157,67 @@ impl Registry {
         version: &str,
         config: &Config,
     ) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        // SKELETON: This shows where the download logic would go
+        let url = format!("{}/api/v1/packages/{}/{}/download", self.url, name, version);
         
+        println!("    {} Downloading from: {}", "→".dimmed(), url);
+        
+        // Download package
+        let mut response = self.client.get(&url).send()?;
+        
+        if !response.status().is_success() {
+            return Err(format!("Download failed: {}", response.status()).into());
+        }
+        
+        // Get checksum from header
+        let expected_checksum = response
+            .headers()
+            .get("x-checksum")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.to_string());
+        
+        // Create temporary file for download
+        let tarball_path = config.paths.cache.join(format!("{}-{}.tar.gz", name, version));
+        fs::create_dir_all(&config.paths.cache)?;
+        
+        let mut file = File::create(&tarball_path)?;
+        let mut hasher = Sha256::new();
+        
+        // Download and calculate checksum
+        let mut buffer = vec![0; 8192];
+        loop {
+            let n = response.read(&mut buffer)?;
+            if n == 0 { break; }
+            file.write_all(&buffer[..n])?;
+            hasher.update(&buffer[..n]);
+        }
+        
+        drop(file);
+        
+        // Verify checksum if provided
+        if let Some(expected) = expected_checksum {
+            let computed = format!("{:x}", hasher.finalize());
+            if computed != expected {
+                fs::remove_file(&tarball_path)?;
+                return Err(format!("Checksum mismatch! Expected: {}, got: {}", expected, computed).into());
+            }
+            println!("    {} Checksum verified", "✓".green());
+        }
+        
+        // Extract tarball
         let pkg_dir = config.paths.packages.join(format!("{}-{}", name, version));
-        
-        println!("    {} Would download from: {}/api/v1/packages/{}/{}/download",
-            "→".dimmed(),
-            self.url,
-            name,
-            version);
-        
-        println!("    {} Would extract to: {}",
-            "→".dimmed(),
-            pkg_dir.display());
-        
-        // TODO: Replace with actual download, checksum verification, and extraction
-        // For now, just create a placeholder directory
         fs::create_dir_all(&pkg_dir)?;
         
-        // Create a placeholder README to show the structure
-        let readme_path = pkg_dir.join("README.md");
-        fs::write(readme_path, format!(
-            "# {} v{}\n\nThis is a placeholder. Real package would be downloaded from:\n{}/api/v1/packages/{}/{}/download\n",
-            name, version, self.url, name, version
-        ))?;
+        println!("    {} Extracting to: {}", "→".dimmed(), pkg_dir.display());
+        
+        let tar_file = File::open(&tarball_path)?;
+        let gz = GzDecoder::new(tar_file);
+        let mut archive = Archive::new(gz);
+        archive.unpack(&pkg_dir)?;
+        
+        // Clean up tarball
+        fs::remove_file(&tarball_path)?;
+        
+        println!("    {} Package extracted successfully", "✓".green());
         
         Ok(pkg_dir)
     }
@@ -249,16 +300,23 @@ impl Registry {
     /// Ok(results)
     /// ```
     pub fn search(&self, query: &str) -> Result<Vec<SearchResult>, Box<dyn std::error::Error>> {
-        // SKELETON: This shows where the search logic would go
+        let url = format!("{}/api/v1/search?q={}&limit=20", self.url, query);
         
-        println!("    {} Would search: {}/api/v1/search?q={}",
-            "→".dimmed(),
-            self.url,
-            query);
+        println!("    {} Searching at: {}", "→".dimmed(), url);
         
-        // TODO: Replace with actual HTTP request
-        // For now, return empty results
-        Ok(vec![])
+        let response = self.client.get(&url).send()?;
+        
+        if !response.status().is_success() {
+            return Err(format!("Search failed: {}", response.status()).into());
+        }
+        
+        #[derive(Deserialize)]
+        struct SearchResponse {
+            results: Vec<SearchResult>,
+        }
+        
+        let search_response: SearchResponse = response.json()?;
+        Ok(search_response.results)
     }
     
     /// Get list of package versions from registry

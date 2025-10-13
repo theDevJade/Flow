@@ -1,0 +1,8 @@
+[package]
+name = "import-test"
+version = "1.0.0"
+authors = ["Test"]
+type = "bin"
+
+[dependencies]
+mathlib = "1.0.0"

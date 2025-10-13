@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import SearchBar from '../lib/SearchBar.svelte';
   import PackageCard from '../lib/PackageCard.svelte';
-  import { mockApi, type SearchResult } from '../lib/mockApi';
+  import { api, type SearchResult } from '../lib/api';
   
   let searchQuery = $state('');
   let packages = $state<SearchResult[]>([]);
@@ -19,7 +19,7 @@
     try {
       loading = true;
       error = null;
-      packages = await mockApi.getAllPackages();
+      packages = await api.getAllPackages();
       filteredPackages = packages;
       console.log('Loaded packages:', packages.length, packages);
       sortPackages();

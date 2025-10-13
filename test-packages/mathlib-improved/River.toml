@@ -1,0 +1,11 @@
+[package]
+name = "mathlib"
+version = "0.2.0"
+authors = ["Flow Team <team@flow-lang.org>"]
+description = "Mathematical utility library with proper exports"
+license = "MIT"
+type = "lib"
+entry = "src/lib.flow"
+
+[dependencies]
+

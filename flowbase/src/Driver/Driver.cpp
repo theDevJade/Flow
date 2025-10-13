@@ -111,6 +111,7 @@ namespace flow {
 
         SemanticAnalyzer analyzer;
         analyzer.setCurrentFile(options.inputFile);
+        analyzer.setLibraryPaths(options.libraryPaths);
         analyzer.analyze(program);
 
         if (analyzer.hasErrors()) {
@@ -127,6 +128,7 @@ namespace flow {
         }
 
         CodeGenerator codegen(options.outputFile);
+        codegen.setLibraryPaths(options.libraryPaths);
         codegen.generate(program);
 
         if (options.emitLLVM) {
@@ -172,16 +174,26 @@ namespace flow {
             if (libName.substr(0, 3) == "lib") {
                 libName = libName.substr(3);
             }
-            // Add both the current directory and common library paths
             libFlags += " -L. -L/tmp/ffi_test -L/usr/local/lib -l" + libName;
+        }
+        
+        // Add library paths from options
+        for (const auto &libPath: options.libraryPaths) {
+            libFlags += " -L" + libPath;
+        }
+        
+        // Add object files from options
+        std::string objFiles = "";
+        for (const auto &obj: options.objectFiles) {
+            objFiles += " " + obj;
         }
 
         // Use clang/gcc to link the object file
         std::string linkCmd;
 #ifdef __APPLE__
-        linkCmd = "clang++ -o " + options.outputFile + " " + objectFile + libFlags;
+        linkCmd = "clang++ -o " + options.outputFile + " " + objectFile + objFiles + libFlags;
 #else
-        linkCmd = "g++ -o " + options.outputFile + " " + objectFile + libFlags;
+        linkCmd = "g++ -o " + options.outputFile + " " + objectFile + objFiles + libFlags;
 #endif
 
         int linkResult = system(linkCmd.c_str());

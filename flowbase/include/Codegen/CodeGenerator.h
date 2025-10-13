@@ -38,6 +38,9 @@ namespace flow {
         // Track processed modules to avoid duplicates
         std::map<std::string, std::shared_ptr<Program> > processedModules;
         std::string currentDirectory;
+        
+        // Library paths for import resolution
+        std::vector<std::string> libraryPaths;
 
         llvm::Value *currentValue; // Hold the result of the last visited expression
 
@@ -61,6 +64,10 @@ namespace flow {
 
 
         void generate(std::shared_ptr<Program> program);
+        
+        void setLibraryPaths(const std::vector<std::string> &paths) {
+            libraryPaths = paths;
+        }
 
         // Declare external function (for multi-file compilation)
         void declareExternalFunction(FunctionDecl &funcDecl);

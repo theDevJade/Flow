@@ -1,0 +1,18 @@
+# River Package Manager Configuration
+# Copy this to ~/.river/config.toml and customize
+
+[registry]
+# Registry URL - can be overridden with RIVER_REGISTRY_URL environment variable
+url = "https://registry.flowlang.org"
+
+# Authentication token (optional, required for publishing)
+# Get your token by registering at the registry
+# token = "your-jwt-token-here"
+
+[paths]
+# Where downloaded packages are stored
+packages = "~/.river/packages"
+
+# Cache directory for temporary files
+cache = "~/.river/cache"
+

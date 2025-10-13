@@ -128,9 +128,9 @@ namespace flow {
         void addEnvironmentVariable(const std::string &key, const std::string &value);
     };
 
-    // ============================================================
-    // HTTP/REST ADAPTER - For microservices
-    // ============================================================
+
+
+
 
     class HTTPAdapter : public EnhancedLanguageAdapter {
     private:

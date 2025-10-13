@@ -1,0 +1,9 @@
+import "../../../.river/packages/mathlib-1.0.0/src/lib.flow";
+
+func main() {
+    let result: float = add(5.0, 3.0);
+    print("5 + 3 = " + result);
+    
+    let product: float = multiply(4.0, 7.0);
+    print("4 * 7 = " + product);
+}

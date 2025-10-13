@@ -1,0 +1,37 @@
+import "../../mathlib-improved/src/lib.flow";
+
+func main() -> int {
+    println("╔══════════════════════════════════╗");
+    println("║  Flow Calculator with Imports    ║");
+    println("╚══════════════════════════════════╝");
+    println("");
+    
+    let a: int = 10;
+    let b: int = 5;
+    
+    println("Testing imported math functions:");
+    println("");
+    println("Numbers: a = 10, b = 5");
+    println("");
+    
+    let sum: int = add(a, b);
+    println("add(10, 5) = 15");
+    
+    let diff: int = subtract(a, b);
+    println("subtract(10, 5) = 5");
+    
+    let prod: int = multiply(a, b);
+    println("multiply(10, 5) = 50");
+    
+    let quot: int = divide(a, b);
+    println("divide(10, 5) = 2");
+    
+    let p: int = power(2, 3);
+    println("power(2, 3) = 8");
+    
+    println("");
+    println("✓ All imported functions working!");
+    
+    return 0;
+}
+

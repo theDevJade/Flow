@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { SearchResult } from './mockApi';
+  import type { SearchResult } from './api';
   
   let { pkg } = $props<{ pkg: SearchResult }>();
   

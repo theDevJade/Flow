@@ -72,6 +72,9 @@ namespace flow {
 
         // Current file directory for resolving relative imports
         std::string currentDirectory;
+        
+        // Library paths for import resolution
+        std::vector<std::string> libraryPaths;
 
         void reportError(const std::string &message, const SourceLocation &loc);
 
@@ -94,6 +97,10 @@ namespace flow {
         void analyze(std::shared_ptr<Program> program);
 
         void setCurrentFile(const std::string &filePath);
+        
+        void setLibraryPaths(const std::vector<std::string> &paths) {
+            libraryPaths = paths;
+        }
 
         const std::vector<std::string> &getErrors() const { return errors; }
         bool hasErrors() const { return !errors.empty(); }

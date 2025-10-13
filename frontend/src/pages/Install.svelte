@@ -7,7 +7,7 @@
   const installCommands = {
     macos: "curl --proto '=https' --tlsv1.2 -sSf https://install.flowc.dev | sh",
     linux: "curl --proto '=https' --tlsv1.2 -sSf https://install.flowc.dev | sh",
-    windows: "iwr -useb https://installwindows.flowc.dev/init.ps1 | iex"
+    windows: "iwr -useb https://windows.flowc.dev/init.ps1 | iex"
   };
   
   onMount(() => {

@@ -13,8 +13,10 @@ namespace flow {
         bool optimize;
         int optimizationLevel;
         bool verbose;
-        bool objectOnly; // Compile to .o only, don't link
-        bool multiFile; // Enable multi-file compilation mode
+        bool objectOnly;
+        bool multiFile;
+        std::vector<std::string> libraryPaths;
+        std::vector<std::string> objectFiles;
 
         CompilerOptions()
             : inputFile(""),
@@ -26,7 +28,7 @@ namespace flow {
               verbose(false),
               objectOnly(false),
               multiFile(true) {
-        } // Enable by default
+        }
     };
 
     class Driver {

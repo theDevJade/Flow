@@ -111,7 +111,7 @@ namespace flow {
         }
 
 
-        // This is a simplified implementation
+
         std::cerr << "Warning: Generic C function calling not fully implemented" << std::endl;
         return IPCValue();
     }
@@ -149,7 +149,7 @@ namespace flow {
         }
 
         if (childPid == 0) {
-            // Child process - run Python interpreter
+
             close(pipeFd[1]); // Close write end
 
             // Redirect stdin to read from pipe
@@ -193,8 +193,8 @@ namespace flow {
         std::string serialized = msg.serialize() + "\n";
         write(pipeFd[1], serialized.c_str(), serialized.size());
 
-        // For demo: just return a placeholder
-        // In real implementation, we'd read the response
+
+
         return IPCValue::makeFloat(42.0);
     }
 
@@ -207,12 +207,12 @@ namespace flow {
         }
     }
 
-    // ===== JavaScript Adapter Implementation =====
+
 
     bool JavaScriptAdapter::initialize(const std::string &module) {
         moduleName = module;
 
-        // Similar to Python adapter
+
         if (pipe(pipeFd) == -1) {
             std::cerr << "Failed to create pipe" << std::endl;
             return false;
@@ -228,7 +228,7 @@ namespace flow {
         }
 
         if (childPid == 0) {
-            // Child process - run Node.js
+
             close(pipeFd[1]);
             dup2(pipeFd[0], STDIN_FILENO);
             close(pipeFd[0]);
@@ -277,7 +277,7 @@ namespace flow {
         }
     }
 
-    // ===== IPC Runtime Implementation =====
+
 
     LanguageAdapter *IPCRuntime::getAdapter(const std::string &adapterType, const std::string &module) {
         std::string key = adapterType + ":" + module;

@@ -25,6 +25,13 @@ pub enum Commands {
     /// Build the current package
     Build,
     
+    /// Build and run the current package
+    Run {
+        /// Arguments to pass to the program
+        #[arg(trailing_var_arg = true)]
+        args: Vec<String>,
+    },
+    
     /// Install a package from the registry
     Install {
         /// Package name to install

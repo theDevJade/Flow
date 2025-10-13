@@ -17,6 +17,7 @@ fn main() {
     let result = match cli.command {
         cli::Commands::Init { name, kind } => commands::init::execute(name, kind),
         cli::Commands::Build => commands::build::execute(),
+        cli::Commands::Run { args } => commands::run::execute(args),
         cli::Commands::Install { package } => commands::install::execute(package),
         cli::Commands::Add { package, version } => commands::add::execute(package, version),
         cli::Commands::Remove { package } => commands::remove::execute(package),

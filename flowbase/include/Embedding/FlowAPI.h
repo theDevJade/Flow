@@ -8,12 +8,12 @@
 extern "C" {
 #endif
 
-// ============================================================
-// FLOW EMBEDDING API
-// Allows other languages (JVM, Python, JavaScript, etc.) to run Flow code
-// ============================================================
 
-// Opaque handles for Flow runtime objects
+
+
+
+
+
 typedef struct FlowRuntime FlowRuntime;
 typedef struct FlowModule FlowModule;
 typedef struct FlowFunction FlowFunction;
@@ -40,9 +40,9 @@ typedef enum {
     FLOW_ERROR_INVALID_ARGS = -5
 } FlowResult;
 
-// ============================================================
-// RUNTIME MANAGEMENT
-// ============================================================
+
+
+
 
 /**
  * Create a new Flow runtime instance

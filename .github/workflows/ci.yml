@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
 
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +33,14 @@ jobs:
           brew install llvm
           echo "LLVM_DIR=$(brew --prefix llvm)" >> $GITHUB_ENV
 
-      - name: Configure CMake
+      - name: Install LLVM (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install llvm -y
+          echo "CMAKE_PREFIX_PATH=C:\Program Files\LLVM" >> $env:GITHUB_ENV
+
+      - name: Configure CMake (Unix)
+        if: matrix.os != 'windows-latest'
         working-directory: flowbase
         run: |
           rm -rf build
@@ -45,22 +52,55 @@ jobs:
             cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR=$(brew --prefix llvm)/lib/cmake/llvm
           fi
 
-      - name: Build
+      - name: Configure CMake (Windows)
+        if: matrix.os == 'windows-latest'
+        working-directory: flowbase
+        run: |
+          if (Test-Path build) { Remove-Item -Recurse -Force build }
+          New-Item -ItemType Directory -Path build
+          cd build
+          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (Unix)
+        if: matrix.os != 'windows-latest'
         working-directory: flowbase/build
         run: make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
 
-      - name: Upload Compiler Artifact
+      - name: Build (Windows)
+        if: matrix.os == 'windows-latest'
+        working-directory: flowbase/build
+        run: cmake --build . --config Release --parallel
+
+      - name: Upload Compiler Artifact (Unix)
+        if: matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: flowbase-${{ matrix.os }}
           path: flowbase/build/flowbase
           retention-days: 7
 
-      - name: Upload LSP Artifact
+      - name: Upload Compiler Artifact (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flowbase-${{ matrix.os }}
+          path: flowbase/build/Release/flowbase.exe
+          retention-days: 7
+
+      - name: Upload LSP Artifact (Unix)
+        if: matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: flow-lsp-${{ matrix.os }}
           path: flowbase/build/flow-lsp
+          retention-days: 7
+
+      - name: Upload LSP Artifact (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flow-lsp-${{ matrix.os }}
+          path: flowbase/build/Release/flow-lsp.exe
           retention-days: 7
 
   test-flowbase:
@@ -70,35 +110,63 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Compiler
+      - name: Download Compiler (Unix)
+        if: matrix.os != 'windows-latest'
         uses: actions/download-artifact@v4
         with:
           name: flowbase-${{ matrix.os }}
           path: flowbase/build/
 
-      - name: Download LSP
+      - name: Download Compiler (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/download-artifact@v4
+        with:
+          name: flowbase-${{ matrix.os }}
+          path: flowbase/build/Release/
+
+      - name: Download LSP (Unix)
+        if: matrix.os != 'windows-latest'
         uses: actions/download-artifact@v4
         with:
           name: flow-lsp-${{ matrix.os }}
           path: flowbase/build/
 
-      - name: Make executables runnable
+      - name: Download LSP (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/download-artifact@v4
+        with:
+          name: flow-lsp-${{ matrix.os }}
+          path: flowbase/build/Release/
+
+      - name: Make executables runnable (Unix)
+        if: matrix.os != 'windows-latest'
         run: |
           chmod +x flowbase/build/flowbase
           chmod +x flowbase/build/flow-lsp
 
-      - name: Test Examples
+      - name: Test Examples (Unix)
+        if: matrix.os != 'windows-latest'
         run: |
           echo "Testing Flow compiler with examples..."
           for example in flowbase/examples/*.flow; do
             echo "Compiling $example..."
             ./flowbase/build/flowbase "$example" || exit 1
           done
+
+      - name: Test Examples (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Write-Output "Testing Flow compiler with examples..."
+          Get-ChildItem flowbase/examples/*.flow | ForEach-Object {
+            Write-Output "Compiling $_..."
+            & flowbase/build/Release/flowbase.exe $_.FullName
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
 
   build-river:
     name: Build River Package Manager
@@ -237,6 +305,37 @@ jobs:
           name: frontend-dist
           path: frontend/dist/
           retention-days: 7
+
+  build-registry-server:
+    name: Build Registry Server
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Test Go code
+        working-directory: registry-server
+        run: |
+          go mod download
+          go test -v ./...
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./registry-server
+          file: ./registry-server/Dockerfile
+          push: false
+          tags: flow-registry-server:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   integration-test:
     name: Integration Tests

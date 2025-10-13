@@ -617,11 +617,26 @@ namespace flow {
             return importPath;
         }
 
-        // Otherwise, resolve relative to current directory
+        // First try: resolve relative to current directory
         fs::path fullPath = fs::path(currentDirectory) / importPath;
-
-        // Normalize the path
-        return fs::canonical(fullPath).string();
+        
+        try {
+            return fs::canonical(fullPath).string();
+        } catch (const fs::filesystem_error &) {
+            // If that fails, try library paths
+            for (const auto &libPath : libraryPaths) {
+                fs::path libFullPath = fs::path(libPath) / importPath;
+                try {
+                    return fs::canonical(libFullPath).string();
+                } catch (const fs::filesystem_error &) {
+                    // Continue to next library path
+                }
+            }
+            
+            // If all library paths fail, return the original path
+            // (will fail later with better error message)
+            return fullPath.string();
+        }
     }
 
     std::shared_ptr<Program> SemanticAnalyzer::loadModule(const std::string &modulePath) {
@@ -742,7 +757,7 @@ namespace flow {
     }
 
     void SemanticAnalyzer::visit(ModuleDecl &node) {
-        // Register the module name
+
         // This could be used for namespacing in larger projects
         std::cout << "Module: " << node.name << std::endl;
     }

@@ -148,6 +148,9 @@ namespace flow {
             std::map<std::string, DocumentState> documents;
             bool isInitialized;
             bool isShutdown;
+            
+            // Library paths for import resolution
+            std::vector<std::string> libraryPaths;
 
             // Helper methods
             std::string readMessage();
@@ -204,6 +207,10 @@ namespace flow {
             void run();
 
             void handleMessage(const std::string &message);
+            
+            void setLibraryPaths(const std::vector<std::string> &paths) {
+                libraryPaths = paths;
+            }
 
             // Diagnostics
             void publishDiagnostics(const std::string &uri, const std::vector<Diagnostic> &diagnostics);
