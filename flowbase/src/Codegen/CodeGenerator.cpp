@@ -368,7 +368,7 @@ namespace flow {
 #else
             targetTripleStr = "x86_64-unknown-unknown";
 #endif
-            module->setTargetTriple(targetTripleStr);
+            module->setTargetTriple(llvm::Triple(targetTripleStr));
         }
         
         // Create Triple object for target lookup
