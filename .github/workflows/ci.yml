@@ -33,17 +33,42 @@ jobs:
           brew install llvm
           echo "LLVM_DIR=$(brew --prefix llvm)" >> $GITHUB_ENV
 
-      - name: Install LLVM (Windows)
+      - name: Cache LLVM (Windows)
         if: matrix.os == 'windows-latest'
+        id: cache-llvm
+        uses: actions/cache@v4
+        with:
+          path: C:\llvm-install
+          key: llvm-20-windows-cmake-${{ runner.os }}-v1
+
+      - name: Build LLVM from Source (Windows)
+        if: matrix.os == 'windows-latest' && steps.cache-llvm.outputs.cache-hit != 'true'
         run: |
           $llvmVersion = "20.1.8"
-          $llvmUrl = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$llvmVersion/LLVM-$llvmVersion-win64.exe"
-          $llvmInstaller = "$env:TEMP\llvm-installer.exe"
-          Write-Host "Downloading LLVM $llvmVersion from GitHub releases..."
-          Invoke-WebRequest -Uri $llvmUrl -OutFile $llvmInstaller
-          Write-Host "Installing LLVM..."
-          Start-Process -FilePath $llvmInstaller -ArgumentList '/S' -Wait
-          Write-Host "LLVM installation complete"
+          Write-Host "Downloading LLVM $llvmVersion source..."
+          $sourceUrl = "https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$llvmVersion.zip"
+          Invoke-WebRequest -Uri $sourceUrl -OutFile "$env:TEMP\llvm-source.zip"
+          
+          Write-Host "Extracting source..."
+          Expand-Archive -Path "$env:TEMP\llvm-source.zip" -DestinationPath "C:\llvm-src"
+          
+          Write-Host "Building LLVM (this will take some time on first run, but will be cached)..."
+          New-Item -ItemType Directory -Path "C:\llvm-build" -Force
+          cd C:\llvm-build
+          
+          cmake -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_INSTALL_PREFIX="C:\llvm-install" `
+            -DLLVM_ENABLE_PROJECTS="clang" `
+            -DLLVM_TARGETS_TO_BUILD="X86" `
+            -DLLVM_INCLUDE_EXAMPLES=OFF `
+            -DLLVM_INCLUDE_TESTS=OFF `
+            -DLLVM_INCLUDE_BENCHMARKS=OFF `
+            -DLLVM_ENABLE_BINDINGS=OFF `
+            "C:\llvm-src\llvm-project-llvmorg-$llvmVersion\llvm"
+          
+          cmake --build . --config Release --target install --parallel 4
+          Write-Host "LLVM build and install complete"
           
       - name: Configure CMake (Unix)
         if: matrix.os != 'windows-latest'
@@ -65,12 +90,8 @@ jobs:
           if (Test-Path build) { Remove-Item -Recurse -Force build }
           New-Item -ItemType Directory -Path build
           cd build
-          $llvmDir = "C:\Program Files\LLVM\lib\cmake\llvm"
-          if (Test-Path $llvmDir) {
-            Write-Host "Found LLVM CMake config at: $llvmDir"
-          } else {
-            Write-Host "Warning: LLVM CMake config not found at expected location"
-          }
+          $llvmDir = "C:\llvm-install\lib\cmake\llvm"
+          Write-Host "Using LLVM CMake config at: $llvmDir"
           cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="$llvmDir"
 
       - name: Build (Unix)
