@@ -57,12 +57,70 @@ namespace flow {
         );
         llvm::Function::Create(strlenType, llvm::Function::ExternalLinkage, "strlen", module.get());
 
+       
+        // malloc(size: int) -> ptr
         llvm::FunctionType *mallocType = llvm::FunctionType::get(
             llvm::PointerType::get(*context, 0),
             {llvm::Type::getInt64Ty(*context)},
             false
         );
         llvm::Function::Create(mallocType, llvm::Function::ExternalLinkage, "malloc", module.get());
+
+        // free(ptr: string) -> void
+        llvm::FunctionType *freeType = llvm::FunctionType::get(
+            llvm::Type::getVoidTy(*context),
+            {llvm::PointerType::get(*context, 0)},
+            false
+        );
+        llvm::Function::Create(freeType, llvm::Function::ExternalLinkage, "free", module.get());
+
+        // calloc(count: int, size: int) -> ptr
+        llvm::FunctionType *callocType = llvm::FunctionType::get(
+            llvm::PointerType::get(*context, 0),
+            {llvm::Type::getInt64Ty(*context), llvm::Type::getInt64Ty(*context)},
+            false
+        );
+        llvm::Function::Create(callocType, llvm::Function::ExternalLinkage, "calloc", module.get());
+
+        // realloc(ptr: string, size: int) -> ptr
+        llvm::FunctionType *reallocType = llvm::FunctionType::get(
+            llvm::PointerType::get(*context, 0),
+            {llvm::PointerType::get(*context, 0), llvm::Type::getInt64Ty(*context)},
+            false
+        );
+        llvm::Function::Create(reallocType, llvm::Function::ExternalLinkage, "realloc", module.get());
+
+        // memcpy(dest: string, src: string, n: int) -> ptr
+        llvm::FunctionType *memcpyType = llvm::FunctionType::get(
+            llvm::PointerType::get(*context, 0),
+            {llvm::PointerType::get(*context, 0), llvm::PointerType::get(*context, 0), llvm::Type::getInt64Ty(*context)},
+            false
+        );
+        llvm::Function::Create(memcpyType, llvm::Function::ExternalLinkage, "memcpy", module.get());
+
+        // memset(ptr: string, value: int, n: int) -> ptr
+        llvm::FunctionType *memsetType = llvm::FunctionType::get(
+            llvm::PointerType::get(*context, 0),
+            {llvm::PointerType::get(*context, 0), llvm::Type::getInt32Ty(*context), llvm::Type::getInt64Ty(*context)},
+            false
+        );
+        llvm::Function::Create(memsetType, llvm::Function::ExternalLinkage, "memset", module.get());
+
+        // memmove(dest: string, src: string, n: int) -> ptr
+        llvm::FunctionType *memmoveType = llvm::FunctionType::get(
+            llvm::PointerType::get(*context, 0),
+            {llvm::PointerType::get(*context, 0), llvm::PointerType::get(*context, 0), llvm::Type::getInt64Ty(*context)},
+            false
+        );
+        llvm::Function::Create(memmoveType, llvm::Function::ExternalLinkage, "memmove", module.get());
+
+        // memcmp(ptr1: string, ptr2: string, n: int) -> int
+        llvm::FunctionType *memcmpType = llvm::FunctionType::get(
+            llvm::Type::getInt32Ty(*context),
+            {llvm::PointerType::get(*context, 0), llvm::PointerType::get(*context, 0), llvm::Type::getInt64Ty(*context)},
+            false
+        );
+        llvm::Function::Create(memcmpType, llvm::Function::ExternalLinkage, "memcmp", module.get());
 
         llvm::FunctionType *strcpyType = llvm::FunctionType::get(
             llvm::PointerType::get(*context, 0),
@@ -755,12 +813,28 @@ namespace flow {
             return;
         }
 
-        // Evaluate arguments
+        // Evaluate arguments and convert types if needed
         std::vector<llvm::Value *> args;
+        unsigned paramIdx = 0;
         for (auto &arg: node.arguments) {
             arg->accept(*this);
             if (currentValue) {
+                // Check if we need to convert the argument type
+                if (paramIdx < function->arg_size()) {
+                    llvm::Type *paramType = function->getArg(paramIdx)->getType();
+                    llvm::Type *argType = currentValue->getType();
+                    
+                    // Convert i32 to i64 if needed (for size_t parameters)
+                    if (argType->isIntegerTy(32) && paramType->isIntegerTy(64)) {
+                        currentValue = builder->CreateZExt(currentValue, paramType, "argconv");
+                    }
+                    // Convert i64 to i32 if needed
+                    else if (argType->isIntegerTy(64) && paramType->isIntegerTy(32)) {
+                        currentValue = builder->CreateTrunc(currentValue, paramType, "argconv");
+                    }
+                }
                 args.push_back(currentValue);
+                paramIdx++;
             }
         }
 

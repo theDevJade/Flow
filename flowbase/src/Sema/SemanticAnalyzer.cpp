@@ -155,19 +155,28 @@ namespace flow
 
         symbolTable.define("len", intType, false, true);
 
-        // String functions
+        symbolTable.define("malloc", stringType, false, true);    // Returns ptr (as string)
+        symbolTable.define("free", voidType, false, true);        // Returns void
+        symbolTable.define("calloc", stringType, false, true);    // Returns ptr (as string)
+        symbolTable.define("realloc", stringType, false, true);   // Returns ptr (as string)
+        symbolTable.define("memcpy", stringType, false, true);    // Returns ptr (as string)
+        symbolTable.define("memset", stringType, false, true);    // Returns ptr (as string)
+        symbolTable.define("memmove", stringType, false, true);   // Returns ptr (as string)
+        symbolTable.define("memcmp", intType, false, true);       // Returns int
+
         symbolTable.define("strlen", intType, false, true);
         symbolTable.define("substr", stringType, false, true);
         symbolTable.define("concat", stringType, false, true);
+        symbolTable.define("strcpy", stringType, false, true);
+        symbolTable.define("strcat", stringType, false, true);
 
-        // Math functions
+
         symbolTable.define("abs", intType, false, true);
         symbolTable.define("sqrt", floatType, false, true);
         symbolTable.define("pow", floatType, false, true);
         symbolTable.define("min", intType, false, true);
         symbolTable.define("max", intType, false, true);
 
-        // I/O functions
         symbolTable.define("readLine", stringType, false, true);
         symbolTable.define("readInt", intType, false, true);
         symbolTable.define("writeFile", boolType, false, true);
