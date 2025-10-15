@@ -40,6 +40,7 @@ impl Package {
             match self.manifest.package.package_type {
                 PackageType::Bin => self.root_dir.join("src/main.flow"),
                 PackageType::Lib => self.root_dir.join("src/lib.flow"),
+                PackageType::Native => self.root_dir.join("src/lib.c"),
             }
         }
     }
@@ -54,10 +55,18 @@ impl Package {
         self.manifest.package.package_type == PackageType::Lib
     }
     
+    /// Check if this is a native package
+    pub fn is_native(&self) -> bool {
+        self.manifest.package.package_type == PackageType::Native
+    }
+    
     /// Get the output binary name
     pub fn binary_name(&self) -> String {
         if self.is_binary() {
             self.manifest.package.name.clone()
+        } else if self.is_native() {
+            // Native libraries output as .o object files
+            format!("lib{}.o", self.manifest.package.name)
         } else {
             format!("lib{}", self.manifest.package.name)
         }

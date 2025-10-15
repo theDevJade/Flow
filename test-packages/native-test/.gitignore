@@ -1,0 +1,7 @@
+/target
+/River.lock
+.DS_Store
+*.o
+*.so
+*.dylib
+*.dll

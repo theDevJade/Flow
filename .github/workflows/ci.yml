@@ -27,11 +27,22 @@ jobs:
           sudo ./llvm.sh 21
           sudo apt-get install -y llvm-21-dev libclang-21-dev libffi-dev
 
+      - name: Install nlohmann/json (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nlohmann-json3-dev
+
       - name: Install LLVM (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew install llvm
           echo "LLVM_DIR=$(brew --prefix llvm)" >> $GITHUB_ENV
+
+      - name: Install nlohmann/json (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install nlohmann-json
 
       - name: Install LLVM (Windows)
         if: matrix.os == 'windows-latest'
@@ -117,8 +128,9 @@ jobs:
           path: |
             ${{ env.VCPKG_INSTALLATION_ROOT }}\installed
             ${{ env.VCPKG_INSTALLATION_ROOT }}\packages
-          key: ${{ runner.os }}-vcpkg-libffi-${{ hashFiles('**/vcpkg.json') }}
+          key: ${{ runner.os }}-vcpkg-libffi-nlohmann-${{ hashFiles('**/vcpkg.json') }}
           restore-keys: |
+            ${{ runner.os }}-vcpkg-libffi-nlohmann-
             ${{ runner.os }}-vcpkg-libffi-
             ${{ runner.os }}-vcpkg-
 
@@ -128,6 +140,13 @@ jobs:
           Write-Host "Installing libffi via vcpkg..."
           vcpkg install libffi:x64-windows
           Write-Host "libffi installation complete"
+
+      - name: Install nlohmann/json (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Write-Host "Installing nlohmann/json via vcpkg..."
+          vcpkg install nlohmann-json:x64-windows
+          Write-Host "nlohmann/json installation complete"
 
       - name: Configure CMake (Unix)
         if: matrix.os != 'windows-latest'
@@ -222,7 +241,7 @@ jobs:
           path: |
             ${{ env.VCPKG_INSTALLATION_ROOT }}\installed
             ${{ env.VCPKG_INSTALLATION_ROOT }}\packages
-          key: ${{ runner.os }}-vcpkg-libffi-${{ hashFiles('**/vcpkg.json') }}
+          key: ${{ runner.os }}-vcpkg-libffi-nlohmann-${{ hashFiles('**/vcpkg.json') }}
 
   test-flowbase:
     name: Test Flow Examples

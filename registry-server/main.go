@@ -50,7 +50,9 @@ func main() {
 		AllowOrigins: []string{
 			"https://flowc.dev",
 			"https://registry.flowc.dev",
+			"https://www.flowc.dev",
 			"http://localhost:3000",
+			"http://localhost:5173",
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
@@ -213,12 +215,14 @@ func runMigrations(db *sql.DB) error {
 			CONSTRAINT username_length CHECK (length(username) >= 3 AND length(username) <= 50)
 		)`,
 
-		// Create keywords table for better search
+		// Create package_keywords table
 		`CREATE TABLE IF NOT EXISTS package_keywords (
 			id SERIAL PRIMARY KEY,
 			package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE,
-			keyword VARCHAR(100) NOT NULL
+			keyword VARCHAR(100) NOT NULL,
+			UNIQUE(package_id, keyword)
 		)`,
+
 
 		`CREATE TABLE IF NOT EXISTS audit_log (
 			id SERIAL PRIMARY KEY,

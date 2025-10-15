@@ -1,6 +1,7 @@
 #include "../../include/Lexer/Lexer.h"
 #include <cctype>
 #include <map>
+#include <iostream>
 
 namespace flow {
     Lexer::Lexer(const std::string &src, const std::string &fname)
@@ -269,6 +270,7 @@ namespace flow {
                 return makeToken(TokenType::MINUS, "-");
         }
 
+        std::cerr << "Unexpected character: '" << c << "' (ASCII " << static_cast<int>(c) << ") at line " << line << ", column " << column << std::endl;
         return errorToken("Unexpected character");
     }
 

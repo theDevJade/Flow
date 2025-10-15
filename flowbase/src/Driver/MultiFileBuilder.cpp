@@ -11,60 +11,78 @@
 #include <cstdlib>
 #include <iomanip>
 
-namespace flow {
-    MultiFileBuilder::MultiFileBuilder(const std::string &mainFile, const std::string &outputFile, bool verbose)
-        : mainFile(mainFile), outputFile(outputFile), buildDir(".flow_build"), verbose(verbose) {
+namespace flow
+{
+    MultiFileBuilder::MultiFileBuilder(const std::string& mainFile, const std::string& outputFile, bool verbose)
+        : mainFile(mainFile), outputFile(outputFile), buildDir(".flow_build"), verbose(verbose)
+    {
         std::filesystem::create_directories(buildDir);
     }
 
-    std::string MultiFileBuilder::resolveImportPath(const std::string &importPath, const std::string &currentDir) {
+    std::string MultiFileBuilder::resolveImportPath(const std::string& importPath, const std::string& currentDir)
+    {
         namespace fs = std::filesystem;
 
-        if (fs::path(importPath).is_absolute()) {
+        if (fs::path(importPath).is_absolute())
+        {
             return importPath;
         }
 
         // First try: resolve relative to current directory
         fs::path fullPath = fs::path(currentDir) / importPath;
 
-        try {
+        try
+        {
             return fs::canonical(fullPath).string();
-        } catch (const fs::filesystem_error &) {
+        }
+        catch (const fs::filesystem_error&)
+        {
             // If that fails, try library paths from environment
             // Check FLOW_PATH or River packages directory
-            if (const char* flowPath = std::getenv("FLOW_PATH")) {
+            if (const char* flowPath = std::getenv("FLOW_PATH"))
+            {
                 fs::path libFullPath = fs::path(flowPath) / importPath;
-                try {
+                try
+                {
                     return fs::canonical(libFullPath).string();
-                } catch (const fs::filesystem_error &) {
+                }
+                catch (const fs::filesystem_error&)
+                {
                     // Continue
                 }
             }
-            
+
             // Try ~/.river/packages/ as fallback
-            if (const char* home = std::getenv("HOME")) {
+            if (const char* home = std::getenv("HOME"))
+            {
                 fs::path riverPath = fs::path(home) / ".river" / "packages";
                 fs::path libFullPath = riverPath / importPath;
-                try {
+                try
+                {
                     return fs::canonical(libFullPath).string();
-                } catch (const fs::filesystem_error &) {
+                }
+                catch (const fs::filesystem_error&)
+                {
                     // Continue
                 }
             }
-            
+
             return fullPath.string();
         }
     }
 
-    void MultiFileBuilder::discoverImports(const std::string &filePath) {
-        if (processedModules.find(filePath) != processedModules.end()) {
+    void MultiFileBuilder::discoverImports(const std::string& filePath)
+    {
+        if (processedModules.find(filePath) != processedModules.end())
+        {
             return;
         }
         processedModules.insert(filePath);
 
 
         std::ifstream file(filePath);
-        if (!file.is_open()) {
+        if (!file.is_open())
+        {
             std::cerr << "Error: Cannot open file: " << filePath << std::endl;
             return;
         }
@@ -77,7 +95,8 @@ namespace flow {
         // Get file size
         struct stat st;
         size_t fileSize = 0;
-        if (stat(filePath.c_str(), &st) == 0) {
+        if (stat(filePath.c_str(), &st) == 0)
+        {
             fileSize = st.st_size;
         }
 
@@ -95,30 +114,37 @@ namespace flow {
         modules[filePath] = info;
 
 
-        try {
+        try
+        {
             Lexer lexer(source, filePath);
             std::vector<Token> tokens = lexer.tokenize();
 
             Parser parser(tokens);
             auto program = parser.parse();
 
-            if (program) {
+            if (program)
+            {
                 std::filesystem::path currentDir = std::filesystem::path(filePath).parent_path();
 
 
-                for (auto &decl: program->declarations) {
-                    if (auto *importDecl = dynamic_cast<ImportDecl *>(decl.get())) {
+                for (auto& decl : program->declarations)
+                {
+                    if (auto* importDecl = dynamic_cast<ImportDecl*>(decl.get()))
+                    {
                         std::string resolvedPath = resolveImportPath(importDecl->modulePath, currentDir.string());
                         discoverImports(resolvedPath); // Recursive
                     }
                 }
             }
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception& e)
+        {
             std::cerr << "Error parsing " << filePath << ": " << e.what() << std::endl;
         }
     }
 
-    void MultiFileBuilder::printBuildHeader() {
+    void MultiFileBuilder::printBuildHeader()
+    {
         std::cout << "\n";
         std::cout << "================================================================\n";
         std::cout << "  Flow Multi-File Build System\n";
@@ -130,13 +156,15 @@ namespace flow {
         std::cout << "\n";
     }
 
-    void MultiFileBuilder::printModuleProgress(int current, int total, const std::string &moduleName) {
+    void MultiFileBuilder::printModuleProgress(int current, int total, const std::string& moduleName)
+    {
         int barWidth = 50;
-        float progress = (float) current / total;
+        float progress = (float)current / total;
         int pos = barWidth * progress;
 
         std::cout << "  [";
-        for (int i = 0; i < barWidth; ++i) {
+        for (int i = 0; i < barWidth; ++i)
+        {
             if (i < pos) std::cout << "=";
             else if (i == pos) std::cout << ">";
             else std::cout << " ";
@@ -146,19 +174,22 @@ namespace flow {
 
         // Truncate module name if too long
         std::string displayName = moduleName;
-        if (displayName.length() > 40) {
+        if (displayName.length() > 40)
+        {
             displayName = "..." + displayName.substr(displayName.length() - 37);
         }
 
         std::cout << displayName << "       \r" << std::flush;
     }
 
-    bool MultiFileBuilder::compileModule(const std::string &modulePath) {
-        auto &info = modules[modulePath];
+    bool MultiFileBuilder::compileModule(const std::string& modulePath)
+    {
+        auto& info = modules[modulePath];
 
         // Read source
         std::ifstream file(modulePath);
-        if (!file.is_open()) {
+        if (!file.is_open())
+        {
             std::cerr << "\nError: Cannot open " << modulePath << std::endl;
             return false;
         }
@@ -168,12 +199,14 @@ namespace flow {
         std::string source = buffer.str();
         file.close();
 
-        try {
+        try
+        {
             // Lex
             Lexer lexer(source, modulePath);
             std::vector<Token> tokens = lexer.tokenize();
 
-            if (tokens.empty()) {
+            if (tokens.empty())
+            {
                 std::cerr << "\nError: Lexing failed for " << modulePath << std::endl;
                 return false;
             }
@@ -182,7 +215,8 @@ namespace flow {
             Parser parser(tokens);
             auto program = parser.parse();
 
-            if (!program) {
+            if (!program)
+            {
                 std::cerr << "\nError: Parsing failed for " << modulePath << std::endl;
                 return false;
             }
@@ -192,9 +226,11 @@ namespace flow {
             analyzer.setCurrentFile(modulePath);
             analyzer.analyze(program);
 
-            if (analyzer.hasErrors()) {
+            if (analyzer.hasErrors())
+            {
                 std::cerr << "\nError: Semantic analysis failed for " << modulePath << std::endl;
-                for (const auto &err: analyzer.getErrors()) {
+                for (const auto& err : analyzer.getErrors())
+                {
                     std::cerr << "  " << err << std::endl;
                 }
                 return false;
@@ -208,11 +244,15 @@ namespace flow {
 
             // For modules with imports, declare external functions from imported modules
 
-            const auto &loadedModules = analyzer.getLoadedModules();
-            for (const auto &[importPath, importedProgram]: loadedModules) {
-                if (importedProgram) {
-                    for (auto &decl: importedProgram->declarations) {
-                        if (auto *funcDecl = dynamic_cast<FunctionDecl *>(decl.get())) {
+            const auto& loadedModules = analyzer.getLoadedModules();
+            for (const auto& [importPath, importedProgram] : loadedModules)
+            {
+                if (importedProgram)
+                {
+                    for (auto& decl : importedProgram->declarations)
+                    {
+                        if (auto* funcDecl = dynamic_cast<FunctionDecl*>(decl.get()))
+                        {
                             codegen.declareExternalFunction(*funcDecl);
                         }
                     }
@@ -224,26 +264,32 @@ namespace flow {
 
             // Get object file size
             struct stat st;
-            if (stat(info.objectPath.c_str(), &st) == 0) {
+            if (stat(info.objectPath.c_str(), &st) == 0)
+            {
                 info.objectSize = st.st_size;
             }
 
             info.compiled = true;
             return true;
-        } catch (const std::exception &e) {
+        }
+        catch (const std::exception& e)
+        {
             std::cerr << "\nError compiling " << modulePath << ": " << e.what() << std::endl;
             return false;
         }
     }
 
-    void MultiFileBuilder::printLinkingInfo(const std::vector<std::string> &objectFiles) {
+    void MultiFileBuilder::printLinkingInfo(const std::vector<std::string>& objectFiles)
+    {
         std::cout << "\n----------------------------------------------------------------\n";
         std::cout << "  Linking Phase\n";
         std::cout << "----------------------------------------------------------------\n\n";
 
         size_t totalSize = 0;
-        for (const auto &[path, info]: modules) {
-            if (info.compiled) {
+        for (const auto& [path, info] : modules)
+        {
+            if (info.compiled)
+            {
                 totalSize += info.objectSize;
             }
         }
@@ -253,15 +299,19 @@ namespace flow {
         std::cout << "  Output:       " << outputFile << "\n\n";
     }
 
-    bool MultiFileBuilder::linkModules() {
+    bool MultiFileBuilder::linkModules()
+    {
         std::vector<std::string> objectFiles;
-        for (const auto &[path, info]: modules) {
-            if (info.compiled) {
+        for (const auto& [path, info] : modules)
+        {
+            if (info.compiled)
+            {
                 objectFiles.push_back(info.objectPath);
             }
         }
 
-        if (objectFiles.empty()) {
+        if (objectFiles.empty())
+        {
             std::cerr << "Error: No object files to link\n";
             return false;
         }
@@ -276,16 +326,19 @@ namespace flow {
         linkCmd = "g++ -o " + outputFile;
 #endif
 
-        for (const auto &obj: objectFiles) {
+        for (const auto& obj : objectFiles)
+        {
             linkCmd += " " + obj;
         }
 
-        if (verbose) {
+        if (verbose)
+        {
             std::cout << "  Command: " << linkCmd << "\n\n";
         }
 
         int result = system(linkCmd.c_str());
-        if (result != 0) {
+        if (result != 0)
+        {
             std::cerr << "Error: Linking failed\n";
             return false;
         }
@@ -293,7 +346,8 @@ namespace flow {
         return true;
     }
 
-    void MultiFileBuilder::printBuildSummary() {
+    void MultiFileBuilder::printBuildSummary()
+    {
         std::cout << "\n";
         std::cout << "================================================================\n";
         std::cout << "  Build Summary\n";
@@ -302,9 +356,11 @@ namespace flow {
         size_t totalSource = 0;
         size_t totalObject = 0;
 
-        for (const auto &[path, info]: modules) {
+        for (const auto& [path, info] : modules)
+        {
             totalSource += info.sourceSize;
-            if (info.compiled) {
+            if (info.compiled)
+            {
                 totalObject += info.objectSize;
             }
         }
@@ -315,7 +371,8 @@ namespace flow {
 
         // Get executable size
         struct stat st;
-        if (stat(outputFile.c_str(), &st) == 0) {
+        if (stat(outputFile.c_str(), &st) == 0)
+        {
             std::cout << "  Executable size:   " << st.st_size << " bytes\n";
         }
 
@@ -326,15 +383,18 @@ namespace flow {
         std::cout << "================================================================\n\n";
     }
 
-    bool MultiFileBuilder::build() {
+    bool MultiFileBuilder::build()
+    {
         // Phase 1: Discover all modules
-        if (verbose) {
+        if (verbose)
+        {
             std::cout << "Discovering modules...\n";
         }
 
         discoverImports(mainFile);
 
-        if (modules.empty()) {
+        if (modules.empty())
+        {
             std::cerr << "Error: No modules found\n";
             return false;
         }
@@ -349,7 +409,8 @@ namespace flow {
         int current = 0;
         int total = modules.size();
 
-        for (auto &[path, info]: modules) {
+        for (auto& [path, info] : modules)
+        {
             current++;
 
             std::filesystem::path p(path);
@@ -357,7 +418,8 @@ namespace flow {
 
             printModuleProgress(current, total, moduleName);
 
-            if (!compileModule(path)) {
+            if (!compileModule(path))
+            {
                 std::cout << "\n";
                 return false;
             }
@@ -366,7 +428,8 @@ namespace flow {
         std::cout << "\n\n  All modules compiled successfully\n";
 
         // Phase 3: Link
-        if (!linkModules()) {
+        if (!linkModules())
+        {
             return false;
         }
 

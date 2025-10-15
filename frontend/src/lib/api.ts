@@ -39,11 +39,11 @@ const fallbackPackages: PackageInfo[] = [
         description: "HTTP client library for Flow with support for modern web protocols",
         author: "Flow Team",
         license: "MIT",
-        download_url: "https://registry.flowlang.org/packages/http-2.0.0.tar.gz",
+        download_url: "https://registry.flowc.dev/api/v1/packages/http/2.0.0/download",
         checksum: "a7c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3e9f2",
         dependencies: ["json", "tls"],
         repository: "https://github.com/flowlang/http",
-        homepage: "https://flowlang.org/packages/http",
+        homepage: "https://flowc.dev/packages/http",
         keywords: ["http", "client", "rest", "api"],
         published_at: "2025-10-11T12:00:00Z",
         downloads: 15420
@@ -54,11 +54,11 @@ const fallbackPackages: PackageInfo[] = [
         description: "Fast and reliable JSON parser and serializer for Flow",
         author: "Flow Core",
         license: "MIT",
-        download_url: "https://registry.flowlang.org/packages/json-1.8.2.tar.gz",
+        download_url: "https://registry.flowc.dev/api/v1/packages/json/1.8.2/download",
         checksum: "b8d1e4f6a9c2d5e8b1f4a7c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3e9f2b8d1e4f6",
         dependencies: [],
         repository: "https://github.com/flowlang/json",
-        homepage: "https://flowlang.org/packages/json",
+        homepage: "https://flowc.dev/packages/json",
         keywords: ["json", "parser", "serializer"],
         published_at: "2025-09-28T14:30:00Z",
         downloads: 28500
@@ -69,11 +69,11 @@ const fallbackPackages: PackageInfo[] = [
         description: "TLS/SSL implementation for secure network communications",
         author: "Security Team",
         license: "Apache-2.0",
-        download_url: "https://registry.flowlang.org/packages/tls-1.5.0.tar.gz",
+        download_url: "https://registry.flowc.dev/api/v1/packages/tls/1.5.0/download",
         checksum: "c9e2f3b8d1e4f6a9c2d5e8b1f4a7c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3e9f2b8",
         dependencies: ["crypto"],
         repository: "https://github.com/flowlang/tls",
-        homepage: "https://flowlang.org/packages/tls",
+        homepage: "https://flowc.dev/packages/tls",
         keywords: ["tls", "ssl", "security", "encryption"],
         published_at: "2025-10-01T10:15:00Z",
         downloads: 12300
@@ -84,11 +84,11 @@ const fallbackPackages: PackageInfo[] = [
         description: "Unified database interface supporting PostgreSQL, MySQL, and SQLite",
         author: "Flow Database Team",
         license: "MIT",
-        download_url: "https://registry.flowlang.org/packages/database-3.1.4.tar.gz",
+        download_url: "https://registry.flowc.dev/api/v1/packages/database/3.1.4/download",
         checksum: "d1f4a7c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3",
         dependencies: ["async", "pool"],
         repository: "https://github.com/flowlang/database",
-        homepage: "https://flowlang.org/packages/database",
+        homepage: "https://flowc.dev/packages/database",
         keywords: ["database", "sql", "postgresql", "mysql", "sqlite"],
         published_at: "2025-10-08T16:45:00Z",
         downloads: 9850
@@ -99,11 +99,11 @@ const fallbackPackages: PackageInfo[] = [
         description: "Async runtime and utilities for concurrent programming",
         author: "Flow Core",
         license: "MIT",
-        download_url: "https://registry.flowlang.org/packages/async-2.3.1.tar.gz",
+        download_url: "https://registry.flowc.dev/api/v1/packages/async/2.3.1/download",
         checksum: "e4f6a9c2d5e8b1f4a7c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3e9f2b8d1e4f6a9c2",
         dependencies: [],
         repository: "https://github.com/flowlang/async",
-        homepage: "https://flowlang.org/packages/async",
+        homepage: "https://flowc.dev/packages/async",
         keywords: ["async", "concurrent", "runtime", "futures"],
         published_at: "2025-09-15T11:20:00Z",
         downloads: 21400
@@ -114,11 +114,11 @@ const fallbackPackages: PackageInfo[] = [
         description: "Modern web framework for building fast and scalable applications",
         author: "Flow Web Team",
         license: "MIT",
-        download_url: "https://registry.flowlang.org/packages/web-1.0.0.tar.gz",
+        download_url: "https://registry.flowc.dev/api/v1/packages/web/1.0.0/download",
         checksum: "f6a9c2d5e8b1f4a7c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3e9f2b8d1e4f6a9c2d5",
         dependencies: ["http", "router", "templates"],
         repository: "https://github.com/flowlang/web",
-        homepage: "https://flowlang.org/packages/web",
+        homepage: "https://flowc.dev/packages/web",
         keywords: ["web", "framework", "server", "router"],
         published_at: "2025-10-10T09:00:00Z",
         downloads: 5200
@@ -129,11 +129,11 @@ const fallbackPackages: PackageInfo[] = [
         description: "Cryptographic primitives and utilities",
         author: "Security Team",
         license: "Apache-2.0",
-        download_url: "https://registry.flowlang.org/packages/crypto-2.1.0.tar.gz",
+        download_url: "https://registry.flowc.dev/api/v1/packages/crypto/2.1.0/download",
         checksum: "a9c2d5e8b1f4a7c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3e9f2b8d1e4f6a9c2d5e8",
         dependencies: [],
         repository: "https://github.com/flowlang/crypto",
-        homepage: "https://flowlang.org/packages/crypto",
+        homepage: "https://flowc.dev/packages/crypto",
         keywords: ["crypto", "encryption", "hash", "security"],
         published_at: "2025-09-20T13:30:00Z",
         downloads: 18700
@@ -144,11 +144,11 @@ const fallbackPackages: PackageInfo[] = [
         description: "Comprehensive testing framework with assertions and mocking",
         author: "Flow Core",
         license: "MIT",
-        download_url: "https://registry.flowlang.org/packages/testing-1.4.2.tar.gz",
+        download_url: "https://registry.flowc.dev/api/v1/packages/testing/1.4.2/download",
         checksum: "b1f4a7c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3",
         dependencies: [],
         repository: "https://github.com/flowlang/testing",
-        homepage: "https://flowlang.org/packages/testing",
+        homepage: "https://flowc.dev/packages/testing",
         keywords: ["testing", "test", "assertions", "mock"],
         published_at: "2025-10-05T15:10:00Z",
         downloads: 14200
@@ -159,11 +159,11 @@ const fallbackPackages: PackageInfo[] = [
         description: "Build beautiful command-line interfaces with ease",
         author: "Flow CLI Team",
         license: "MIT",
-        download_url: "https://registry.flowlang.org/packages/cli-0.9.5.tar.gz",
+        download_url: "https://registry.flowc.dev/api/v1/packages/cli/0.9.5/download",
         checksum: "c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3e9f2b8d1e4f6a9c2d5e8b1f4a7c3e9f2b8",
         dependencies: ["colors", "parser"],
         repository: "https://github.com/flowlang/cli",
-        homepage: "https://flowlang.org/packages/cli",
+        homepage: "https://flowc.dev/packages/cli",
         keywords: ["cli", "command-line", "terminal", "args"],
         published_at: "2025-10-02T08:25:00Z",
         downloads: 8900
@@ -171,7 +171,7 @@ const fallbackPackages: PackageInfo[] = [
 ];
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://registry.flowc.dev/api/v1';
 
 // API client
 export const api = {
@@ -184,7 +184,7 @@ export const api = {
     },
 
     async searchPackages(query: string, limit: number = 10): Promise<SearchResponse> {
-        const params = new URLSearchParams({ q: query, limit: limit.toString() });
+        const params = new URLSearchParams({q: query, limit: limit.toString()});
         const response = await fetch(`${API_BASE_URL}/search?${params}`);
         if (!response.ok) {
             throw new Error('Search failed');

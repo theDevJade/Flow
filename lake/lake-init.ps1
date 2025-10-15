@@ -8,7 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # Constants
-$LakeVersion = "0.1.0"
+$LakeVersion = "0.2.0"
 $LakeBin = "$FlowHome\bin"
 $LakeDistServer = if ($env:LAKE_DIST_SERVER) { $env:LAKE_DIST_SERVER } else { "https://github.com/theDevJade/flow/releases" }
 
@@ -74,19 +74,43 @@ function Get-OSTriple {
 function Get-PrebuiltBinaries {
     param([string]$Triple)
     
-    $version = "latest"
-    $baseUrl = "$LakeDistServer/download/$version"
-    $flowUrl = "$baseUrl/flow-$Triple.zip"
-    $riverUrl = "$baseUrl/river-$Triple.zip"
+    # Get the latest release tag from GitHub API
+    try {
+        $response = Invoke-RestMethod -Uri "https://api.github.com/repos/theDevJade/flow/releases/latest" -UseBasicParsing
+        $latestTag = $response.tag_name
+    } catch {
+        Write-Error "Could not determine latest release"
+        return $false
+    }
+    
+    # Map platform triple to release asset names
+    $platform = ""
+    switch -Wildcard ($Triple) {
+        "*pc-windows-msvc*" { $platform = "windows" }
+        default {
+            Write-Error "Unsupported platform: $Triple"
+            return $false
+        }
+    }
+    
+    $baseUrl = "$LakeDistServer/download/$latestTag"
+    $flowbaseUrl = "$baseUrl/flowbase-$platform-latest.zip"
+    $flowLspUrl = "$baseUrl/flow-lsp-$platform-latest.zip"
+    $riverUrl = "$baseUrl/river-$platform-latest.zip"
     
     $downloadDir = "$FlowHome\downloads"
     New-Item -ItemType Directory -Force -Path $downloadDir | Out-Null
     
     try {
         Write-Info "Downloading Flow compiler..."
-        Invoke-WebRequest -Uri $flowUrl -OutFile "$downloadDir\flow.zip" -UseBasicParsing
-        Expand-Archive -Path "$downloadDir\flow.zip" -DestinationPath $LakeBin -Force
-        Remove-Item "$downloadDir\flow.zip"
+        Invoke-WebRequest -Uri $flowbaseUrl -OutFile "$downloadDir\flowbase.zip" -UseBasicParsing
+        Expand-Archive -Path "$downloadDir\flowbase.zip" -DestinationPath $LakeBin -Force
+        Remove-Item "$downloadDir\flowbase.zip"
+        
+        Write-Info "Downloading Flow language server..."
+        Invoke-WebRequest -Uri $flowLspUrl -OutFile "$downloadDir\flow-lsp.zip" -UseBasicParsing
+        Expand-Archive -Path "$downloadDir\flow-lsp.zip" -DestinationPath $LakeBin -Force
+        Remove-Item "$downloadDir\flow-lsp.zip"
         
         Write-Info "Downloading River package manager..."
         Invoke-WebRequest -Uri $riverUrl -OutFile "$downloadDir\river.zip" -UseBasicParsing

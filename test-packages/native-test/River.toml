@@ -1,0 +1,12 @@
+[package]
+name = "native-test"
+version = "0.1.0"
+authors = ["Your Name <you@example.com>"]
+license = "MIT"
+type = "bin"
+entry = "src/main.flow"
+
+[dependencies]
+native-math = { path = "../native-math" }
+
+[dev_dependencies]

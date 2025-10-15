@@ -1,0 +1,34 @@
+// native-test - Flow executable
+// Tests native C library integration through River package manager
+
+// Declare C functions from native-math library
+// The native-math.o object file will be linked automatically by River
+link "c" {
+    func add(a: int, b: int) -> int;
+    func multiply(a: int, b: int) -> int;
+}
+
+func main() {
+    print("╔════════════════════════════════════╗");
+    print("║  Native C Library Integration Test  ║");
+    print("╚════════════════════════════════════╝");
+    print("");
+    
+    // Test add function from native library
+    let sum: int = add(10, 20);
+    print("add(10, 20) = " + sum);
+    
+    // Test multiply function from native library
+    let product: int = multiply(7, 8);
+    print("multiply(7, 8) = " + product);
+    
+    // More tests
+    let result1: int = add(100, 234);
+    print("add(100, 234) = " + result1);
+    
+    let result2: int = multiply(12, 12);
+    print("multiply(12, 12) = " + result2);
+    
+    print("");
+    print("✓ Native C library integration successful!");
+}

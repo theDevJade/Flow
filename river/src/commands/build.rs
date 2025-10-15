@@ -36,6 +36,8 @@ pub fn execute() -> Result<(), Box<dyn std::error::Error>> {
         "→".cyan(),
         if package.is_binary() { 
             "executable".green().bold() 
+        } else if package.is_native() {
+            "native C library".magenta().bold()
         } else { 
             "library".blue().bold() 
         });

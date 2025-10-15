@@ -22,8 +22,9 @@ pub fn execute() -> Result<(), Box<dyn std::error::Error>> {
         return Err("No authentication token found. Run 'river login' first.".into());
     }
     
-    // Connect to registry
-    let registry = Registry::new(config.registry.url.clone());
+    // Connect to registry with auth token
+    let registry = Registry::new(config.registry.url.clone())
+        .with_auth(config.registry.token.as_ref().unwrap().clone());
     
     // Publish package
     println!("  {} Uploading to registry...", "→".cyan());

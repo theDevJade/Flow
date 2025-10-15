@@ -3,7 +3,7 @@
 
 [registry]
 # Registry URL - can be overridden with RIVER_REGISTRY_URL environment variable
-url = "https://registry.flowlang.org"
+url = "https://registry.flowc.dev"
 
 # Authentication token (optional, required for publishing)
 # Get your token by registering at the registry

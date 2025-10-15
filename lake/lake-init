@@ -25,7 +25,7 @@ else
 fi
 
 # Constants
-LAKE_VERSION="0.1.0"
+LAKE_VERSION="0.2.0"
 FLOW_HOME="${FLOW_HOME:-$HOME/.flow}"
 LAKE_BIN="$FLOW_HOME/bin"
 LAKE_DIST_SERVER="${LAKE_DIST_SERVER:-https://github.com/theDevJade/flow/releases}"
@@ -144,26 +144,69 @@ main() {
 
 download_prebuilt() {
     local triple=$1
-    local version="latest"
+    
+    # Get the latest release tag from GitHub API
+    local latest_tag=$(curl -s "https://api.github.com/repos/theDevJade/flow/releases/latest" | grep -o '"tag_name": "[^"]*"' | cut -d'"' -f4)
+    if [ -z "$latest_tag" ]; then
+        echo "${RED}error:${NC} Could not determine latest release" >&2
+        return 1
+    fi
+    
+    # Map platform triple to release asset names
+    local platform=""
+    case $triple in
+        *apple-darwin*)
+            platform="macos"
+            ;;
+        *unknown-linux-gnu*)
+            platform="ubuntu"
+            ;;
+        *pc-windows-msvc*)
+            platform="windows"
+            ;;
+        *)
+            echo "${RED}error:${NC} Unsupported platform: $triple" >&2
+            return 1
+            ;;
+    esac
     
     # Try downloading from GitHub releases
-    local base_url="$LAKE_DIST_SERVER/download/$version"
-    local flow_url="$base_url/flow-$triple.tar.gz"
-    local river_url="$base_url/river-$triple.tar.gz"
+    local base_url="$LAKE_DIST_SERVER/download/$latest_tag"
+    local flowbase_url="$base_url/flowbase-$platform-latest.zip"
+    local flow_lsp_url="$base_url/flow-lsp-$platform-latest.zip"
+    local river_url="$base_url/river-$platform-latest.zip"
     
     local download_dir="$FLOW_HOME/downloads"
     
-    # Try to download flow
-    if curl --retry 3 -f -L "$flow_url" -o "$download_dir/flow.tar.gz" 2>/dev/null; then
+    echo "${CYAN}info:${NC} downloading Flow compiler..."
+    if curl --retry 3 -f -L "$flowbase_url" -o "$download_dir/flowbase.zip" 2>/dev/null; then
         echo "${CYAN}info:${NC} extracting Flow compiler..."
-        tar -xzf "$download_dir/flow.tar.gz" -C "$LAKE_BIN"
-        rm "$download_dir/flow.tar.gz"
+        if command -v unzip >/dev/null 2>&1; then
+            unzip -q "$download_dir/flowbase.zip" -d "$LAKE_BIN"
+        else
+            # Fallback to tar if unzip not available
+            tar -xf "$download_dir/flowbase.zip" -C "$LAKE_BIN"
+        fi
+        rm "$download_dir/flowbase.zip"
         
-        # Try to download river
-        if curl --retry 3 -f -L "$river_url" -o "$download_dir/river.tar.gz" 2>/dev/null; then
-            echo "${CYAN}info:${NC} extracting River package manager..."
-            tar -xzf "$download_dir/river.tar.gz" -C "$LAKE_BIN"
-            rm "$download_dir/river.tar.gz"
+        echo "${CYAN}info:${NC} downloading Flow language server..."
+        if curl --retry 3 -f -L "$flow_lsp_url" -o "$download_dir/flow-lsp.zip" 2>/dev/null; then
+            if command -v unzip >/dev/null 2>&1; then
+                unzip -q "$download_dir/flow-lsp.zip" -d "$LAKE_BIN"
+            else
+                tar -xf "$download_dir/flow-lsp.zip" -C "$LAKE_BIN"
+            fi
+            rm "$download_dir/flow-lsp.zip"
+        fi
+        
+        echo "${CYAN}info:${NC} downloading River package manager..."
+        if curl --retry 3 -f -L "$river_url" -o "$download_dir/river.zip" 2>/dev/null; then
+            if command -v unzip >/dev/null 2>&1; then
+                unzip -q "$download_dir/river.zip" -d "$LAKE_BIN"
+            else
+                tar -xf "$download_dir/river.zip" -C "$LAKE_BIN"
+            fi
+            rm "$download_dir/river.zip"
             return 0
         fi
     fi

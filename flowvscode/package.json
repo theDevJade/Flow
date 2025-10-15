@@ -1,9 +1,9 @@
 {
-  "name": "flow-lang",
-  "displayName": "Flow Language Support",
+  "name": "flow-programming-language",
+  "displayName": "Flow Programming Language",
   "description": "Language support for Flow programming language with LSP integration",
   "version": "0.1.0",
-  "publisher": "flow-lang",
+  "publisher": "flow-lang-team",
   "engines": {
     "vscode": "^1.75.0"
   },
@@ -12,6 +12,28 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "flow.showOutputChannel",
+        "title": "Show Flow Language Server Output",
+        "category": "Flow"
+      },
+      {
+        "command": "flow.restartLanguageServer",
+        "title": "Restart Flow Language Server",
+        "category": "Flow"
+      },
+      {
+        "command": "flow.runFile",
+        "title": "Run Flow File",
+        "category": "Flow"
+      },
+      {
+        "command": "flow.checkSyntax",
+        "title": "Check Flow Syntax",
+        "category": "Flow"
+      }
+    ],
     "languages": [
       {
         "id": "flow",
@@ -30,6 +52,13 @@
         "language": "flow",
         "scopeName": "source.flow",
         "path": "./syntaxes/flow.tmLanguage.json"
+      }
+    ],
+    "iconThemes": [
+      {
+        "id": "flow-icons",
+        "label": "Flow Icons",
+        "path": "./icons/flow-icon-theme.json"
       }
     ],
     "configuration": {
@@ -52,14 +81,38 @@
           "description": "Traces the communication between VS Code and the Flow language server."
         }
       }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "flow.runFile",
+          "when": "resourceExtname == .flow",
+          "group": "navigation"
+        },
+        {
+          "command": "flow.checkSyntax",
+          "when": "resourceExtname == .flow",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "flow.runFile",
+          "when": "resourceExtname == .flow"
+        },
+        {
+          "command": "flow.checkSyntax",
+          "when": "resourceExtname == .flow"
+        }
+      ]
     }
   },
   "scripts": {
     "test": "npm run compile && node ./out/test/runTest.js",
     "test:watch": "tsc -watch -p ./",
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "compile": "webpack --mode production",
+    "watch": "webpack --mode development --watch",
     "pretest": "npm run compile",
     "package": "vsce package"
   },
@@ -76,6 +129,12 @@
     "@vscode/vsce": "^2.22.0",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
-    "typescript": "^5.3.0"
-  }
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.3.0",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^6.0.1"
+  },
+  "bundleDependencies": [
+    "vscode-languageclient"
+  ]
 }

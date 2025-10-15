@@ -41,6 +41,23 @@ else()
     endif()
 endif()
 
+# Find nlohmann/json
+find_package(nlohmann_json QUIET)
+if(NOT nlohmann_json_FOUND)
+    # If not found via package manager, try to find it manually
+    find_path(NLOHMANN_JSON_INCLUDE_DIR nlohmann/json.hpp
+        PATHS /usr/include /usr/local/include /opt/homebrew/include
+    )
+    if(NLOHMANN_JSON_INCLUDE_DIR)
+        message(STATUS "Found nlohmann/json: ${NLOHMANN_JSON_INCLUDE_DIR}")
+        include_directories(${NLOHMANN_JSON_INCLUDE_DIR})
+    else()
+        message(FATAL_ERROR "nlohmann/json not found. Please install it via package manager or download the header file.")
+    endif()
+else()
+    message(STATUS "Found nlohmann/json via package manager")
+endif()
+
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/include)
 

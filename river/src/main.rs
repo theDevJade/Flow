@@ -22,6 +22,7 @@ fn main() {
         cli::Commands::Add { package, version } => commands::add::execute(package, version),
         cli::Commands::Remove { package } => commands::remove::execute(package),
         cli::Commands::Publish => commands::publish::execute(),
+        cli::Commands::Login => commands::login::execute(),
         cli::Commands::Search { query } => commands::search::execute(query),
         cli::Commands::List => commands::list::execute(),
         cli::Commands::Update => commands::update::execute(),

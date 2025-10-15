@@ -1,0 +1,16 @@
+{
+  "iconDefinitions": {
+    "flow-file": {
+      "iconPath": "./flow-file.svg"
+    },
+    "flow-config": {
+      "iconPath": "./flow-config.svg"
+    }
+  },
+  "fileExtensions": {
+    "flow": "flow-file"
+  },
+  "fileNames": {
+    "River.toml": "flow-config"
+  }
+}

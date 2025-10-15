@@ -36,16 +36,7 @@ pub struct SearchResult {
     pub downloads: u64,                  // Download count
 }
 
-/// Cloud registry client
-/// 
-/// This is a skeleton implementation that demonstrates the structure
-/// for the future implementation
-/// 
-/// - Make HTTP/HTTPS requests to a REST API
-/// - Handle authentication (API tokens)
-/// - Download and verify packages
-/// - Cache metadata locally
-/// - Support multiple registry mirrors
+
 pub struct Registry {
     url: String,
     client: Client,
@@ -54,7 +45,7 @@ pub struct Registry {
 
 impl Registry {
     pub fn new(url: String) -> Self {
-        Registry { 
+        Registry {
             url,
             client: Client::builder()
                 .user_agent("river-pm/0.1.0")
@@ -64,25 +55,25 @@ impl Registry {
             auth_token: None,
         }
     }
-    
+
     pub fn with_auth(mut self, token: String) -> Self {
         self.auth_token = Some(token);
         self
     }
-    
+
     /// Fetch package metadata from the cloud registry
-    /// 
+    ///
     /// API Endpoint: GET /api/v1/packages/{name}
-    /// 
+    ///
     /// Returns: PackageInfo JSON
-    /// 
+    ///
     /// TODO: Implement actual HTTP request:
     /// ```rust
     /// let response = self.client
     ///     .get(&format!("{}/api/v1/packages/{}", self.url, name))
     ///     .header("User-Agent", "river-pm/0.1.0")
     ///     .send()?;
-    /// 
+    ///
     /// if response.status().is_success() {
     ///     let pkg_info: PackageInfo = response.json()?;
     ///     Ok(pkg_info)
@@ -92,13 +83,13 @@ impl Registry {
     /// ```
     pub fn get_package_info(&self, name: &str) -> Result<PackageInfo, Box<dyn std::error::Error>> {
         let url = format!("{}/api/v1/packages/{}", self.url, name);
-        
+
         println!("    {} Fetching from: {}", "→".dimmed(), url);
-        
+
         let response = self.client
             .get(&url)
             .send()?;
-        
+
         if response.status().is_success() {
             let pkg_info: PackageInfo = response.json()?;
             Ok(pkg_info)
@@ -108,46 +99,46 @@ impl Registry {
             Err(format!("Registry error: {}", response.status()).into())
         }
     }
-    
+
     /// Download package from cloud registry
-    /// 
+    ///
     /// API Endpoint: GET /api/v1/packages/{name}/{version}/download
-    /// 
+    ///
     /// Returns: .tar.gz package archive
-    /// 
+    ///
     /// Steps:
     /// 1. Download tarball from registry
     /// 2. Verify SHA256 checksum
     /// 3. Extract to local packages directory
     /// 4. Update local package cache
-    /// 
+    ///
     /// TODO: Implement actual download:
     /// ```rust
     /// let url = format!("{}/api/v1/packages/{}/{}/download", self.url, name, version);
-    /// 
+    ///
     /// // Stream download with progress
     /// let mut response = self.client.get(&url).send()?;
     /// let total_size = response.content_length().unwrap_or(0);
-    /// 
+    ///
     /// let tarball_path = config.paths.cache.join(format!("{}-{}.tar.gz", name, version));
     /// let mut file = File::create(&tarball_path)?;
-    /// 
+    ///
     /// let mut downloaded = 0u64;
     /// let mut buffer = [0; 8192];
-    /// 
+    ///
     /// while let Ok(n) = response.read(&mut buffer) {
     ///     if n == 0 { break; }
     ///     file.write_all(&buffer[..n])?;
     ///     downloaded += n as u64;
     ///     // Update progress bar here
     /// }
-    /// 
+    ///
     /// // Verify checksum
     /// let computed_hash = sha256_file(&tarball_path)?;
     /// if computed_hash != expected_checksum {
     ///     return Err("Checksum mismatch".into());
     /// }
-    /// 
+    ///
     /// // Extract tarball
     /// extract_tarball(&tarball_path, &pkg_dir)?;
     /// ```
@@ -158,30 +149,30 @@ impl Registry {
         config: &Config,
     ) -> Result<PathBuf, Box<dyn std::error::Error>> {
         let url = format!("{}/api/v1/packages/{}/{}/download", self.url, name, version);
-        
+
         println!("    {} Downloading from: {}", "→".dimmed(), url);
-        
+
         // Download package
         let mut response = self.client.get(&url).send()?;
-        
+
         if !response.status().is_success() {
             return Err(format!("Download failed: {}", response.status()).into());
         }
-        
+
         // Get checksum from header
         let expected_checksum = response
             .headers()
             .get("x-checksum")
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
-        
+
         // Create temporary file for download
         let tarball_path = config.paths.cache.join(format!("{}-{}.tar.gz", name, version));
         fs::create_dir_all(&config.paths.cache)?;
-        
+
         let mut file = File::create(&tarball_path)?;
         let mut hasher = Sha256::new();
-        
+
         // Download and calculate checksum
         let mut buffer = vec![0; 8192];
         loop {
@@ -190,9 +181,9 @@ impl Registry {
             file.write_all(&buffer[..n])?;
             hasher.update(&buffer[..n]);
         }
-        
+
         drop(file);
-        
+
         // Verify checksum if provided
         if let Some(expected) = expected_checksum {
             let computed = format!("{:x}", hasher.finalize());
@@ -202,159 +193,185 @@ impl Registry {
             }
             println!("    {} Checksum verified", "✓".green());
         }
-        
+
         // Extract tarball
         let pkg_dir = config.paths.packages.join(format!("{}-{}", name, version));
         fs::create_dir_all(&pkg_dir)?;
-        
+
         println!("    {} Extracting to: {}", "→".dimmed(), pkg_dir.display());
-        
+
         let tar_file = File::open(&tarball_path)?;
         let gz = GzDecoder::new(tar_file);
         let mut archive = Archive::new(gz);
         archive.unpack(&pkg_dir)?;
-        
+
         // Clean up tarball
         fs::remove_file(&tarball_path)?;
-        
+
         println!("    {} Package extracted successfully", "✓".green());
-        
+
         Ok(pkg_dir)
     }
-    
+
     /// Publish package to cloud registry
-    /// 
+    ///
     /// API Endpoint: POST /api/v1/publish
-    /// 
+    ///
     /// Headers:
     /// - Authorization: Bearer {token}
     /// - Content-Type: multipart/form-data
-    /// 
+    ///
     /// Body:
     /// - package: .tar.gz file
     /// - metadata: JSON manifest
     /// - checksum: SHA256 hash
-    /// 
-    /// TODO: Implement actual publish:
-    /// ```rust
-    /// // Create tarball
-    /// let tarball_path = create_tarball(package)?;
-    /// 
-    /// // Calculate checksum
-    /// let checksum = sha256_file(&tarball_path)?;
-    /// 
-    /// // Prepare multipart form
-    /// let form = multipart::Form::new()
-    ///     .file("package", tarball_path)?
-    ///     .text("name", &package.manifest.package.name)
-    ///     .text("version", &package.manifest.package.version)
-    ///     .text("checksum", checksum);
-    /// 
-    /// // Upload with authentication
-    /// let response = self.client
-    ///     .post(&format!("{}/api/v1/publish", self.url))
-    ///     .header("Authorization", format!("Bearer {}", self.auth_token?))
-    ///     .multipart(form)
-    ///     .send()?;
-    /// 
-    /// if response.status().is_success() {
-    ///     Ok(())
-    /// } else {
-    ///     Err("Publish failed".into())
-    /// }
-    /// ```
     pub fn publish_package(
         &self,
         package: &Package,
-        _config: &Config,
+        config: &Config,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        // SKELETON: This shows where the publish logic would go
+        let auth_token = self.auth_token.as_ref()
+            .ok_or("Authentication token required for publishing")?;
+
+        println!("    {} Publishing to: {}/api/v1/publish", "→".dimmed(), self.url);
+        println!("    {} Package: {} v{}", "→".dimmed(), 
+            package.manifest.package.name, package.manifest.package.version);
+
+        // Create tarball
+        let tarball_path = self.create_tarball(package, config)?;
         
-        println!("    {} Would publish to: {}/api/v1/publish",
-            "→".dimmed(),
-            self.url);
+        // Calculate checksum
+        let checksum = self.calculate_checksum(&tarball_path)?;
+
+        // Prepare multipart form
+        let author = package.manifest.package.authors.first()
+            .map(|s| s.as_str())
+            .unwrap_or("Unknown");
+        let description = package.manifest.package.description.as_deref().unwrap_or("");
+        let license = package.manifest.package.license.as_deref().unwrap_or("MIT");
+        let repository = package.manifest.package.repository.as_deref().unwrap_or("");
         
-        println!("    {} Package: {} v{}",
-            "→".dimmed(),
-            package.manifest.package.name,
-            package.manifest.package.version);
-        
-        // TODO: Replace with actual tarball creation, checksum, and upload
-        Err("Registry publishing not yet implemented. Would upload package to cloud.".into())
+        let form = reqwest::blocking::multipart::Form::new()
+            .file("package", &tarball_path)?
+            .text("name", package.manifest.package.name.clone())
+            .text("version", package.manifest.package.version.clone())
+            .text("description", description.to_string())
+            .text("author", author.to_string())
+            .text("license", license.to_string())
+            .text("repository", repository.to_string())
+            .text("homepage", repository.to_string())
+            .text("checksum", checksum);
+
+        // Upload with authentication
+        let response = self.client
+            .post(&format!("{}/api/v1/publish", self.url))
+            .header("Authorization", format!("Bearer {}", auth_token))
+            .multipart(form)
+            .send()?;
+
+        // Clean up tarball
+        fs::remove_file(&tarball_path)?;
+
+        if response.status().is_success() {
+            println!("    {} Package published successfully", "✓".green());
+            Ok(())
+        } else {
+            let error_text = response.text().unwrap_or_else(|_| "Unknown error".to_string());
+            Err(format!("Publish failed: {}", error_text).into())
+        }
     }
+
     
-    /// Search for packages in the cloud registry
-    /// 
-    /// API Endpoint: GET /api/v1/search?q={query}&limit={limit}
-    /// 
-    /// Returns: Array of SearchResult JSON
-    /// 
-    /// TODO: Implement actual search:
-    /// ```rust
-    /// let response = self.client
-    ///     .get(&format!("{}/api/v1/search", self.url))
-    ///     .query(&[("q", query), ("limit", "20")])
-    ///     .send()?;
-    /// 
-    /// let results: Vec<SearchResult> = response.json()?;
-    /// Ok(results)
-    /// ```
     pub fn search(&self, query: &str) -> Result<Vec<SearchResult>, Box<dyn std::error::Error>> {
         let url = format!("{}/api/v1/search?q={}&limit=20", self.url, query);
-        
+
         println!("    {} Searching at: {}", "→".dimmed(), url);
-        
+
         let response = self.client.get(&url).send()?;
-        
+
         if !response.status().is_success() {
             return Err(format!("Search failed: {}", response.status()).into());
         }
-        
+
         #[derive(Deserialize)]
         struct SearchResponse {
             results: Vec<SearchResult>,
         }
-        
+
         let search_response: SearchResponse = response.json()?;
         Ok(search_response.results)
     }
-    
+
     /// Get list of package versions from registry
-    /// 
+    ///
     /// API Endpoint: GET /api/v1/packages/{name}/versions
-    /// 
+    ///
     /// Returns: Array of version strings
     pub fn get_versions(&self, name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-        // SKELETON: This shows where version listing would go
-        
-        println!("    {} Would fetch versions from: {}/api/v1/packages/{}/versions",
-            "→".dimmed(),
-            self.url,
-            name);
-        
-        // TODO: Implement actual HTTP request
-        Err("Version listing not yet implemented".into())
+        let url = format!("{}/api/v1/packages/{}/versions", self.url, name);
+
+        println!("    {} Fetching versions from: {}", "→".dimmed(), url);
+
+        let response = self.client.get(&url).send()?;
+
+        if !response.status().is_success() {
+            if response.status() == 404 {
+                return Err(format!("Package '{}' not found in registry", name).into());
+            }
+            return Err(format!("Failed to fetch versions: {}", response.status()).into());
+        }
+
+        #[derive(Deserialize)]
+        struct VersionsResponse {
+            versions: Vec<String>,
+        }
+
+        let versions_response: VersionsResponse = response.json()?;
+        Ok(versions_response.versions)
     }
-    
+
     /// Verify package integrity using checksum
-    /// 
+    ///
     /// Computes SHA256 hash of downloaded package and compares with registry metadata
-    fn verify_checksum(&self, _path: &PathBuf, _expected: &str) -> Result<bool, Box<dyn std::error::Error>> {
-        // SKELETON: Checksum verification
+    fn verify_checksum(&self, path: &PathBuf, expected: &str) -> Result<bool, Box<dyn std::error::Error>> {
+        let mut file = File::open(path)?;
+        let mut hasher = Sha256::new();
+        std::io::copy(&mut file, &mut hasher)?;
+        let computed = format!("{:x}", hasher.finalize());
         
-        // TODO: Implement SHA256 verification:
-        // ```rust
-        // use sha2::{Sha256, Digest};
-        // 
-        // let mut file = File::open(path)?;
-        // let mut hasher = Sha256::new();
-        // std::io::copy(&mut file, &mut hasher)?;
-        // let computed = format!("{:x}", hasher.finalize());
-        // 
-        // Ok(computed == expected)
-        // ```
+        Ok(computed == expected)
+    }
+
+    /// Create a tarball from package directory
+    fn create_tarball(&self, package: &Package, config: &Config) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let package_dir = config.paths.packages.join(format!("{}-{}", 
+            package.manifest.package.name, package.manifest.package.version));
         
-        Ok(true) // Placeholder
+        if !package_dir.exists() {
+            return Err(format!("Package directory not found: {}", package_dir.display()).into());
+        }
+
+        let tarball_path = config.paths.cache.join(format!("{}-{}.tar.gz", 
+            package.manifest.package.name, package.manifest.package.version));
+
+        // Create tarball
+        let tar_gz = File::create(&tarball_path)?;
+        let enc = flate2::write::GzEncoder::new(tar_gz, flate2::Compression::default());
+        let mut tar = tar::Builder::new(enc);
+
+        // Add all files from package directory
+        tar.append_dir_all(".", &package_dir)?;
+        tar.finish()?;
+
+        Ok(tarball_path)
+    }
+
+    /// Calculate SHA256 checksum of a file
+    fn calculate_checksum(&self, path: &PathBuf) -> Result<String, Box<dyn std::error::Error>> {
+        let mut file = File::open(path)?;
+        let mut hasher = Sha256::new();
+        std::io::copy(&mut file, &mut hasher)?;
+        Ok(format!("{:x}", hasher.finalize()))
     }
 }
 

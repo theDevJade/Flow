@@ -19,9 +19,6 @@ func main() {
     print("=== Struct Test ===");
     print("");
     
-    // Note: Struct initialization syntax may need implementation
-    // For now, testing that structs parse correctly
-    
     print("✓ Structs declared successfully!");
     print("  - Point (x, y)");
     print("  - Person (name, age)");

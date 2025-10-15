@@ -24,6 +24,11 @@ impl Builder {
     }
     
     fn build_internal(&self, is_dependency: bool) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        // If this is a native package, use C compiler
+        if self.package.is_native() {
+            return self.build_native(is_dependency);
+        }
+        
         if !is_dependency {
             println!("  {} Resolving dependencies...", "→".cyan());
         }
@@ -188,6 +193,77 @@ impl Builder {
         println!("    {} Built: {}", "✓".green(), object_path.display().to_string().cyan());
         
         Ok(object_path)
+    }
+    
+    fn build_native(&self, is_dependency: bool) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        if !is_dependency {
+            println!("  {} Building native C library...", "→".cyan());
+        }
+        
+        // Create build directory
+        let build_dir = self.package.build_dir();
+        fs::create_dir_all(&build_dir)?;
+        
+        // Get entry point (C source file)
+        let entry_point = self.package.entry_point();
+        if !entry_point.exists() {
+            return Err(format!("Native source not found: {}", entry_point.display()).into());
+        }
+        
+        println!("  {} Compiling {}...", "→".cyan(), entry_point.display().to_string().yellow());
+        
+        // Output will be an object file
+        let output_path = self.package.output_path();
+        
+        // Find C compiler (try cc, gcc, clang)
+        let cc = self.find_c_compiler()?;
+        println!("  {} Using C compiler: {}", "→".cyan(), cc);
+        
+        // Compile with -c to create object file, -fPIC for position independent code
+        let mut cmd = Command::new(&cc);
+        cmd.arg("-c")
+           .arg("-fPIC")
+           .arg("-O2")
+           .arg(&entry_point)
+           .arg("-o")
+           .arg(&output_path);
+        
+        println!("  {} Running: {} -c -fPIC -O2 {} -o {}", 
+            "→".cyan(),
+            cc.cyan(),
+            entry_point.display().to_string().yellow(),
+            output_path.display().to_string().green());
+        
+        let status = cmd.status()?;
+        
+        if !status.success() {
+            return Err("Native compilation failed".into());
+        }
+        
+        if !is_dependency {
+            println!("    {} Native library compiled successfully", "✓".green());
+        }
+        
+        Ok(output_path)
+    }
+    
+    fn find_c_compiler(&self) -> Result<String, Box<dyn std::error::Error>> {
+        // Try to find a C compiler
+        
+        // 1. Check CC environment variable
+        if let Ok(cc) = std::env::var("CC") {
+            return Ok(cc);
+        }
+        
+        // 2. Try common compilers
+        let compilers = vec!["cc", "gcc", "clang"];
+        for compiler in compilers {
+            if which::which(compiler).is_ok() {
+                return Ok(compiler.to_string());
+            }
+        }
+        
+        Err("C compiler not found. Please install gcc, clang, or set CC environment variable".into())
     }
 }
 

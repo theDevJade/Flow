@@ -8,6 +8,13 @@
 #include <memory>
 #include <stdexcept>
 
+// Forward declaration
+namespace flow {
+    namespace lsp {
+        class LSPErrorCollector;
+    }
+}
+
 namespace flow {
     class SemanticError : public std::runtime_error {
     public:
@@ -75,6 +82,9 @@ namespace flow {
         
         // Library paths for import resolution
         std::vector<std::string> libraryPaths;
+        
+        // Error collector for LSP (optional)
+        lsp::LSPErrorCollector* errorCollector;
 
         void reportError(const std::string &message, const SourceLocation &loc);
 
@@ -91,7 +101,7 @@ namespace flow {
                                const std::string &alias);
 
     public:
-        SemanticAnalyzer() : currentFunctionReturnType(nullptr), currentDirectory(".") {
+        SemanticAnalyzer() : currentFunctionReturnType(nullptr), currentDirectory("."), errorCollector(nullptr) {
         }
 
         void analyze(std::shared_ptr<Program> program);
@@ -101,6 +111,8 @@ namespace flow {
         void setLibraryPaths(const std::vector<std::string> &paths) {
             libraryPaths = paths;
         }
+        
+        void setErrorCollector(lsp::LSPErrorCollector* collector);
 
         const std::vector<std::string> &getErrors() const { return errors; }
         bool hasErrors() const { return !errors.empty(); }

@@ -17,7 +17,7 @@ pub enum Commands {
         #[arg(default_value = ".")]
         name: String,
         
-        /// Package kind: bin (executable) or lib (library)
+        /// Package kind: bin (executable), lib (library), or native (C library)
         #[arg(short, long, default_value = "bin")]
         kind: String,
     },
@@ -56,6 +56,9 @@ pub enum Commands {
     
     /// Publish the current package to the registry
     Publish,
+    
+    /// Login to the registry
+    Login,
     
     /// Search for packages in the registry
     Search {

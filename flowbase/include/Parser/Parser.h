@@ -8,6 +8,13 @@
 #include <vector>
 #include <stdexcept>
 
+// Forward declaration
+namespace flow {
+    namespace lsp {
+        class LSPErrorCollector;
+    }
+}
+
 namespace flow {
     class ParseError : public std::runtime_error {
     public:
@@ -22,6 +29,9 @@ namespace flow {
     private:
         std::vector<Token> tokens;
         size_t current;
+        
+        // Error collector for LSP (optional)
+        lsp::LSPErrorCollector* errorCollector;
 
         Token peek() const;
 
@@ -100,7 +110,11 @@ namespace flow {
         Parameter parseParameter();
 
     public:
-        Parser(const std::vector<Token> &toks) : tokens(toks), current(0) {
+        Parser(const std::vector<Token> &toks) : tokens(toks), current(0), errorCollector(nullptr) {
+        }
+        
+        void setErrorCollector(lsp::LSPErrorCollector* collector) {
+            errorCollector = collector;
         }
 
         std::shared_ptr<Program> parse();

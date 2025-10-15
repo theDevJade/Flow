@@ -1,66 +1,98 @@
 #include "../../include/Parser/Parser.h"
 #include "../../include/Common/ErrorReporter.h"
+#include "../../include/LSP/LSPErrorCollector.h"
 #include <iostream>
 
-namespace flow {
-    Token Parser::peek() const {
+namespace flow
+{
+    Token Parser::peek() const
+    {
         return tokens[current];
     }
 
-    Token Parser::previous() const {
+    Token Parser::previous() const
+    {
         return tokens[current - 1];
     }
 
-    bool Parser::isAtEnd() const {
+    bool Parser::isAtEnd() const
+    {
         return peek().type == TokenType::END_OF_FILE;
     }
 
-    Token Parser::advance() {
+    Token Parser::advance()
+    {
         if (!isAtEnd()) current++;
         return previous();
     }
 
-    bool Parser::check(TokenType type) const {
+    bool Parser::check(TokenType type) const
+    {
         if (isAtEnd()) return false;
         return peek().type == type;
     }
 
-    bool Parser::match(TokenType type) {
-        if (check(type)) {
+    bool Parser::match(TokenType type)
+    {
+        if (check(type))
+        {
             advance();
             return true;
         }
         return false;
     }
 
-    Token Parser::consume(TokenType type, const std::string &message) {
+    Token Parser::consume(TokenType type, const std::string& message)
+    {
         if (check(type)) return advance();
-        throw error(peek(), message);
+        if (errorCollector)
+        {
+            // When using error collector, don't throw - just report and return a dummy token
+            errorCollector->reportError("Parse", message, peek().location);
+            return Token(TokenType::INVALID, "", peek().location);
+        }
+        else
+        {
+            throw error(peek(), message);
+        }
     }
 
-    ParseError Parser::error(const Token &token, const std::string &message) {
-        ErrorReporter::instance().reportError("Parse", message, token.location);
-        return ParseError(message, token.location);
+    ParseError Parser::error(const Token& token, const std::string& message)
+    {
+        if (errorCollector)
+        {
+            errorCollector->reportError("Parse", message, token.location);
+            // Don't throw exception when using error collector
+            return ParseError(message, token.location);
+        }
+        else
+        {
+            ErrorReporter::instance().reportError("Parse", message, token.location);
+            return ParseError(message, token.location);
+        }
     }
 
-    void Parser::synchronize() {
+    void Parser::synchronize()
+    {
         advance();
 
-        while (!isAtEnd()) {
+        while (!isAtEnd())
+        {
             if (previous().type == TokenType::SEMICOLON) return;
 
-            switch (peek().type) {
-                case TokenType::KW_FUNC:
-                case TokenType::KW_STRUCT:
-                case TokenType::KW_LET:
-                case TokenType::KW_MUT:
-                case TokenType::KW_RETURN:
-                case TokenType::KW_IF:
-                case TokenType::KW_FOR:
-                case TokenType::KW_WHILE:
-                    return;
-                default:
-                    break;
+            switch (peek().type)
+            {
+            case TokenType::KW_FUNC:
+            case TokenType::KW_STRUCT:
+            case TokenType::KW_LET:
+            case TokenType::KW_MUT:
+            case TokenType::KW_RETURN:
+            case TokenType::KW_IF:
+            case TokenType::KW_FOR:
+            case TokenType::KW_WHILE:
+                return;
+            default:
+                break;
             }
 
             advance();
@@ -68,18 +100,24 @@ namespace flow {
     }
 
 
-    std::shared_ptr<Program> Parser::parse() {
+    std::shared_ptr<Program> Parser::parse()
+    {
         auto program = std::make_shared<Program>(SourceLocation("", 0, 0));
 
 
-        try {
-            while (!isAtEnd()) {
+        try
+        {
+            while (!isAtEnd())
+            {
                 auto decl = parseDeclaration();
-                if (decl) {
+                if (decl)
+                {
                     program->declarations.push_back(decl);
                 }
             }
-        } catch (const ParseError &e) {
+        }
+        catch (const ParseError& e)
+        {
             std::cerr << "Parsing failed: " << e.what() << std::endl;
             return nullptr;
         }
@@ -87,35 +125,47 @@ namespace flow {
         return program;
     }
 
-    std::shared_ptr<Decl> Parser::parseDeclaration() {
-        try {
-            if (match(TokenType::KW_EXPORT)) {
+    std::shared_ptr<Decl> Parser::parseDeclaration()
+    {
+        try
+        {
+            if (match(TokenType::KW_EXPORT))
+            {
             }
 
-            if (match(TokenType::KW_IMPORT)) {
+            if (match(TokenType::KW_IMPORT))
+            {
                 return parseImportDecl();
             }
-            if (match(TokenType::KW_MODULE)) {
+            if (match(TokenType::KW_MODULE))
+            {
                 return parseModuleDecl();
             }
-            if (match(TokenType::KW_FUNC)) {
+            if (match(TokenType::KW_FUNC))
+            {
                 return parseFunctionDecl();
             }
-            if (match(TokenType::KW_STRUCT)) {
+            if (match(TokenType::KW_STRUCT))
+            {
                 return parseStructDecl();
             }
-            if (match(TokenType::KW_TYPE)) {
+            if (match(TokenType::KW_TYPE))
+            {
                 return parseTypeDefDecl();
             }
-            if (match(TokenType::KW_LINK)) {
+            if (match(TokenType::KW_LINK))
+            {
                 return parseLinkDecl();
             }
 
 
             auto stmt = parseStatement();
-            if (stmt) {
+            if (stmt)
+            {
             }
-        } catch (const ParseError &e) {
+        }
+        catch (const ParseError& e)
+        {
             synchronize();
             return nullptr;
         }
@@ -123,32 +173,40 @@ namespace flow {
         return nullptr;
     }
 
-    std::shared_ptr<FunctionDecl> Parser::parseFunctionDecl() {
+    std::shared_ptr<FunctionDecl> Parser::parseFunctionDecl()
+    {
         Token name = consume(TokenType::IDENTIFIER, "Expected function name");
         auto func = std::make_shared<FunctionDecl>(name.lexeme, name.location);
 
         // Parse parameters
         consume(TokenType::LPAREN, "Expected '(' after function name");
 
-        if (!check(TokenType::RPAREN)) {
-            do {
+        if (!check(TokenType::RPAREN))
+        {
+            do
+            {
                 func->parameters.push_back(parseParameter());
-            } while (match(TokenType::COMMA));
+            }
+            while (match(TokenType::COMMA));
         }
 
         consume(TokenType::RPAREN, "Expected ')' after parameters");
 
         // Parse return type (optional for void functions)
-        if (match(TokenType::ARROW)) {
+        if (match(TokenType::ARROW))
+        {
             func->returnType = parseType();
-        } else {
+        }
+        else
+        {
             func->returnType = std::make_shared<Type>(TypeKind::VOID, "void");
         }
 
         // Parse function body
         consume(TokenType::LBRACE, "Expected '{' before function body");
 
-        while (!check(TokenType::RBRACE) && !isAtEnd()) {
+        while (!check(TokenType::RBRACE) && !isAtEnd())
+        {
             func->body.push_back(parseStatement());
         }
 
@@ -157,7 +215,8 @@ namespace flow {
         return func;
     }
 
-    std::shared_ptr<StructDecl> Parser::parseStructDecl() {
+    std::shared_ptr<StructDecl> Parser::parseStructDecl()
+    {
         Token name = consume(TokenType::IDENTIFIER, "Expected struct name");
 
         consume(TokenType::LBRACE, "Expected '{' after struct name");
@@ -165,7 +224,8 @@ namespace flow {
         std::vector<StructField> fields;
 
         // Parse struct fields
-        while (!check(TokenType::RBRACE) && !isAtEnd()) {
+        while (!check(TokenType::RBRACE) && !isAtEnd())
+        {
             // Parse type
             std::shared_ptr<Type> fieldType = parseType();
 
@@ -183,7 +243,8 @@ namespace flow {
         return std::make_shared<StructDecl>(name.lexeme, fields, name.location);
     }
 
-    std::shared_ptr<TypeDefDecl> Parser::parseTypeDefDecl() {
+    std::shared_ptr<TypeDefDecl> Parser::parseTypeDefDecl()
+    {
         // type UserId = int;
         Token name = consume(TokenType::IDENTIFIER, "Expected type alias name");
         consume(TokenType::ASSIGN, "Expected '=' after type name");
@@ -193,7 +254,8 @@ namespace flow {
         return std::make_shared<TypeDefDecl>(name.lexeme, aliasedType, name.location);
     }
 
-    std::shared_ptr<LinkDecl> Parser::parseLinkDecl() {
+    std::shared_ptr<LinkDecl> Parser::parseLinkDecl()
+    {
         Token linkToken = previous(); // 'link' keyword
 
         // Parse the adapter string: "c", "python:math", "js:dom"
@@ -201,17 +263,21 @@ namespace flow {
         std::string adapterString = adapterToken.lexeme;
 
         // Remove quotes from adapter string
-        if (adapterString.size() >= 2 && adapterString.front() == '"' && adapterString.back() == '"') {
+        if (adapterString.size() >= 2 && adapterString.front() == '"' && adapterString.back() == '"')
+        {
             adapterString = adapterString.substr(1, adapterString.size() - 2);
         }
 
         // Parse adapter and optional module: "python:math" -> adapter="python", module="math"
         std::string adapter, module;
         size_t colonPos = adapterString.find(':');
-        if (colonPos != std::string::npos) {
+        if (colonPos != std::string::npos)
+        {
             adapter = adapterString.substr(0, colonPos);
             module = adapterString.substr(colonPos + 1);
-        } else {
+        }
+        else
+        {
             adapter = adapterString;
             module = "";
         }
@@ -221,9 +287,11 @@ namespace flow {
         // Parse the function declarations inside the link block
         consume(TokenType::LBRACE, "Expected '{' after link adapter");
 
-        while (!check(TokenType::RBRACE) && !isAtEnd()) {
+        while (!check(TokenType::RBRACE) && !isAtEnd())
+        {
             // Check for inline code: inline """...""";
-            if (match(TokenType::KW_INLINE)) {
+            if (match(TokenType::KW_INLINE))
+            {
                 Token codeToken = consume(TokenType::STRING_LITERAL, "Expected inline code string");
                 linkDecl->inlineCode = codeToken.lexeme;
                 consume(TokenType::SEMICOLON, "Expected ';' after inline code");
@@ -231,32 +299,40 @@ namespace flow {
             }
 
             // Parse function declaration
-            if (match(TokenType::KW_FUNC)) {
+            if (match(TokenType::KW_FUNC))
+            {
                 Token funcName = consume(TokenType::IDENTIFIER, "Expected function name");
 
                 consume(TokenType::LPAREN, "Expected '(' after function name");
                 std::vector<Parameter> params;
 
-                if (!check(TokenType::RPAREN)) {
-                    do {
+                if (!check(TokenType::RPAREN))
+                {
+                    do
+                    {
                         // Handle variadic parameters: ...
-                        if (match(TokenType::TRIPLE_DOT)) {
+                        if (match(TokenType::TRIPLE_DOT))
+                        {
                             // Variadic parameter
                             params.push_back(Parameter{
                                 "__varargs", std::make_shared<Type>(TypeKind::UNKNOWN, "varargs")
                             });
                             break;
-                        } else {
+                        }
+                        else
+                        {
                             params.push_back(parseParameter());
                         }
-                    } while (match(TokenType::COMMA));
+                    }
+                    while (match(TokenType::COMMA));
                 }
 
                 consume(TokenType::RPAREN, "Expected ')' after parameters");
 
                 // Parse return type
                 std::shared_ptr<Type> returnType = std::make_shared<Type>(TypeKind::VOID, "void");
-                if (match(TokenType::ARROW)) {
+                if (match(TokenType::ARROW))
+                {
                     returnType = parseType();
                 }
 
@@ -268,7 +344,9 @@ namespace flow {
                 funcDecl->returnType = returnType;
                 // body is empty for foreign functions
                 linkDecl->functions.push_back(funcDecl);
-            } else {
+            }
+            else
+            {
                 throw error(peek(), "Expected 'func' or 'inline' in link block");
             }
         }
@@ -278,7 +356,8 @@ namespace flow {
         return linkDecl;
     }
 
-    std::shared_ptr<ImportDecl> Parser::parseImportDecl() {
+    std::shared_ptr<ImportDecl> Parser::parseImportDecl()
+    {
         // Support multiple import syntaxes:
         // import "path/to/module.flow";
         // import "path/to/module.flow" as alias;
@@ -287,14 +366,17 @@ namespace flow {
         Token startToken = previous();
 
         // Check for selective imports: import { ... } from "..."
-        if (check(TokenType::LBRACE)) {
+        if (check(TokenType::LBRACE))
+        {
             consume(TokenType::LBRACE, "Expected '{'");
 
             std::vector<std::string> imports;
-            do {
+            do
+            {
                 Token id = consume(TokenType::IDENTIFIER, "Expected identifier");
                 imports.push_back(id.lexeme);
-            } while (match(TokenType::COMMA));
+            }
+            while (match(TokenType::COMMA));
 
             consume(TokenType::RBRACE, "Expected '}' after import list");
             consume(TokenType::KW_FROM, "Expected 'from' after import list");
@@ -312,7 +394,8 @@ namespace flow {
         auto importDecl = std::make_shared<ImportDecl>(pathToken.lexeme, pathToken.location);
 
         // Check for alias: import "path" as alias;
-        if (match(TokenType::KW_AS)) {
+        if (match(TokenType::KW_AS))
+        {
             Token aliasToken = consume(TokenType::IDENTIFIER, "Expected alias identifier");
             importDecl->alias = aliasToken.lexeme;
         }
@@ -321,7 +404,8 @@ namespace flow {
         return importDecl;
     }
 
-    std::shared_ptr<ModuleDecl> Parser::parseModuleDecl() {
+    std::shared_ptr<ModuleDecl> Parser::parseModuleDecl()
+    {
         // module name;
         Token nameToken = consume(TokenType::IDENTIFIER, "Expected module name");
         consume(TokenType::SEMICOLON, "Expected ';' after module declaration");
@@ -329,35 +413,43 @@ namespace flow {
         return std::make_shared<ModuleDecl>(nameToken.lexeme, nameToken.location);
     }
 
-    std::shared_ptr<Stmt> Parser::parseStatement() {
-        if (match(TokenType::KW_RETURN)) {
+    std::shared_ptr<Stmt> Parser::parseStatement()
+    {
+        if (match(TokenType::KW_RETURN))
+        {
             return parseReturnStmt();
         }
 
-        if (match(TokenType::KW_LET)) {
+        if (match(TokenType::KW_LET))
+        {
             return parseVarDecl();
         }
 
-        if (match(TokenType::KW_IF)) {
+        if (match(TokenType::KW_IF))
+        {
             return parseIfStmt();
         }
 
-        if (match(TokenType::KW_FOR)) {
+        if (match(TokenType::KW_FOR))
+        {
             return parseForStmt();
         }
 
-        if (match(TokenType::KW_WHILE)) {
+        if (match(TokenType::KW_WHILE))
+        {
             return parseWhileStmt();
         }
 
-        if (check(TokenType::LBRACE)) {
+        if (check(TokenType::LBRACE))
+        {
             return parseBlockStmt();
         }
 
         return parseExprStmt();
     }
 
-    std::shared_ptr<VarDeclStmt> Parser::parseVarDecl() {
+    std::shared_ptr<VarDeclStmt> Parser::parseVarDecl()
+    {
         // Check if 'mut' follows 'let'
         bool isMutable = match(TokenType::KW_MUT);
 
@@ -365,17 +457,20 @@ namespace flow {
 
         // Type annotation is optional for type inference
         std::shared_ptr<Type> type = nullptr;
-        if (match(TokenType::COLON)) {
+        if (match(TokenType::COLON))
+        {
             type = parseType();
         }
 
         std::shared_ptr<Expr> initializer = nullptr;
-        if (match(TokenType::ASSIGN)) {
+        if (match(TokenType::ASSIGN))
+        {
             initializer = parseExpression();
         }
 
         // If no type annotation and no initializer, error
-        if (!type && !initializer) {
+        if (!type && !initializer)
+        {
             throw error(name, "Variable must have either a type annotation or an initializer for type inference");
         }
 
@@ -383,11 +478,13 @@ namespace flow {
         return std::make_shared<VarDeclStmt>(name.lexeme, isMutable, type, initializer, name.location);
     }
 
-    std::shared_ptr<ReturnStmt> Parser::parseReturnStmt() {
+    std::shared_ptr<ReturnStmt> Parser::parseReturnStmt()
+    {
         Token keyword = previous(); // 'return' keyword
 
         std::shared_ptr<Expr> value = nullptr;
-        if (!check(TokenType::SEMICOLON)) {
+        if (!check(TokenType::SEMICOLON))
+        {
             value = parseExpression();
         }
 
@@ -395,7 +492,8 @@ namespace flow {
         return std::make_shared<ReturnStmt>(value, keyword.location);
     }
 
-    std::shared_ptr<IfStmt> Parser::parseIfStmt() {
+    std::shared_ptr<IfStmt> Parser::parseIfStmt()
+    {
         Token keyword = previous();
 
         consume(TokenType::LPAREN, "Expected '(' after 'if'");
@@ -403,21 +501,28 @@ namespace flow {
         consume(TokenType::RPAREN, "Expected ')' after condition");
 
         // Parse then branch
-        std::vector<std::shared_ptr<Stmt> > thenBranch;
-        if (check(TokenType::LBRACE)) {
+        std::vector<std::shared_ptr<Stmt>> thenBranch;
+        if (check(TokenType::LBRACE))
+        {
             auto block = parseBlockStmt();
-            thenBranch = dynamic_cast<BlockStmt *>(block.get())->statements;
-        } else {
+            thenBranch = dynamic_cast<BlockStmt*>(block.get())->statements;
+        }
+        else
+        {
             thenBranch.push_back(parseStatement());
         }
 
         // Parse else branch
-        std::vector<std::shared_ptr<Stmt> > elseBranch;
-        if (match(TokenType::KW_ELSE)) {
-            if (check(TokenType::LBRACE)) {
+        std::vector<std::shared_ptr<Stmt>> elseBranch;
+        if (match(TokenType::KW_ELSE))
+        {
+            if (check(TokenType::LBRACE))
+            {
                 auto block = parseBlockStmt();
-                elseBranch = dynamic_cast<BlockStmt *>(block.get())->statements;
-            } else {
+                elseBranch = dynamic_cast<BlockStmt*>(block.get())->statements;
+            }
+            else
+            {
                 elseBranch.push_back(parseStatement());
             }
         }
@@ -425,7 +530,8 @@ namespace flow {
         return std::make_shared<IfStmt>(condition, thenBranch, elseBranch, keyword.location);
     }
 
-    std::shared_ptr<ForStmt> Parser::parseForStmt() {
+    std::shared_ptr<ForStmt> Parser::parseForStmt()
+    {
         Token keyword = previous();
 
         consume(TokenType::LPAREN, "Expected '(' after 'for'");
@@ -437,11 +543,14 @@ namespace flow {
         // Parse range or iterable
         auto start = parseExpression();
 
-        if (match(TokenType::DOUBLE_DOT)) {
+        if (match(TokenType::DOUBLE_DOT))
+        {
             // Range-based loop: for (i in 0..10)
             forStmt->rangeStart = start;
             forStmt->rangeEnd = parseExpression();
-        } else {
+        }
+        else
+        {
             // Iterator-based loop: for (item in array)
             forStmt->iterable = start;
         }
@@ -449,17 +558,21 @@ namespace flow {
         consume(TokenType::RPAREN, "Expected ')' after for clause");
 
         // Parse body
-        if (check(TokenType::LBRACE)) {
+        if (check(TokenType::LBRACE))
+        {
             auto block = parseBlockStmt();
-            forStmt->body = dynamic_cast<BlockStmt *>(block.get())->statements;
-        } else {
+            forStmt->body = dynamic_cast<BlockStmt*>(block.get())->statements;
+        }
+        else
+        {
             forStmt->body.push_back(parseStatement());
         }
 
         return forStmt;
     }
 
-    std::shared_ptr<WhileStmt> Parser::parseWhileStmt() {
+    std::shared_ptr<WhileStmt> Parser::parseWhileStmt()
+    {
         Token keyword = previous(); // 'while' keyword
 
         consume(TokenType::LPAREN, "Expected '(' after 'while'");
@@ -467,22 +580,27 @@ namespace flow {
         consume(TokenType::RPAREN, "Expected ')' after condition");
 
         // Parse body
-        std::vector<std::shared_ptr<Stmt> > body;
-        if (check(TokenType::LBRACE)) {
+        std::vector<std::shared_ptr<Stmt>> body;
+        if (check(TokenType::LBRACE))
+        {
             auto block = parseBlockStmt();
-            body = dynamic_cast<BlockStmt *>(block.get())->statements;
-        } else {
+            body = dynamic_cast<BlockStmt*>(block.get())->statements;
+        }
+        else
+        {
             body.push_back(parseStatement());
         }
 
         return std::make_shared<WhileStmt>(condition, body, keyword.location);
     }
 
-    std::shared_ptr<BlockStmt> Parser::parseBlockStmt() {
+    std::shared_ptr<BlockStmt> Parser::parseBlockStmt()
+    {
         Token lbrace = consume(TokenType::LBRACE, "Expected '{'");
-        std::vector<std::shared_ptr<Stmt> > statements;
+        std::vector<std::shared_ptr<Stmt>> statements;
 
-        while (!check(TokenType::RBRACE) && !isAtEnd()) {
+        while (!check(TokenType::RBRACE) && !isAtEnd())
+        {
             statements.push_back(parseStatement());
         }
 
@@ -490,14 +608,17 @@ namespace flow {
         return std::make_shared<BlockStmt>(statements, lbrace.location);
     }
 
-    std::shared_ptr<Stmt> Parser::parseExprStmt() {
+    std::shared_ptr<Stmt> Parser::parseExprStmt()
+    {
         // Check if this is an assignment statement
-        if (check(TokenType::IDENTIFIER)) {
+        if (check(TokenType::IDENTIFIER))
+        {
             Token id = peek();
             int savedPos = current;
             advance(); // consume identifier
 
-            if (check(TokenType::ASSIGN)) {
+            if (check(TokenType::ASSIGN))
+            {
                 // This is an assignment statement
                 advance(); // consume '='
                 auto value = parseExpression();
@@ -515,18 +636,22 @@ namespace flow {
         return std::make_shared<ExprStmt>(expr, expr->location);
     }
 
-    std::shared_ptr<Expr> Parser::parseExpression() {
+    std::shared_ptr<Expr> Parser::parseExpression()
+    {
         return parseAssignment();
     }
 
-    std::shared_ptr<Expr> Parser::parseAssignment() {
+    std::shared_ptr<Expr> Parser::parseAssignment()
+    {
         auto expr = parseLogicalOr();
 
-        if (match(TokenType::ASSIGN)) {
+        if (match(TokenType::ASSIGN))
+        {
             Token equals = previous();
             auto value = parseAssignment();
 
-            if (auto *idExpr = dynamic_cast<IdentifierExpr *>(expr.get())) {
+            if (auto* idExpr = dynamic_cast<IdentifierExpr*>(expr.get()))
+            {
                 // Assignment to variable - we'll handle this as a statement later
                 // For now, return a binary expression
                 return std::make_shared<BinaryExpr>(expr, equals.type, value, equals.location);
@@ -538,10 +663,12 @@ namespace flow {
         return expr;
     }
 
-    std::shared_ptr<Expr> Parser::parseLogicalOr() {
+    std::shared_ptr<Expr> Parser::parseLogicalOr()
+    {
         auto expr = parseLogicalAnd();
 
-        while (match(TokenType::OR)) {
+        while (match(TokenType::OR))
+        {
             Token op = previous();
             auto right = parseLogicalAnd();
             expr = std::make_shared<BinaryExpr>(expr, op.type, right, op.location);
@@ -550,10 +677,12 @@ namespace flow {
         return expr;
     }
 
-    std::shared_ptr<Expr> Parser::parseLogicalAnd() {
+    std::shared_ptr<Expr> Parser::parseLogicalAnd()
+    {
         auto expr = parseEquality();
 
-        while (match(TokenType::AND)) {
+        while (match(TokenType::AND))
+        {
             Token op = previous();
             auto right = parseEquality();
             expr = std::make_shared<BinaryExpr>(expr, op.type, right, op.location);
@@ -562,10 +691,12 @@ namespace flow {
         return expr;
     }
 
-    std::shared_ptr<Expr> Parser::parseEquality() {
+    std::shared_ptr<Expr> Parser::parseEquality()
+    {
         auto expr = parseComparison();
 
-        while (match(TokenType::EQ) || match(TokenType::NE)) {
+        while (match(TokenType::EQ) || match(TokenType::NE))
+        {
             Token op = previous();
             auto right = parseComparison();
             expr = std::make_shared<BinaryExpr>(expr, op.type, right, op.location);
@@ -574,11 +705,13 @@ namespace flow {
         return expr;
     }
 
-    std::shared_ptr<Expr> Parser::parseComparison() {
+    std::shared_ptr<Expr> Parser::parseComparison()
+    {
         auto expr = parseTerm();
 
         while (match(TokenType::LT) || match(TokenType::LE) ||
-               match(TokenType::GT) || match(TokenType::GE)) {
+            match(TokenType::GT) || match(TokenType::GE))
+        {
             Token op = previous();
             auto right = parseTerm();
             expr = std::make_shared<BinaryExpr>(expr, op.type, right, op.location);
@@ -587,10 +720,12 @@ namespace flow {
         return expr;
     }
 
-    std::shared_ptr<Expr> Parser::parseTerm() {
+    std::shared_ptr<Expr> Parser::parseTerm()
+    {
         auto expr = parseFactor();
 
-        while (match(TokenType::PLUS) || match(TokenType::MINUS)) {
+        while (match(TokenType::PLUS) || match(TokenType::MINUS))
+        {
             Token op = previous();
             auto right = parseFactor();
             expr = std::make_shared<BinaryExpr>(expr, op.type, right, op.location);
@@ -599,10 +734,12 @@ namespace flow {
         return expr;
     }
 
-    std::shared_ptr<Expr> Parser::parseFactor() {
+    std::shared_ptr<Expr> Parser::parseFactor()
+    {
         auto expr = parseUnary();
 
-        while (match(TokenType::STAR) || match(TokenType::SLASH) || match(TokenType::PERCENT)) {
+        while (match(TokenType::STAR) || match(TokenType::SLASH) || match(TokenType::PERCENT))
+        {
             Token op = previous();
             auto right = parseUnary();
             expr = std::make_shared<BinaryExpr>(expr, op.type, right, op.location);
@@ -611,8 +748,10 @@ namespace flow {
         return expr;
     }
 
-    std::shared_ptr<Expr> Parser::parseUnary() {
-        if (match(TokenType::NOT) || match(TokenType::MINUS)) {
+    std::shared_ptr<Expr> Parser::parseUnary()
+    {
+        if (match(TokenType::NOT) || match(TokenType::MINUS))
+        {
             Token op = previous();
             auto right = parseUnary();
             return std::make_shared<UnaryExpr>(op.type, right, op.location);
@@ -621,32 +760,44 @@ namespace flow {
         return parseCall();
     }
 
-    std::shared_ptr<Expr> Parser::parseCall() {
+    std::shared_ptr<Expr> Parser::parseCall()
+    {
         auto expr = parsePrimary();
 
-        while (true) {
-            if (match(TokenType::LPAREN)) {
+        while (true)
+        {
+            if (match(TokenType::LPAREN))
+            {
                 // Function call
-                std::vector<std::shared_ptr<Expr> > arguments;
+                std::vector<std::shared_ptr<Expr>> arguments;
 
-                if (!check(TokenType::RPAREN)) {
-                    do {
+                if (!check(TokenType::RPAREN))
+                {
+                    do
+                    {
                         arguments.push_back(parseExpression());
-                    } while (match(TokenType::COMMA));
+                    }
+                    while (match(TokenType::COMMA));
                 }
 
                 consume(TokenType::RPAREN, "Expected ')' after arguments");
                 expr = std::make_shared<CallExpr>(expr, arguments, expr->location);
-            } else if (match(TokenType::DOT)) {
+            }
+            else if (match(TokenType::DOT))
+            {
                 // Member access
                 Token member = consume(TokenType::IDENTIFIER, "Expected property name after '.'");
                 expr = std::make_shared<MemberAccessExpr>(expr, member.lexeme, expr->location);
-            } else if (match(TokenType::LBRACKET)) {
+            }
+            else if (match(TokenType::LBRACKET))
+            {
                 // Array indexing
                 auto index = parseExpression();
                 consume(TokenType::RBRACKET, "Expected ']' after array index");
                 expr = std::make_shared<IndexExpr>(expr, index, expr->location);
-            } else {
+            }
+            else
+            {
                 break;
             }
         }
@@ -654,44 +805,51 @@ namespace flow {
         return expr;
     }
 
-    std::shared_ptr<Expr> Parser::parsePrimary() {
+    std::shared_ptr<Expr> Parser::parsePrimary()
+    {
         Token token = peek();
 
         // Integer literals
-        if (token.type == TokenType::INT_LITERAL) {
+        if (token.type == TokenType::INT_LITERAL)
+        {
             advance();
             int value = std::stoi(token.lexeme);
             return std::make_shared<IntLiteralExpr>(value, token.location);
         }
 
         // Float literals
-        if (token.type == TokenType::FLOAT_LITERAL) {
+        if (token.type == TokenType::FLOAT_LITERAL)
+        {
             advance();
             double value = std::stod(token.lexeme);
             return std::make_shared<FloatLiteralExpr>(value, token.location);
         }
 
         // String literals
-        if (token.type == TokenType::STRING_LITERAL) {
+        if (token.type == TokenType::STRING_LITERAL)
+        {
             advance();
             return std::make_shared<StringLiteralExpr>(token.lexeme, token.location);
         }
 
         // Boolean literals
-        if (token.type == TokenType::BOOL_LITERAL) {
+        if (token.type == TokenType::BOOL_LITERAL)
+        {
             advance();
             bool value = (token.lexeme == "true");
             return std::make_shared<BoolLiteralExpr>(value, token.location);
         }
 
         // Identifiers
-        if (token.type == TokenType::IDENTIFIER) {
+        if (token.type == TokenType::IDENTIFIER)
+        {
             advance();
             return std::make_shared<IdentifierExpr>(token.lexeme, token.location);
         }
 
         // Parenthesized expressions
-        if (token.type == TokenType::LPAREN) {
+        if (token.type == TokenType::LPAREN)
+        {
             advance();
             auto expr = parseExpression();
             consume(TokenType::RPAREN, "Expected ')' after expression");
@@ -699,14 +857,18 @@ namespace flow {
         }
 
         // Array literals
-        if (token.type == TokenType::LBRACKET) {
+        if (token.type == TokenType::LBRACKET)
+        {
             advance();
-            std::vector<std::shared_ptr<Expr> > elements;
+            std::vector<std::shared_ptr<Expr>> elements;
 
-            if (!check(TokenType::RBRACKET)) {
-                do {
+            if (!check(TokenType::RBRACKET))
+            {
+                do
+                {
                     elements.push_back(parseExpression());
-                } while (match(TokenType::COMMA));
+                }
+                while (match(TokenType::COMMA));
             }
 
             consume(TokenType::RBRACKET, "Expected ']' after array elements");
@@ -714,14 +876,18 @@ namespace flow {
         }
 
         // Struct initialization
-        if (token.type == TokenType::LBRACE) {
+        if (token.type == TokenType::LBRACE)
+        {
             advance();
-            std::vector<std::shared_ptr<Expr> > fields;
+            std::vector<std::shared_ptr<Expr>> fields;
 
-            if (!check(TokenType::RBRACE)) {
-                do {
+            if (!check(TokenType::RBRACE))
+            {
+                do
+                {
                     fields.push_back(parseExpression());
-                } while (match(TokenType::COMMA));
+                }
+                while (match(TokenType::COMMA));
             }
 
             consume(TokenType::RBRACE, "Expected '}' after struct fields");
@@ -731,31 +897,45 @@ namespace flow {
         throw error(token, "Expected expression");
     }
 
-    std::shared_ptr<Type> Parser::parseType() {
+    std::shared_ptr<Type> Parser::parseType()
+    {
         Token token = advance();
         std::shared_ptr<Type> baseType;
 
         // Basic types
-        if (token.type == TokenType::TYPE_INT) {
+        if (token.type == TokenType::TYPE_INT)
+        {
             baseType = std::make_shared<Type>(TypeKind::INT, "int");
-        } else if (token.type == TokenType::TYPE_FLOAT) {
+        }
+        else if (token.type == TokenType::TYPE_FLOAT)
+        {
             baseType = std::make_shared<Type>(TypeKind::FLOAT, "float");
-        } else if (token.type == TokenType::TYPE_STRING) {
+        }
+        else if (token.type == TokenType::TYPE_STRING)
+        {
             baseType = std::make_shared<Type>(TypeKind::STRING, "string");
-        } else if (token.type == TokenType::TYPE_BOOL) {
+        }
+        else if (token.type == TokenType::TYPE_BOOL)
+        {
             baseType = std::make_shared<Type>(TypeKind::BOOL, "bool");
-        } else if (token.type == TokenType::TYPE_VOID) {
+        }
+        else if (token.type == TokenType::TYPE_VOID)
+        {
             baseType = std::make_shared<Type>(TypeKind::VOID, "void");
         }
         // Custom types (structs, etc.)
-        else if (token.type == TokenType::IDENTIFIER) {
+        else if (token.type == TokenType::IDENTIFIER)
+        {
             baseType = std::make_shared<Type>(TypeKind::STRUCT, token.lexeme);
-        } else {
+        }
+        else
+        {
             throw error(token, "Expected type name");
         }
 
         // Check for array type: type[]
-        if (match(TokenType::LBRACKET)) {
+        if (match(TokenType::LBRACKET))
+        {
             consume(TokenType::RBRACKET, "Expected ']' after '['");
             auto arrayType = std::make_shared<Type>(TypeKind::ARRAY, "array");
             arrayType->typeParams.push_back(baseType);
@@ -763,7 +943,8 @@ namespace flow {
         }
 
         // Check for optional type: type? -> desugar to Option<type>
-        if (match(TokenType::QUESTION)) {
+        if (match(TokenType::QUESTION))
+        {
             auto optionalType = std::make_shared<Type>(TypeKind::STRUCT, "Option");
             optionalType->typeParams.push_back(baseType);
             return optionalType;
@@ -772,7 +953,8 @@ namespace flow {
         return baseType;
     }
 
-    Parameter Parser::parseParameter() {
+    Parameter Parser::parseParameter()
+    {
         Token name = consume(TokenType::IDENTIFIER, "Expected parameter name");
         consume(TokenType::COLON, "Expected ':' after parameter name");
         auto type = parseType();

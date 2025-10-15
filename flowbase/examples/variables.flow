@@ -12,4 +12,3 @@ func main() {
     y = 2.71;  // OK, y is mutable
     print("y = " + y);
 }
-

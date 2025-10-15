@@ -466,7 +466,7 @@ func (h *Handler) PublishPackage(c *gin.Context) {
 	}
 
 	// Insert package version
-	downloadURL := fmt.Sprintf("https://registry.flowlang.org/packages/%s/%s/download", name, version)
+	downloadURL := fmt.Sprintf("https://registry.flowc.dev/api/v1/packages/%s/%s/download", name, version)
 	var versionID int
 	err = tx.QueryRow(`
 		INSERT INTO package_versions (package_id, version, download_url, checksum)
@@ -516,7 +516,7 @@ func (h *Handler) PublishPackage(c *gin.Context) {
 	c.JSON(http.StatusOK, models.PublishResponse{
 		Success: true,
 		Message: fmt.Sprintf("Package published successfully by %v", username),
-		URL:     fmt.Sprintf("https://registry.flowlang.org/packages/%s", name),
+		URL:     fmt.Sprintf("https://registry.flowc.dev/packages/%s", name),
 	})
 }
 

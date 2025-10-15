@@ -36,6 +36,8 @@ pub enum PackageType {
     Bin,
 
     Lib,
+    
+    Native,
 }
 
 impl Default for PackageType {
@@ -93,6 +95,7 @@ impl Manifest {
         let entry = match package_type {
             PackageType::Bin => Some("src/main.flow".to_string()),
             PackageType::Lib => Some("src/lib.flow".to_string()),
+            PackageType::Native => Some("src/lib.c".to_string()),
         };
         
         Manifest {
