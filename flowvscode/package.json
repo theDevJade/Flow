@@ -3,8 +3,9 @@
   "displayName": "Flow Programming Language",
   "description": "Language support for Flow programming language with LSP integration",
   "version": "0.1.0",
-  "publisher": "flow-lang-team",
+  "publisher": "Flow-LangTeam",
   "icon": "icon.png",
+  "repository": "https://github.com/theDevJade/flow",
   "engines": {
     "vscode": "^1.75.0"
   },
