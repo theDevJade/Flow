@@ -4,6 +4,7 @@
   "description": "Language support for Flow programming language with LSP integration",
   "version": "0.1.0",
   "publisher": "flow-lang-team",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.75.0"
   },

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { link } from 'svelte-spa-router';
+  import flowIcon from '../assets/flow-icon.png';
   
   let { transparent = false } = $props();
 </script>
@@ -8,7 +9,7 @@
   <div class="container">
     <div class="header-content">
       <a href="/" use:link class="logo">
-        <div class="logo-icon">~</div>
+        <img src={flowIcon} alt="Flow Logo" class="logo-icon" />
         <span class="logo-text">Flow</span>
       </a>
       
@@ -71,14 +72,12 @@
     width: 40px;
     height: 40px;
     border-radius: 8px;
-    background: linear-gradient(135deg, var(--ocean-cyan) 0%, var(--ocean-teal) 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: var(--text-primary);
     box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+    transition: transform 0.3s ease;
+  }
+  
+  .logo:hover .logo-icon {
+    transform: scale(1.1);
   }
   
   .logo-text {
