@@ -1,9 +1,12 @@
-
-
-
 package flow
 
-
+/*
+#cgo CFLAGS: -I${SRCDIR}/../../interop/c
+#cgo LDFLAGS: -L${SRCDIR}/../../interop/c -lflow
+#include "flow.h"
+#include "flow_reflect.h"
+#include <stdlib.h>
+*/
 import "C"
 import (
 	"fmt"

@@ -67,11 +67,15 @@ C_OBJECTS = $(C_SOURCES:.c=.o)
 all: check_flowbase $(TARGET)
 
 check_flowbase:
+ifeq ($(OS),Windows_NT)
+	@echo "Skipping flowbase check on Windows (assumes CI has built it)"
+else
 	@if [ ! -f $(FLOWBASE_BUILD)/src/Embedding/FlowAPI.cpp$(OBJ_EXT) ]; then \
 		echo "ERROR: flowbase not built. Please run:"; \
 		echo "  cd ../../flowbase/build && cmake .. && cmake --build ."; \
 		exit 1; \
 	fi
+endif
 
 $(TARGET): $(C_OBJECTS) $(FLOWBASE_OBJECTS)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LLVM_LDFLAGS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)

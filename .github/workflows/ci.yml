@@ -19,6 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache LLVM (Windows)
+        if: matrix.os == 'windows-latest'
+        id: cache-llvm-windows
+        uses: actions/cache@v4
+        with:
+          path: C:\llvm
+          key: ${{ runner.os }}-llvm-21.1.3
+
       - name: Install LLVM (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -45,7 +53,7 @@ jobs:
           brew install nlohmann-json
 
       - name: Install LLVM (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-latest' && steps.cache-llvm-windows.outputs.cache-hit != 'true'
         run: |
           Write-Host "Downloading LLVM binary distribution for Windows..."
           $llvmVersion = "21.1.3"
@@ -71,13 +79,15 @@ jobs:
             exit 1
           }
           
-          Write-Host "Adding LLVM to PATH..."
-          Add-Content $env:GITHUB_PATH "$extractPath\bin"
-          
-          Write-Host "Setting LLVM_DIR environment variable..."
-          Add-Content $env:GITHUB_ENV "LLVM_DIR=$llvmDir"
-          
           Write-Host "LLVM installation complete"
+
+      - name: Set LLVM environment (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          $llvmDir = "C:\llvm\lib\cmake\llvm"
+          Add-Content $env:GITHUB_PATH "C:\llvm\bin"
+          Add-Content $env:GITHUB_ENV "LLVM_DIR=$llvmDir"
+          Write-Host "LLVM_DIR set to: $llvmDir"
 
       - name: Setup DIA SDK Path (Windows)
         if: matrix.os == 'windows-latest'
@@ -466,6 +476,310 @@ jobs:
           tags: flow-registry-server:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  build-c-interop:
+    name: Build C Interop Library
+    needs: build-flowbase
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        include:
+          - os: ubuntu-latest
+            lib_name: libflow.so
+          - os: macos-latest
+            lib_name: libflow.dylib
+          - os: windows-latest
+            lib_name: flow.dll
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download flowbase build (Unix)
+        if: matrix.os != 'windows-latest'
+        uses: actions/download-artifact@v4
+        with:
+          name: flowbase-${{ matrix.os }}
+          path: flowbase/build/
+
+      - name: Download flowbase build (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/download-artifact@v4
+        with:
+          name: flowbase-${{ matrix.os }}
+          path: flowbase/build/Release/
+
+      - name: Restore LLVM cache (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache/restore@v4
+        with:
+          path: C:\llvm
+          key: ${{ runner.os }}-llvm-21.1.3
+
+      - name: Install LLVM (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 21
+          sudo apt-get install -y llvm-21-dev libffi-dev
+
+      - name: Install LLVM (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install llvm libffi
+          echo "LLVM_DIR=$(brew --prefix llvm)" >> $GITHUB_ENV
+
+      - name: Set LLVM environment (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Add-Content $env:GITHUB_PATH "C:\llvm\bin"
+          Add-Content $env:GITHUB_ENV "LLVM_DIR=C:\llvm\lib\cmake\llvm"
+
+      - name: Restore CMake build for object files (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd flowbase
+          mkdir -p build/CMakeFiles/flowjni.dir/src/{Embedding,Lexer,Parser,AST,Sema,Codegen,Runtime,Common,Stdlib}
+
+      - name: Build C library (Unix)
+        if: matrix.os != 'windows-latest'
+        working-directory: interop/c
+        run: |
+          make clean || true
+          make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+
+      - name: Build C library (Windows)
+        if: matrix.os == 'windows-latest'
+        working-directory: interop/c
+        shell: pwsh
+        run: |
+          make clean
+          make
+
+      - name: Upload C library artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libflow-${{ matrix.os }}
+          path: interop/c/${{ matrix.lib_name }}
+          retention-days: 7
+
+  test-interop:
+    name: Test ${{ matrix.language }} Interop
+    needs: build-c-interop
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+        language: [ python, javascript, ruby, php, go, c ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download C library (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/download-artifact@v4
+        with:
+          name: libflow-${{ matrix.os }}
+          path: interop/c/
+
+      - name: Download C library (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/download-artifact@v4
+        with:
+          name: libflow-${{ matrix.os }}
+          path: interop/c/
+
+      - name: Setup Python
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js
+        if: matrix.language == 'javascript'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Ruby
+        if: matrix.language == 'ruby'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Setup PHP
+        if: matrix.language == 'php'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+
+      - name: Setup Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Test Python Interop
+        if: matrix.language == 'python'
+        working-directory: interop/python
+        run: python3 test_reflection.py
+
+      - name: Test JavaScript Interop
+        if: matrix.language == 'javascript'
+        working-directory: interop/javascript
+        run: |
+          npm install
+          node test_reflection.js
+
+      - name: Test Ruby Interop
+        if: matrix.language == 'ruby'
+        working-directory: interop/ruby
+        run: ruby test_reflection.rb
+
+      - name: Test PHP Interop
+        if: matrix.language == 'php'
+        working-directory: interop/php
+        run: php test_reflection.php
+
+      - name: Test Go Interop
+        if: matrix.language == 'go'
+        working-directory: interop/go
+        env:
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/interop/c
+          LD_LIBRARY_PATH: ${{ github.workspace }}/interop/c
+        run: go test -v
+
+      - name: Test C Interop
+        if: matrix.language == 'c'
+        working-directory: interop/c
+        run: ./test_reflection
+
+  # ============================================================================
+  # Build Language Packages (from build-packages.yml)
+  # ============================================================================
+  build-python-package:
+    name: Build Python Package
+    needs: [build-c-interop, test-interop]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Download C libraries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: libflow-*
+          path: interop/python/native/
+      
+      - name: Install build dependencies
+        run: |
+          cd interop/python
+          pip install build twine wheel
+      
+      - name: Build package
+        run: |
+          cd interop/python
+          python -m build
+      
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: interop/python/dist/*
+      
+      - name: Publish to PyPI
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          cd interop/python
+          python -m twine upload dist/* || echo "PyPI upload skipped (no token or already published)"
+
+  build-javascript-package:
+    name: Build JavaScript Package
+    needs: [build-c-interop, test-interop]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Download C libraries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: libflow-*
+          path: interop/javascript/native/
+      
+      - name: Install dependencies
+        run: |
+          cd interop/javascript
+          npm ci
+      
+      - name: Build package
+        run: |
+          cd interop/javascript
+          npm pack
+      
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: javascript-package
+          path: interop/javascript/*.tgz
+      
+      - name: Publish to npm
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd interop/javascript
+          npm publish || echo "npm publish skipped (no token or already published)"
+
+  build-go-package:
+    name: Build Go Package
+    needs: [build-c-interop, test-interop]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      
+      - name: Download C libraries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: libflow-*
+          path: interop/go/native/
+      
+      - name: Create module archive
+        run: |
+          cd interop/go
+          tar -czf flow-go-${{ github.ref_name }}.tar.gz *.go go.mod go.sum native/
+      
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-package
+          path: interop/go/*.tar.gz
 
   integration-test:
     name: Integration Tests
