@@ -1,6 +1,23 @@
 #include "../../include/Runtime/ForeignModuleLoader.h"
 #include "../../include/Runtime/ReflectionManager.h"
+#ifdef _WIN32
+#include <windows.h>
+// Windows compatibility macros for dynamic library loading
+#define dlopen(lib, flags) LoadLibraryA(lib)
+#define dlsym(handle, func) GetProcAddress((HMODULE)handle, func)
+#define dlclose(handle) FreeLibrary((HMODULE)handle)
+static const char* dlerror() { 
+    static char buf[256]; 
+    DWORD err = GetLastError(); 
+    FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 
+                   NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), 
+                   buf, sizeof(buf), NULL); 
+    return buf; 
+}
+#define RTLD_LAZY 0
+#else
 #include <dlfcn.h>
+#endif
 #include <iostream>
 #include <cstdlib>
 #include <algorithm>
