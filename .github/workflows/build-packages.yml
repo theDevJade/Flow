@@ -2,8 +2,15 @@ name: Build and Upload Interop Packages
 
 on:
   push:
+    branches:
+      - main
+      - develop
     tags:
       - 'v*.*.*'  # Trigger on version tags like v1.0.0
+  pull_request:
+    branches:
+      - main
+      - develop
   workflow_dispatch:  # Allow manual triggering
     inputs:
       publish:
@@ -205,7 +212,7 @@ jobs:
       - name: Build C library
         run: |
           cd interop/c
-          make clean
+          make clean || true
           make
       
       - name: Upload C library artifact (Unix)
