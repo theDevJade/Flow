@@ -156,6 +156,9 @@ jobs:
           Expand-Archive -Path $libffiZip -DestinationPath $libffiPath -Force
           
           Write-Host "libffi installed to: $libffiPath"
+          Write-Host "Directory structure:"
+          Get-ChildItem -Path $libffiPath -Recurse | Select-Object FullName
+          
           Add-Content $env:GITHUB_ENV "LIBFFI_DIR=$libffiPath"
 
       - name: Install nlohmann/json (Windows)
@@ -186,8 +189,19 @@ jobs:
           New-Item -ItemType Directory -Path build
           cd build
           Write-Host "Using LLVM CMake config at: $env:LLVM_DIR"
+          
+          # Set libffi paths manually
+          $libffiInclude = "C:\libffi\include"
+          $libffiLib = "C:\libffi\lib\libffi.lib"
+          
+          # Use vcpkg only for nlohmann-json, manual paths for libffi
           $vcpkgToolchain = "$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake"
-          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="$env:LLVM_DIR" -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain"
+          cmake .. -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DLLVM_DIR="$env:LLVM_DIR" `
+            -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" `
+            -Dlibffi_INCLUDE_DIR="$libffiInclude" `
+            -Dlibffi_LIBRARY="$libffiLib"
 
       - name: Build (Unix)
         if: matrix.os != 'windows-latest'
