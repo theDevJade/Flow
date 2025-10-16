@@ -15,11 +15,15 @@ static const char* dlerror() {
     return buf; 
 }
 #define RTLD_LAZY 0
+// Windows compatibility macros for process I/O
+#define popen _popen
+#define pclose _pclose
 #else
 #include <dlfcn.h>
 #endif
 #include <iostream>
 #include <cstdlib>
+#include <cstdio>
 #include <algorithm>
 
 namespace flow {
