@@ -74,8 +74,11 @@ set(FLOW_COMMON_SOURCES
         src/Runtime/Interop.cpp
         src/Runtime/JVMInterop.cpp
         src/Runtime/FFIBridge.cpp
+        src/Runtime/ReflectionManager.cpp
+        src/Runtime/ForeignModuleLoader.cpp
         src/Common/ErrorReporter.cpp
         src/Stdlib/Builtins.cpp
+        src/Embedding/FlowAPI.cpp
 )
 
 # Compiler executable
@@ -128,8 +131,8 @@ if (JNI_FOUND)
 
     # Set output directory for JNI library
     set_target_properties(flowjni PROPERTIES
-            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/../javabindings/src/main/resources/native"
-            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/../javabindings/src/main/resources/native"
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/../interop/java/src/main/resources/native"
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/../interop/java/src/main/resources/native"
     )
 
     if (APPLE)

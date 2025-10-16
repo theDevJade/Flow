@@ -1,0 +1,106 @@
+// Advanced C interop test with more obscure/complex C functions
+// Tests proper linking and calling of various C stdlib functions
+
+link "c" {
+    // String manipulation
+    func strlen(s: string) -> int;
+    func strcmp(s1: string, s2: string) -> int;
+    func strstr(haystack: string, needle: string) -> string;
+    
+    // Time functions
+    func time(t: int) -> int;
+    
+    // Math functions beyond basic ones
+    func sin(x: float) -> float;
+    func cos(x: float) -> float;
+    func tan(x: float) -> float;
+    func log(x: float) -> float;
+    func exp(x: float) -> float;
+    func ceil(x: float) -> float;
+    func floor(x: float) -> float;
+    func fabs(x: float) -> float;
+    
+    // Memory functions
+    func memcmp(ptr1: string, ptr2: string, n: int) -> int;
+    
+    // Character classification
+    func isdigit(c: int) -> int;
+    func isalpha(c: int) -> int;
+    func toupper(c: int) -> int;
+    func tolower(c: int) -> int;
+}
+
+func testStringFunctions() {
+    print("=== Advanced String Functions ===");
+    
+    let str: string = "Hello, World!";
+    let length: int = strlen(str);
+    print("strlen(\"Hello, World!\") = " + length);
+    
+    let cmp: int = strcmp("apple", "banana");
+    print("strcmp(\"apple\", \"banana\") = " + cmp);
+    
+    let result: string = strstr("Hello World", "World");
+    print("strstr(\"Hello World\", \"World\") = " + result);
+}
+
+func testMathFunctions() {
+    print("=== Advanced Math Functions ===");
+    
+    let angle: float = 1.0; // radians
+    print("sin(1.0) = " + sin(angle));
+    print("cos(1.0) = " + cos(angle));
+    print("tan(1.0) = " + tan(angle));
+    
+    let e: float = exp(1.0);
+    print("exp(1.0) = e = " + e);
+    
+    let logVal: float = log(2.718281828);
+    print("log(e) = " + logVal);
+    
+    print("ceil(3.14) = " + ceil(3.14));
+    print("floor(3.14) = " + floor(3.14));
+    print("fabs(-42.5) = " + fabs(-42.5));
+}
+
+func testTimeFunctions() {
+    print("=== Time Functions ===");
+    
+    let currentTime: int = time(0);
+    print("time(0) = " + currentTime);
+}
+
+func testCharFunctions() {
+    print("=== Character Functions ===");
+    
+    // ASCII code for 'A' is 65, '5' is 53
+    let charA: int = 65;
+    let char5: int = 53;
+    
+    print("isalpha('A') = " + isalpha(charA));
+    print("isdigit('5') = " + isdigit(char5));
+    print("toupper('a' = 97) = " + toupper(97));
+    print("tolower('Z' = 90) = " + tolower(90));
+}
+
+func main() {
+    print("╔═══════════════════════════════════╗");
+    print("║  Advanced C Interop Test Suite   ║");
+    print("╚═══════════════════════════════════╝");
+    print("");
+    
+    testStringFunctions();
+    print("");
+    
+    testMathFunctions();
+    print("");
+    
+    testTimeFunctions();
+    print("");
+    
+    testCharFunctions();
+    print("");
+    
+    print("✓ All advanced C functions tested successfully!");
+}
+

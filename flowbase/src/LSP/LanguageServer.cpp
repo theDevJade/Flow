@@ -2,6 +2,8 @@
 #include "../../include/LSP/LSPErrorCollector.h"
 #include "../../include/Lexer/Lexer.h"
 #include "../../include/Common/ErrorReporter.h"
+#include "../../include/Runtime/ReflectionManager.h"
+#include "../../include/Runtime/ForeignModuleLoader.h"
 #include <iostream>
 #include <sstream>
 #include <algorithm>
@@ -141,6 +143,7 @@ namespace flow
 
         LanguageServer::LanguageServer() : isInitialized(false), isShutdown(false)
         {
+            // No more hardcoded modules! They'll be loaded dynamically when encountered in code.
         }
 
         std::string LanguageServer::readMessage()
@@ -370,6 +373,10 @@ namespace flow
                     return;
                 }
 
+                // Register module with ReflectionManager for autocomplete/hover
+                auto& reflectionMgr = flow::ReflectionManager::getInstance();
+                reflectionMgr.registerFlowModuleFromAST(doc.uri, doc.ast);
+                
                 // Semantic analysis with error collector
                 SemanticAnalyzer analyzer;
                 analyzer.setLibraryPaths(libraryPaths);
@@ -580,6 +587,19 @@ namespace flow
             ifSnippet.label = "if (if statement)";
             ifSnippet.detail = "if (condition) { body }";
             items.push_back(ifSnippet);
+            
+            // Add foreign functions from ReflectionManager
+            auto& reflectionMgr = flow::ReflectionManager::getInstance();
+            auto allForeignFuncs = reflectionMgr.getAllAvailableFunctions();
+            for (const auto& sig : allForeignFuncs) {
+                // Only add foreign functions (not Flow functions, as those come from AST)
+                if (sig.sourceLanguage != "flow") {
+                    CompletionItem item(sig.name, CompletionItemKind::Function);
+                    item.detail = sig.toString();
+                    item.documentation = sig.sourceLanguage + " function from module " + sig.sourceModule;
+                    items.push_back(item);
+                }
+            }
 
             // Extract symbols from document AST
             auto docIt = documents.find(uri);
@@ -653,6 +673,10 @@ namespace flow
                     // Extract foreign functions from link blocks
                     if (auto linkDecl = std::dynamic_pointer_cast<LinkDecl>(decl))
                     {
+                        // DYNAMIC LOADING: Try to load the foreign module if not already loaded
+                        auto& moduleLoader = flow::ForeignModuleLoader::getInstance();
+                        moduleLoader.loadAndRegisterModule(linkDecl->adapter, linkDecl->module);
+                        
                         for (const auto& func : linkDecl->functions)
                         {
                             if (func)

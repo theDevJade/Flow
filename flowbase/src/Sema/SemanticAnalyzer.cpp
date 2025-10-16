@@ -714,7 +714,19 @@ namespace flow
 
     void SemanticAnalyzer::visit(LinkDecl& node)
     {
-        std::vector<std::string> validAdapters = {"c", "python", "js", "jvm", "inline"};
+        std::vector<std::string> validAdapters = {
+            "c", "cpp", "c++",              // C/C++ via FFI
+            "python",                        // Python (embedded or subprocess)
+            "js", "javascript",             // JavaScript (V8 or Node.js)
+            "rust",                         // Rust via FFI
+            "go",                           // Go via FFI
+            "java", "jvm", "kotlin", "scala", // JVM languages
+            "csharp", "cs",                 // C#
+            "ruby",                         // Ruby
+            "php",                          // PHP
+            "swift",                        // Swift
+            "inline"                        // Inline code
+        };
         bool isValidAdapter = false;
         for (const auto& adapter : validAdapters)
         {
@@ -727,11 +739,28 @@ namespace flow
 
         if (!isValidAdapter)
         {
-            reportError("Unknown FFI adapter '" + node.adapter + "'. Valid adapters are: c, python, js, jvm, inline",
+            reportError("Unknown FFI adapter '" + node.adapter + "'. Supported adapters:\n"
+                       "  FFI (fast): c, cpp, c++, rust, go\n"
+                       "  Embedded: python, js/javascript\n"
+                       "  JVM: java, jvm, kotlin, scala\n"
+                       "  Other: csharp/cs, ruby, php, swift, inline",
                         node.location);
         }
 
-        if (node.adapter != "inline" && node.adapter != "c" && node.module.empty())
+        // C adapter can work without module (defaults to standard library)
+        // Inline adapter doesn't need a module
+        std::vector<std::string> noModuleRequired = {"c", "cpp", "c++", "inline"};
+        bool moduleRequired = true;
+        for (const auto& adapter : noModuleRequired)
+        {
+            if (node.adapter == adapter)
+            {
+                moduleRequired = false;
+                break;
+            }
+        }
+        
+        if (moduleRequired && node.module.empty())
         {
             reportError("Link declaration with adapter '" + node.adapter + "' must specify a module",
                         node.location);

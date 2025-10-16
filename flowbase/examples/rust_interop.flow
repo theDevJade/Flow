@@ -1,0 +1,59 @@
+// Rust Interop Example
+// Demonstrates calling Rust functions from Flow
+// 
+// To use this, you need to create a Rust library with #[no_mangle] functions:
+// 
+// Cargo.toml:
+// [lib]
+// crate-type = ["cdylib"]
+//
+// lib.rs:
+// #[no_mangle]
+// pub extern "C" fn rust_add(a: i64, b: i64) -> i64 {
+//     a + b
+// }
+//
+// #[no_mangle]
+// pub extern "C" fn rust_fibonacci(n: i64) -> i64 {
+//     if n <= 1 { return n; }
+//     rust_fibonacci(n - 1) + rust_fibonacci(n - 2)
+// }
+
+link "rust:flowmath" {
+    func rust_add(a: int, b: int) -> int;
+    func rust_multiply(a: int, b: int) -> int;
+    func rust_fibonacci(n: int) -> int;
+    func rust_is_prime(n: int) -> bool;
+}
+
+func testRustMath() {
+    print("=== Rust Math Functions ===");
+    
+    let sum: int = rust_add(42, 58);
+    print("rust_add(42, 58) = " + sum);
+    
+    let product: int = rust_multiply(12, 13);
+    print("rust_multiply(12, 13) = " + product);
+    
+    let fib: int = rust_fibonacci(10);
+    print("rust_fibonacci(10) = " + fib);
+    
+    // let isPrime: bool = rust_is_prime(17);
+    // print("rust_is_prime(17) = " + isPrime);
+}
+
+func main() {
+    print("╔═══════════════════════════════╗");
+    print("║  Rust Interop Example        ║");
+    print("╚═══════════════════════════════╝");
+    print("");
+    print("NOTE: This requires a Rust library named 'libflowmath'");
+    print("      See comments in source for build instructions.");
+    print("");
+    
+    // Uncomment when Rust library is available:
+    // testRustMath();
+    
+    print("Rust interop skeleton ready!");
+}
+

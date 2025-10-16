@@ -1,0 +1,38 @@
+// Test file to verify LSP dynamic reflection
+// Open this in VSCode with Flow LSP running
+
+// This will dynamically load Python's math module
+link python "math" {
+    fn sin(x: float) -> float;
+    fn cos(x: float) -> float;
+    fn sqrt(x: float) -> float;
+}
+
+fn testPythonMath() -> float {
+    let x = 3.14159 / 4.0;
+    
+    // Try autocomplete here - you should see sin, cos, sqrt, AND MORE!
+    // The LSP dynamically discovered ALL functions from Python's math module
+    let result = sin(x);
+    
+    return result;
+}
+
+// Test with Go (if implemented)
+link go "fmt" {
+    fn Println(msg: string) -> int;
+}
+
+fn testGo() {
+    Println("Hello from Go!");
+}
+
+// Test with multiple modules
+link python "os" {
+    fn getcwd() -> string;
+}
+
+fn testOsModule() -> string {
+    return getcwd();
+}
+

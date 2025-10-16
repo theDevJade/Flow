@@ -58,10 +58,21 @@ struct FlowFunction
     std::string name;
     FunctionDecl* decl;
     void* nativePtr;
+    
+    // Cached reflection data
+    mutable std::vector<std::string> cachedParamTypes;
+    mutable std::string cachedReturnType;
 
     FlowFunction(FlowModule* m, const std::string& n, FunctionDecl* d)
         : module(m), name(n), decl(d), nativePtr(nullptr)
     {
+        // Cache parameter types
+        if (decl) {
+            for (const auto& param : decl->parameters) {
+                cachedParamTypes.push_back(param.type ? param.type->toString() : "unknown");
+            }
+            cachedReturnType = (decl->returnType ? decl->returnType->toString() : "void");
+        }
     }
 
     ~FlowFunction()
@@ -223,6 +234,56 @@ int flow_function_get_param_count(FlowFunction* function)
 {
     if (!function || !function->decl) return -1;
     return function->decl->parameters.size();
+}
+
+// ============================================================
+// REFLECTION API IMPLEMENTATIONS
+// ============================================================
+
+int flow_module_get_function_count(FlowModule* module)
+{
+    if (!module) return 0;
+    return module->functions.size();
+}
+
+const char* flow_module_get_function_name(FlowModule* module, int index)
+{
+    if (!module || index < 0 || index >= (int)module->functions.size())
+        return nullptr;
+    
+    auto it = module->functions.begin();
+    std::advance(it, index);
+    return it->first.c_str();
+}
+
+const char* flow_function_get_name(FlowFunction* function)
+{
+    if (!function) return nullptr;
+    return function->name.c_str();
+}
+
+const char* flow_function_get_param_name(FlowFunction* function, int param_index)
+{
+    if (!function || !function->decl) return nullptr;
+    if (param_index < 0 || param_index >= (int)function->decl->parameters.size())
+        return nullptr;
+    
+    return function->decl->parameters[param_index].name.c_str();
+}
+
+const char* flow_function_get_param_type(FlowFunction* function, int param_index)
+{
+    if (!function) return nullptr;
+    if (param_index < 0 || param_index >= (int)function->cachedParamTypes.size())
+        return nullptr;
+    
+    return function->cachedParamTypes[param_index].c_str();
+}
+
+const char* flow_function_get_return_type(FlowFunction* function)
+{
+    if (!function) return nullptr;
+    return function->cachedReturnType.c_str();
 }
 
 

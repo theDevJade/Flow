@@ -1,0 +1,52 @@
+// Python Interop Example
+// Demonstrates calling Python functions from Flow
+
+link "python:math" {
+    func factorial(n: int) -> int;
+    func gcd(a: int, b: int) -> int;
+    func sqrt(x: float) -> float;
+}
+
+link "python:random" {
+    func randint(a: int, b: int) -> int;
+    func random() -> float;
+}
+
+func testPythonMath() {
+    print("=== Python Math Functions ===");
+    
+    let fact5: int = factorial(5);
+    print("factorial(5) = " + fact5);
+    
+    let result: int = gcd(48, 18);
+    print("gcd(48, 18) = " + result);
+    
+    let sqrtVal: float = sqrt(25.0);
+    print("sqrt(25.0) = " + sqrtVal);
+}
+
+func testPythonRandom() {
+    print("=== Python Random Functions ===");
+    
+    let randNum: int = randint(1, 100);
+    print("randint(1, 100) = " + randNum);
+    
+    let randFloat: float = random();
+    print("random() = " + randFloat);
+}
+
+func main() {
+    print("╔═══════════════════════════════╗");
+    print("║  Python Interop Example      ║");
+    print("╚═══════════════════════════════╝");
+    print("");
+    
+    testPythonMath();
+    print("");
+    
+    testPythonRandom();
+    print("");
+    
+    print("✓ Python interop complete!");
+}
+

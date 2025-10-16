@@ -1,0 +1,31 @@
+{
+  "name": "flow-lang",
+  "version": "0.1.0",
+  "description": "JavaScript/Node.js bindings for the Flow programming language",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "test": "node test_comprehensive.js"
+  },
+  "keywords": [
+    "flow",
+    "flow-lang",
+    "programming-language",
+    "ffi",
+    "bindings"
+  ],
+  "author": "Flow Language Team",
+  "license": "MIT",
+  "dependencies": {
+    "koffi": "^2.8.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/theDevJade/flow"
+  }
+}
+

@@ -1,0 +1,56 @@
+// JavaScript Interop Example
+// Demonstrates calling JavaScript functions from Flow
+
+link "javascript:fs" {
+    func existsSync(path: string) -> bool;
+}
+
+link "javascript:path" {
+    func join(path1: string, path2: string) -> string;
+    func basename(path: string) -> string;
+    func dirname(path: string) -> string;
+}
+
+link "javascript:os" {
+    func hostname() -> string;
+    func platform() -> string;
+}
+
+func testPathOperations() {
+    print("=== JavaScript Path Functions ===");
+    
+    let joined: string = join("/home/user", "documents");
+    print("join('/home/user', 'documents') = " + joined);
+    
+    let base: string = basename("/home/user/file.txt");
+    print("basename('/home/user/file.txt') = " + base);
+    
+    let dir: string = dirname("/home/user/file.txt");
+    print("dirname('/home/user/file.txt') = " + dir);
+}
+
+func testSystemInfo() {
+    print("=== JavaScript OS Functions ===");
+    
+    let host: string = hostname();
+    print("hostname() = " + host);
+    
+    let plat: string = platform();
+    print("platform() = " + plat);
+}
+
+func main() {
+    print("╔═══════════════════════════════╗");
+    print("║  JavaScript Interop Example  ║");
+    print("╚═══════════════════════════════╝");
+    print("");
+    
+    testPathOperations();
+    print("");
+    
+    testSystemInfo();
+    print("");
+    
+    print("✓ JavaScript interop complete!");
+}
+

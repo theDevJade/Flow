@@ -110,6 +110,55 @@ FlowFunction *flow_module_get_function(FlowModule *module, const char *function_
 int flow_function_get_param_count(FlowFunction *function);
 
 // ============================================================
+// REFLECTION API
+// ============================================================
+
+/**
+ * Get the number of functions in a module
+ * @param module The module
+ * @return Number of functions
+ */
+int flow_module_get_function_count(FlowModule *module);
+
+/**
+ * Get the name of a function by index
+ * @param module The module
+ * @param index Function index (0-based)
+ * @return Function name (owned by module, don't free) or NULL if out of bounds
+ */
+const char *flow_module_get_function_name(FlowModule *module, int index);
+
+/**
+ * Get the name of a function
+ * @param function The function
+ * @return Function name (owned by function, don't free)
+ */
+const char *flow_function_get_name(FlowFunction *function);
+
+/**
+ * Get the name of a function parameter
+ * @param function The function
+ * @param param_index Parameter index (0-based)
+ * @return Parameter name (owned by function, don't free) or NULL if out of bounds
+ */
+const char *flow_function_get_param_name(FlowFunction *function, int param_index);
+
+/**
+ * Get the type of a function parameter
+ * @param function The function
+ * @param param_index Parameter index (0-based)
+ * @return Parameter type name (owned by function, don't free) or NULL if out of bounds
+ */
+const char *flow_function_get_param_type(FlowFunction *function, int param_index);
+
+/**
+ * Get the return type of a function
+ * @param function The function
+ * @return Return type name (owned by function, don't free) or NULL on error
+ */
+const char *flow_function_get_return_type(FlowFunction *function);
+
+// ============================================================
 // VALUE MANAGEMENT
 // ============================================================
 

@@ -1,0 +1,24 @@
+[package]
+name = "flow-lang"
+version = "0.1.0"
+edition = "2021"
+authors = ["Flow Language Team"]
+description = "Rust bindings for the Flow programming language"
+license = "MIT"
+repository = "https://github.com/theDevJade/flow"
+keywords = ["flow", "ffi", "bindings", "language"]
+categories = ["api-bindings", "development-tools::ffi"]
+
+[lib]
+name = "flow"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# No runtime dependencies needed - we link to C library
+
+[build-dependencies]
+# Build script to configure library linking
+
+[dev-dependencies]
+# Add testing dependencies as needed
+

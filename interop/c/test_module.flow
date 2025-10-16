@@ -1,0 +1,26 @@
+// Test Flow module for C library testing
+
+func add(a: int, b: int) -> int {
+    return a + b;
+}
+
+func multiply(x: int, y: int) -> int {
+    return x * y;
+}
+
+func subtract(a: int, b: int) -> int {
+    return a - b;
+}
+
+func greet(name: string) -> string {
+    return "Hello, " + name + "!";
+}
+
+func is_positive(n: int) -> bool {
+    return n > 0;
+}
+
+func square(x: float) -> float {
+    return x * x;
+}
+

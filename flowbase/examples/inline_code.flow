@@ -1,0 +1,82 @@
+// Inline Code Example
+// Demonstrates executing inline Python/JavaScript code within Flow
+
+// Inline Python code example
+// link "python" {
+//     inline """
+// def calculate_fibonacci(n):
+//     if n <= 1:
+//         return n
+//     a, b = 0, 1
+//     for _ in range(n - 1):
+//         a, b = b, a + b
+//     return b
+//
+// def is_palindrome(s):
+//     return s == s[::-1]
+// """;
+//     
+//     func calculate_fibonacci(n: int) -> int;
+//     func is_palindrome(s: string) -> bool;
+// }
+
+// Inline JavaScript code example
+// link "javascript" {
+//     inline """
+// function reverseString(str) {
+//     return str.split('').reverse().join('');
+// }
+//
+// function countVowels(str) {
+//     return (str.match(/[aeiou]/gi) || []).length;
+// }
+// """;
+//     
+//     func reverseString(s: string) -> string;
+//     func countVowels(s: string) -> int;
+// }
+
+func demonstrateInlinePython() {
+    print("=== Inline Python Code ===");
+    
+    // Uncomment when Python support is enabled:
+    // let fib10: int = calculate_fibonacci(10);
+    // print("Fibonacci(10) = " + fib10);
+    
+    // let isPalin: bool = is_palindrome("racecar");
+    // print("is_palindrome('racecar') = " + isPalin);
+    
+    print("Inline Python skeleton ready");
+}
+
+func demonstrateInlineJavaScript() {
+    print("=== Inline JavaScript Code ===");
+    
+    // Uncomment when JavaScript support is enabled:
+    // let reversed: string = reverseString("Flow");
+    // print("reverseString('Flow') = " + reversed);
+    
+    // let vowels: int = countVowels("Hello World");
+    // print("countVowels('Hello World') = " + vowels);
+    
+    print("Inline JavaScript skeleton ready");
+}
+
+func main() {
+    print("╔═══════════════════════════════════╗");
+    print("║  Inline Code Example             ║");
+    print("╚═══════════════════════════════════╝");
+    print("");
+    print("Inline code allows you to write Python or JavaScript");
+    print("directly within your Flow source file!");
+    print("");
+    
+    demonstrateInlinePython();
+    print("");
+    
+    demonstrateInlineJavaScript();
+    print("");
+    
+    print("✓ Inline code feature demonstrated!");
+}
+
