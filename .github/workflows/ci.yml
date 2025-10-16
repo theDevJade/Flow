@@ -531,7 +531,9 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           Write-Host "Contents of flowbase/build/CMakeFiles/flowjni.dir/:"
-          Get-ChildItem -Recurse flowbase/build/CMakeFiles/flowjni.dir/ | Select-Object FullName
+          Get-ChildItem -Recurse flowbase/build/CMakeFiles/flowjni.dir/ -ErrorAction SilentlyContinue | Select-Object FullName
+          Write-Host "`nChecking for FlowAPI.obj:"
+          Test-Path flowbase/build/CMakeFiles/flowjni.dir/FlowAPI.obj
         shell: pwsh
 
       - name: Restore LLVM cache (Windows)

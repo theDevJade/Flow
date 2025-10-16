@@ -37,16 +37,30 @@ else
 endif
 
 # Use pre-compiled object files from flowbase build
-FLOWBASE_BUILD = ../../flowbase/build/CMakeFiles/flowjni.dir
-
-# Object file extension varies by platform
+# Object file paths differ between Unix (nested) and Windows (flat)
 ifeq ($(OS),Windows_NT)
+    # Windows MSBuild: flat structure in flowjni.dir/Release/
+    FLOWBASE_BUILD = ../../flowbase/build/CMakeFiles/flowjni.dir
     OBJ_EXT = .obj
+    FLOWBASE_OBJECTS = \
+	$(FLOWBASE_BUILD)/FlowAPI$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/Lexer$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/Token$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/Parser$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/AST$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/SemanticAnalyzer$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/CodeGenerator$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/FFIBridge$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/Interop$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/IPC$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/JVMInterop$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/ErrorReporter$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/Builtins$(OBJ_EXT)
 else
+    # Unix Makefiles: nested structure with src/ subdirectories
+    FLOWBASE_BUILD = ../../flowbase/build/CMakeFiles/flowjni.dir
     OBJ_EXT = .o
-endif
-
-FLOWBASE_OBJECTS = \
+    FLOWBASE_OBJECTS = \
 	$(FLOWBASE_BUILD)/src/Embedding/FlowAPI.cpp$(OBJ_EXT) \
 	$(FLOWBASE_BUILD)/src/Lexer/Lexer.cpp$(OBJ_EXT) \
 	$(FLOWBASE_BUILD)/src/Lexer/Token.cpp$(OBJ_EXT) \
@@ -60,6 +74,7 @@ FLOWBASE_OBJECTS = \
 	$(FLOWBASE_BUILD)/src/Runtime/JVMInterop.cpp$(OBJ_EXT) \
 	$(FLOWBASE_BUILD)/src/Common/ErrorReporter.cpp$(OBJ_EXT) \
 	$(FLOWBASE_BUILD)/src/Stdlib/Builtins.cpp$(OBJ_EXT)
+endif
 
 C_SOURCES = flow.c flow_reflect.c
 C_OBJECTS = $(C_SOURCES:.c=.o)
@@ -68,7 +83,12 @@ all: check_flowbase $(TARGET)
 
 check_flowbase:
 ifeq ($(OS),Windows_NT)
-	@echo "Skipping flowbase check on Windows (assumes CI has built it)"
+	@echo "Checking for flowbase objects on Windows..."
+	@if [ ! -f $(FLOWBASE_BUILD)/FlowAPI$(OBJ_EXT) ]; then \
+		echo "ERROR: flowbase objects not found. Please run:"; \
+		echo "  cd ../../flowbase/build && cmake .. && cmake --build ."; \
+		exit 1; \
+	fi
 else
 	@if [ ! -f $(FLOWBASE_BUILD)/src/Embedding/FlowAPI.cpp$(OBJ_EXT) ]; then \
 		echo "ERROR: flowbase not built. Please run:"; \
