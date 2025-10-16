@@ -19,6 +19,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Remove man-db to speed up apt (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get remove --purge -y man-db
+
       - name: Cache LLVM (Windows)
         if: matrix.os == 'windows-latest'
         id: cache-llvm-windows
@@ -499,6 +503,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Remove man-db to speed up apt (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get remove --purge -y man-db
+
       - name: Download flowbase build (Unix)
         if: matrix.os != 'windows-latest'
         uses: actions/download-artifact@v4
@@ -592,6 +600,9 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+
+      - name: Remove man-db to speed up apt
+        run: sudo apt-get remove --purge -y man-db
       
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -628,7 +639,10 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Remove man-db to speed up apt
+        run: sudo apt-get remove --purge -y man-db
+
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -669,6 +683,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Remove man-db to speed up apt (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get remove --purge -y man-db
 
       - name: Download C library (macOS)
         if: matrix.os == 'macos-latest'
@@ -760,6 +778,9 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+
+      - name: Remove man-db to speed up apt
+        run: sudo apt-get remove --purge -y man-db
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -805,6 +826,9 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+
+      - name: Remove man-db to speed up apt
+        run: sudo apt-get remove --purge -y man-db
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -850,6 +874,9 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+
+      - name: Remove man-db to speed up apt
+        run: sudo apt-get remove --purge -y man-db
       
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -880,6 +907,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Remove man-db to speed up apt
+        run: sudo apt-get remove --purge -y man-db
 
       - name: Download Compiler
         uses: actions/download-artifact@v4
