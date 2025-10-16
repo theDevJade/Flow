@@ -67,19 +67,11 @@ C_OBJECTS = $(C_SOURCES:.c=.o)
 all: check_flowbase $(TARGET)
 
 check_flowbase:
-ifeq ($(OS),Windows_NT)
-	@if not exist "..\..\flowbase\build\CMakeFiles\flowjni.dir\src\Embedding\FlowAPI.cpp.obj" ( \
-		echo ERROR: flowbase not built. Please run: && \
-		echo   cd ..\..\flowbase\build ^&^& cmake .. ^&^& cmake --build . && \
-		exit /b 1 \
-	)
-else
 	@if [ ! -f $(FLOWBASE_BUILD)/src/Embedding/FlowAPI.cpp$(OBJ_EXT) ]; then \
 		echo "ERROR: flowbase not built. Please run:"; \
-		echo "  cd ../../flowbase/build && cmake .. && make"; \
+		echo "  cd ../../flowbase/build && cmake .. && cmake --build ."; \
 		exit 1; \
 	fi
-endif
 
 $(TARGET): $(C_OBJECTS) $(FLOWBASE_OBJECTS)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LLVM_LDFLAGS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
