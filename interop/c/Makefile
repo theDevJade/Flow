@@ -38,20 +38,28 @@ endif
 
 # Use pre-compiled object files from flowbase build
 FLOWBASE_BUILD = ../../flowbase/build/CMakeFiles/flowjni.dir
+
+# Object file extension varies by platform
+ifeq ($(OS),Windows_NT)
+    OBJ_EXT = .obj
+else
+    OBJ_EXT = .o
+endif
+
 FLOWBASE_OBJECTS = \
-	$(FLOWBASE_BUILD)/src/Embedding/FlowAPI.cpp.o \
-	$(FLOWBASE_BUILD)/src/Lexer/Lexer.cpp.o \
-	$(FLOWBASE_BUILD)/src/Lexer/Token.cpp.o \
-	$(FLOWBASE_BUILD)/src/Parser/Parser.cpp.o \
-	$(FLOWBASE_BUILD)/src/AST/AST.cpp.o \
-	$(FLOWBASE_BUILD)/src/Sema/SemanticAnalyzer.cpp.o \
-	$(FLOWBASE_BUILD)/src/Codegen/CodeGenerator.cpp.o \
-	$(FLOWBASE_BUILD)/src/Runtime/FFIBridge.cpp.o \
-	$(FLOWBASE_BUILD)/src/Runtime/Interop.cpp.o \
-	$(FLOWBASE_BUILD)/src/Runtime/IPC.cpp.o \
-	$(FLOWBASE_BUILD)/src/Runtime/JVMInterop.cpp.o \
-	$(FLOWBASE_BUILD)/src/Common/ErrorReporter.cpp.o \
-	$(FLOWBASE_BUILD)/src/Stdlib/Builtins.cpp.o
+	$(FLOWBASE_BUILD)/src/Embedding/FlowAPI.cpp$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/src/Lexer/Lexer.cpp$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/src/Lexer/Token.cpp$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/src/Parser/Parser.cpp$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/src/AST/AST.cpp$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/src/Sema/SemanticAnalyzer.cpp$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/src/Codegen/CodeGenerator.cpp$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/src/Runtime/FFIBridge.cpp$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/src/Runtime/Interop.cpp$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/src/Runtime/IPC.cpp$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/src/Runtime/JVMInterop.cpp$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/src/Common/ErrorReporter.cpp$(OBJ_EXT) \
+	$(FLOWBASE_BUILD)/src/Stdlib/Builtins.cpp$(OBJ_EXT)
 
 C_SOURCES = flow.c flow_reflect.c
 C_OBJECTS = $(C_SOURCES:.c=.o)
@@ -59,11 +67,19 @@ C_OBJECTS = $(C_SOURCES:.c=.o)
 all: check_flowbase $(TARGET)
 
 check_flowbase:
-	@if [ ! -f $(FLOWBASE_BUILD)/src/Embedding/FlowAPI.cpp.o ]; then \
+ifeq ($(OS),Windows_NT)
+	@if not exist "..\..\flowbase\build\CMakeFiles\flowjni.dir\src\Embedding\FlowAPI.cpp.obj" ( \
+		echo ERROR: flowbase not built. Please run: && \
+		echo   cd ..\..\flowbase\build ^&^& cmake .. ^&^& cmake --build . && \
+		exit /b 1 \
+	)
+else
+	@if [ ! -f $(FLOWBASE_BUILD)/src/Embedding/FlowAPI.cpp$(OBJ_EXT) ]; then \
 		echo "ERROR: flowbase not built. Please run:"; \
 		echo "  cd ../../flowbase/build && cmake .. && make"; \
 		exit 1; \
 	fi
+endif
 
 $(TARGET): $(C_OBJECTS) $(FLOWBASE_OBJECTS)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LLVM_LDFLAGS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
