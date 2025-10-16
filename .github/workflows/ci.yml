@@ -131,42 +131,30 @@ jobs:
             exit 1
           }
 
-      - name: Restore vcpkg packages (Windows)
+      - name: Setup vcpkg binary cache (Windows)
         if: matrix.os == 'windows-latest'
-        uses: actions/cache/restore@v4
+        run: |
+          $vcpkgBinaryCache = "$env:LOCALAPPDATA\vcpkg\archives"
+          New-Item -ItemType Directory -Path $vcpkgBinaryCache -Force | Out-Null
+          Add-Content $env:GITHUB_ENV "VCPKG_DEFAULT_BINARY_CACHE=$vcpkgBinaryCache"
+          Write-Host "vcpkg binary cache set to: $vcpkgBinaryCache"
+
+      - name: Restore vcpkg binary cache (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache@v4
         with:
-          path: |
-            ${{ env.VCPKG_INSTALLATION_ROOT }}\installed
-            ${{ env.VCPKG_INSTALLATION_ROOT }}\packages
-          key: ${{ runner.os }}-vcpkg-libffi-nlohmann-${{ hashFiles('**/vcpkg.json') }}
+          path: ~\AppData\Local\vcpkg\archives
+          key: ${{ runner.os }}-vcpkg-binaries-v2
           restore-keys: |
-            ${{ runner.os }}-vcpkg-libffi-nlohmann-
-            ${{ runner.os }}-vcpkg-libffi-
-            ${{ runner.os }}-vcpkg-
+            ${{ runner.os }}-vcpkg-binaries-
 
-      - name: Install libffi (Windows)
+      - name: Install dependencies via vcpkg (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          Write-Host "Downloading prebuilt libffi..."
-          $libffiUrl = "https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2-x86-64bit-msvc-binaries.zip"
-          $libffiZip = "$env:TEMP\libffi.zip"
-          $libffiPath = "C:\libffi"
-          
-          Invoke-WebRequest -Uri $libffiUrl -OutFile $libffiZip
-          Expand-Archive -Path $libffiZip -DestinationPath $libffiPath -Force
-          
-          Write-Host "libffi installed to: $libffiPath"
-          Write-Host "Directory structure:"
-          Get-ChildItem -Path $libffiPath -Recurse | Select-Object FullName
-          
-          Add-Content $env:GITHUB_ENV "LIBFFI_DIR=$libffiPath"
-
-      - name: Install nlohmann/json (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          Write-Host "Installing nlohmann/json via vcpkg..."
-          vcpkg install nlohmann-json:x64-windows
-          Write-Host "nlohmann/json installation complete"
+          Write-Host "Installing libffi and nlohmann-json via vcpkg with binary caching..."
+          $binarySource = "clear;files,$env:VCPKG_DEFAULT_BINARY_CACHE,readwrite"
+          vcpkg install libffi:x64-windows nlohmann-json:x64-windows --binarysource="$binarySource"
+          Write-Host "vcpkg packages installation complete"
 
       - name: Configure CMake (Unix)
         if: matrix.os != 'windows-latest'
@@ -189,19 +177,8 @@ jobs:
           New-Item -ItemType Directory -Path build
           cd build
           Write-Host "Using LLVM CMake config at: $env:LLVM_DIR"
-          
-          # Set libffi paths manually
-          $libffiInclude = "C:\libffi\include"
-          $libffiLib = "C:\libffi\lib\libffi.lib"
-          
-          # Use vcpkg only for nlohmann-json, manual paths for libffi
           $vcpkgToolchain = "$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake"
-          cmake .. -G "Visual Studio 17 2022" -A x64 `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DLLVM_DIR="$env:LLVM_DIR" `
-            -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" `
-            -Dlibffi_INCLUDE_DIR="$libffiInclude" `
-            -Dlibffi_LIBRARY="$libffiLib"
+          cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR="$env:LLVM_DIR" -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain"
 
       - name: Build (Unix)
         if: matrix.os != 'windows-latest'
@@ -253,34 +230,6 @@ jobs:
           path: flowbase/build/Release/flow-lsp.exe
           retention-days: 7
 
-      - name: Check vcpkg paths (Windows)
-        if: always() && matrix.os == 'windows-latest'
-        id: check_vcpkg
-        run: |
-          $installedPath = "$env:VCPKG_INSTALLATION_ROOT\installed"
-          $packagesPath = "$env:VCPKG_INSTALLATION_ROOT\packages"
-          
-          Write-Host "Checking vcpkg paths..."
-          Write-Host "VCPKG_INSTALLATION_ROOT: $env:VCPKG_INSTALLATION_ROOT"
-          Write-Host "Installed path: $installedPath - Exists: $(Test-Path $installedPath)"
-          Write-Host "Packages path: $packagesPath - Exists: $(Test-Path $packagesPath)"
-          
-          if ((Test-Path $installedPath) -or (Test-Path $packagesPath)) {
-            Write-Host "At least one vcpkg path exists, proceeding with cache save"
-            Add-Content $env:GITHUB_OUTPUT "should_cache=true"
-          } else {
-            Write-Host "No vcpkg paths exist, skipping cache save"
-            Add-Content $env:GITHUB_OUTPUT "should_cache=false"
-          }
-
-      - name: Save vcpkg packages (Windows)
-        if: always() && matrix.os == 'windows-latest' && steps.check_vcpkg.outputs.should_cache == 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            ${{ env.VCPKG_INSTALLATION_ROOT }}\installed
-            ${{ env.VCPKG_INSTALLATION_ROOT }}\packages
-          key: ${{ runner.os }}-vcpkg-libffi-nlohmann-${{ hashFiles('**/vcpkg.json') }}
 
   test-flowbase:
     name: Test Flow Examples
