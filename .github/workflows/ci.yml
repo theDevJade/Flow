@@ -401,30 +401,6 @@ jobs:
           path: flowvscode/*.vsix
           retention-days: 7
 
-  build-java-bindings:
-    name: Build Java Bindings
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Build with Gradle
-        working-directory: javabindings
-        run: chmod +x gradlew && ./gradlew build --no-daemon
-
-      - name: Upload Java Bindings Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: java-bindings
-          path: javabindings/build/libs/*.jar
-          retention-days: 7
-
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
