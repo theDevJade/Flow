@@ -1,7 +1,7 @@
 # C Library for Flow - Wraps FlowAPI from flowbase
 CC = gcc
 CXX = g++
-CFLAGS = -Wall -Wextra -fPIC -O2 -I../../flowbase/include
+BASE_CFLAGS = -Wall -Wextra -fPIC -O2 -I../../flowbase/include
 LDFLAGS = -shared
 
 # LLVM configuration - use LLVM_DIR from environment if available
@@ -25,9 +25,10 @@ ifeq ($(UNAME_S),Darwin)
     FFI_LDFLAGS = -L/opt/homebrew/lib -L/usr/local/lib -lffi
     TARGET = libflow.dylib
 else ifeq ($(OS),Windows_NT)
-    # Windows
-    FFI_CFLAGS = 
-    FFI_LDFLAGS = -lffi
+    # Windows - use vcpkg installed libffi
+    VCPKG_ROOT ?= C:/vcpkg/installed/x64-windows
+    FFI_CFLAGS = -I$(VCPKG_ROOT)/include
+    FFI_LDFLAGS = -L$(VCPKG_ROOT)/lib -lffi
     TARGET = flow.dll
 else
     # Linux
@@ -35,6 +36,9 @@ else
     FFI_LDFLAGS = -lffi
     TARGET = libflow.so
 endif
+
+# Combine base CFLAGS with platform-specific FFI flags
+CFLAGS = $(BASE_CFLAGS) $(FFI_CFLAGS)
 
 # Use pre-compiled object files from flowbase build
 # Object file paths differ between Unix (nested) and Windows (flat)
