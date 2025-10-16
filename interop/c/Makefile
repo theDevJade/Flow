@@ -104,7 +104,11 @@ else
 endif
 
 $(TARGET): $(C_OBJECTS) $(FLOWBASE_OBJECTS)
+ifeq ($(OS),Windows_NT)
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LLVM_LDFLAGS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS) -lstdc++
+else
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LLVM_LDFLAGS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
+endif
 
 %.o: %.c flow.h
 	$(CC) $(CFLAGS) $(FFI_CFLAGS) -c -o $@ $<
