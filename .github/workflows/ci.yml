@@ -198,6 +198,14 @@ jobs:
           path: flowbase/build/flowbase
           retention-days: 7
 
+      - name: Upload CMake Object Files (Unix)
+        if: matrix.os != 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flowbase-objects-${{ matrix.os }}
+          path: flowbase/build/CMakeFiles/flowjni.dir/
+          retention-days: 7
+
       - name: Upload Compiler Artifact (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
@@ -491,6 +499,13 @@ jobs:
           name: flowbase-${{ matrix.os }}
           path: flowbase/build/
 
+      - name: Download CMake Object Files (Unix)
+        if: matrix.os != 'windows-latest'
+        uses: actions/download-artifact@v4
+        with:
+          name: flowbase-objects-${{ matrix.os }}
+          path: flowbase/build/CMakeFiles/flowjni.dir/
+
       - name: Download flowbase build (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/download-artifact@v4
@@ -531,12 +546,6 @@ jobs:
         run: |
           Add-Content $env:GITHUB_PATH "C:\llvm\bin"
           Add-Content $env:GITHUB_ENV "LLVM_DIR=C:\llvm\lib\cmake\llvm"
-
-      - name: Restore CMake build for object files (Unix)
-        if: matrix.os != 'windows-latest'
-        run: |
-          cd flowbase
-          mkdir -p build/CMakeFiles/flowjni.dir/src/{Embedding,Lexer,Parser,AST,Sema,Codegen,Runtime,Common,Stdlib}
 
       - name: Build C library (Unix)
         if: matrix.os != 'windows-latest'
