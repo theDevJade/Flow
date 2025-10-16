@@ -147,9 +147,16 @@ jobs:
       - name: Install libffi (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          Write-Host "Installing libffi via vcpkg..."
-          vcpkg install libffi:x64-windows
-          Write-Host "libffi installation complete"
+          Write-Host "Downloading prebuilt libffi..."
+          $libffiUrl = "https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2-x86-64bit-msvc-binaries.zip"
+          $libffiZip = "$env:TEMP\libffi.zip"
+          $libffiPath = "C:\libffi"
+          
+          Invoke-WebRequest -Uri $libffiUrl -OutFile $libffiZip
+          Expand-Archive -Path $libffiZip -DestinationPath $libffiPath -Force
+          
+          Write-Host "libffi installed to: $libffiPath"
+          Add-Content $env:GITHUB_ENV "LIBFFI_DIR=$libffiPath"
 
       - name: Install nlohmann/json (Windows)
         if: matrix.os == 'windows-latest'
@@ -206,6 +213,14 @@ jobs:
         with:
           name: flowbase-${{ matrix.os }}
           path: flowbase/build/Release/flowbase.exe
+          retention-days: 7
+
+      - name: Upload CMake Object Files (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flowbase-objects-${{ matrix.os }}
+          path: flowbase/build/CMakeFiles/flowjni.dir/
           retention-days: 7
 
       - name: Upload LSP Artifact (Unix)
@@ -318,6 +333,11 @@ jobs:
         run: |
           echo "Testing Flow compiler with examples..."
           for example in flowbase/examples/*.flow; do
+            # Skip go_interop.flow as it requires external Go libraries
+            if [[ "$example" == *"go_interop.flow"* ]]; then
+              echo "Skipping $example (requires Go library)"
+              continue
+            fi
             echo "Compiling $example..."
             ./flowbase/build/flowbase "$example" || exit 1
           done
@@ -327,6 +347,11 @@ jobs:
         run: |
           Write-Output "Testing Flow compiler with examples..."
           Get-ChildItem flowbase/examples/*.flow | ForEach-Object {
+            # Skip go_interop.flow as it requires external Go libraries
+            if ($_.Name -eq "go_interop.flow") {
+              Write-Output "Skipping $_ (requires Go library)"
+              return
+            }
             Write-Output "Compiling $_..."
             & flowbase/build/Release/flowbase.exe $_.FullName
             if ($LASTEXITCODE -ne 0) { exit 1 }
@@ -510,6 +535,13 @@ jobs:
           name: flowbase-${{ matrix.os }}
           path: flowbase/build/Release/
 
+      - name: Download CMake Object Files (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/download-artifact@v4
+        with:
+          name: flowbase-objects-${{ matrix.os }}
+          path: flowbase/build/CMakeFiles/flowjni.dir/
+
       - name: Restore LLVM cache (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/cache/restore@v4
@@ -564,6 +596,78 @@ jobs:
           name: libflow-${{ matrix.os }}
           path: interop/c/${{ matrix.lib_name }}
           retention-days: 7
+
+  build-ruby-package:
+    name: Build Ruby Gem
+    needs: build-c-interop
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+      
+      - name: Download C libraries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: libflow-*
+          path: interop/ruby/lib/native/
+      
+      - name: Install dependencies
+        run: |
+          cd interop/ruby
+          gem install bundler
+          bundle install
+      
+      - name: Build gem
+        run: |
+          cd interop/ruby
+          gem build flow.gemspec
+      
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ruby-package
+          path: interop/ruby/*.gem
+
+  build-php-package:
+    name: Build PHP Package
+    needs: build-c-interop
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+      
+      - name: Download C libraries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: libflow-*
+          path: interop/php/native/
+      
+      - name: Install dependencies
+        run: |
+          cd interop/php
+          composer install --no-dev --optimize-autoloader
+      
+      - name: Create archive
+        run: |
+          cd interop/php
+          tar -czf flow-php-${{ github.ref_name }}.tar.gz src/ composer.json README.md native/
+      
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-package
+          path: interop/php/*.tar.gz
 
   test-interop:
     name: Test ${{ matrix.language }} Interop
