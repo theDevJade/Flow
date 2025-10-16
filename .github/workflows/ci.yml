@@ -214,6 +214,13 @@ jobs:
           path: flowbase/build/Release/flowbase.exe
           retention-days: 7
 
+      - name: Debug - List object files before upload (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Write-Host "Looking for object files in flowbase/build/"
+          Get-ChildItem -Recurse flowbase/build/ -Include *.obj | Select-Object FullName
+        shell: pwsh
+
       - name: Upload CMake Object Files (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
@@ -519,6 +526,13 @@ jobs:
         with:
           name: flowbase-objects-${{ matrix.os }}
           path: flowbase/build/CMakeFiles/flowjni.dir/
+
+      - name: Debug - List downloaded object files (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Write-Host "Contents of flowbase/build/CMakeFiles/flowjni.dir/:"
+          Get-ChildItem -Recurse flowbase/build/CMakeFiles/flowjni.dir/ | Select-Object FullName
+        shell: pwsh
 
       - name: Restore LLVM cache (Windows)
         if: matrix.os == 'windows-latest'
