@@ -4,18 +4,23 @@ CXX = g++
 CFLAGS = -Wall -Wextra -fPIC -O2 -I../../flowbase/include
 LDFLAGS = -shared
 
-# LLVM configuration
-LLVM_CONFIG = llvm-config
-LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags --libs core support irreader executionengine mcjit interpreter native)
-LLVM_SYSTEM_LIBS = $(shell $(LLVM_CONFIG) --system-libs)
+# LLVM configuration - try version-specific commands first
+LLVM_CONFIG ?= $(shell which llvm-config-21 2>/dev/null || which llvm-config 2>/dev/null || echo llvm-config)
+LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags --libs core support irreader executionengine mcjit interpreter native 2>/dev/null || echo "")
+LLVM_SYSTEM_LIBS = $(shell $(LLVM_CONFIG) --system-libs 2>/dev/null || echo "")
 
-# Find libffi
+# Find libffi and determine target platform
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
     # macOS
     FFI_CFLAGS = -I/opt/homebrew/include -I/usr/local/include
     FFI_LDFLAGS = -L/opt/homebrew/lib -L/usr/local/lib -lffi
     TARGET = libflow.dylib
+else ifeq ($(OS),Windows_NT)
+    # Windows
+    FFI_CFLAGS = 
+    FFI_LDFLAGS = -lffi
+    TARGET = flow.dll
 else
     # Linux
     FFI_CFLAGS = 
