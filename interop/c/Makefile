@@ -4,9 +4,17 @@ CXX = g++
 CFLAGS = -Wall -Wextra -fPIC -O2 -I../../flowbase/include
 LDFLAGS = -shared
 
-# LLVM configuration - try version-specific commands first
-LLVM_CONFIG ?= $(shell which llvm-config-21 2>/dev/null || which llvm-config 2>/dev/null || echo llvm-config)
-LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags --libs core support irreader executionengine mcjit interpreter native 2>/dev/null || echo "")
+# LLVM configuration - use LLVM_DIR from environment if available
+ifdef LLVM_DIR
+    LLVM_CONFIG = $(LLVM_DIR)/bin/llvm-config
+else
+    LLVM_CONFIG ?= $(shell which llvm-config-21 2>/dev/null || which llvm-config 2>/dev/null || echo llvm-config)
+endif
+
+# Get LLVM libraries and flags
+LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags 2>/dev/null || echo "")
+LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags 2>/dev/null || echo "")
+LLVM_LIBS = $(shell $(LLVM_CONFIG) --libs core support irreader executionengine mcjit interpreter native aarch64codegen aarch64asmparser aarch64desc aarch64info aarch64utils x86codegen x86asmparser x86desc x86info 2>/dev/null || echo "")
 LLVM_SYSTEM_LIBS = $(shell $(LLVM_CONFIG) --system-libs 2>/dev/null || echo "")
 
 # Find libffi and determine target platform
@@ -58,7 +66,7 @@ check_flowbase:
 	fi
 
 $(TARGET): $(C_OBJECTS) $(FLOWBASE_OBJECTS)
-	$(CXX) $(LDFLAGS) -o $@ $^ $(LLVM_LDFLAGS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LLVM_LDFLAGS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
 
 %.o: %.c flow.h
 	$(CC) $(CFLAGS) $(FFI_CFLAGS) -c -o $@ $<
@@ -74,5 +82,12 @@ test: $(TARGET) test.c
 	$(CC) $(CFLAGS) -o test_flow test.c -L. -lflow $(FFI_CFLAGS)
 	@echo "Run with: LD_LIBRARY_PATH=. ./test_flow (Linux) or DYLD_LIBRARY_PATH=. ./test_flow (macOS)"
 
-.PHONY: all clean install test check_flowbase
+debug-llvm:
+	@echo "LLVM_CONFIG: $(LLVM_CONFIG)"
+	@echo "LLVM_CXXFLAGS: $(LLVM_CXXFLAGS)"
+	@echo "LLVM_LDFLAGS: $(LLVM_LDFLAGS)"
+	@echo "LLVM_LIBS: $(LLVM_LIBS)"
+	@echo "LLVM_SYSTEM_LIBS: $(LLVM_SYSTEM_LIBS)"
+
+.PHONY: all clean install test check_flowbase debug-llvm
 
