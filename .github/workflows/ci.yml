@@ -219,9 +219,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: flowbase-objects-${{ matrix.os }}
-          path: |
-            flowbase/build/CMakeFiles/flowjni.dir/
-            flowbase/build/flowjni.dir/
+          path: flowbase/build/flowjni.dir/Release/
           retention-days: 7
 
       - name: Upload LSP Artifact (Unix)
@@ -307,7 +305,7 @@ jobs:
           echo "Testing Flow compiler with examples..."
           for example in flowbase/examples/*.flow; do
             # Skip interop examples that require external libraries
-            if [[ "$example" == *"go_interop.flow"* ]] || [[ "$example" == *"javascript_interop.flow"* ]]; then
+            if [[ "$example" == *"go_interop.flow"* ]] || [[ "$example" == *"javascript_interop.flow"* ]] || [[ "$example" == *"python_interop.flow"* ]] || [[ "$example" == *"rust_interop.flow"* ]]; then
               echo "Skipping $example (requires external library)"
               continue
             fi
@@ -321,7 +319,7 @@ jobs:
           Write-Output "Testing Flow compiler with examples..."
           Get-ChildItem flowbase/examples/*.flow | ForEach-Object {
             # Skip interop examples that require external libraries
-            if ($_.Name -eq "go_interop.flow" -or $_.Name -eq "javascript_interop.flow") {
+            if ($_.Name -eq "go_interop.flow" -or $_.Name -eq "javascript_interop.flow" -or $_.Name -eq "python_interop.flow" -or $_.Name -eq "rust_interop.flow") {
               Write-Output "Skipping $_ (requires external library)"
               return
             }
