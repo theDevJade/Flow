@@ -28,7 +28,9 @@ else ifeq ($(OS),Windows_NT)
     # Windows - use vcpkg installed libffi
     VCPKG_ROOT ?= C:/vcpkg/installed/x64-windows
     FFI_CFLAGS = -I$(VCPKG_ROOT)/include
-    FFI_LDFLAGS = -L$(VCPKG_ROOT)/lib -lffi
+    # Try both libffi.lib and ffi.lib naming conventions
+    FFI_LIB := $(shell if [ -f "$(VCPKG_ROOT)/lib/libffi.lib" ]; then echo "$(VCPKG_ROOT)/lib/libffi.lib"; elif [ -f "$(VCPKG_ROOT)/lib/ffi.lib" ]; then echo "$(VCPKG_ROOT)/lib/ffi.lib"; else echo "-lffi"; fi)
+    FFI_LDFLAGS = $(FFI_LIB)
     TARGET = flow.dll
 else
     # Linux

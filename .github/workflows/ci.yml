@@ -571,12 +571,45 @@ jobs:
           Add-Content $env:GITHUB_PATH "C:\llvm\bin"
           Add-Content $env:GITHUB_ENV "LLVM_DIR=C:\llvm\lib\cmake\llvm"
 
+      - name: Setup vcpkg binary cache (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          $vcpkgBinaryCache = "$env:LOCALAPPDATA\vcpkg\archives"
+          New-Item -ItemType Directory -Path $vcpkgBinaryCache -Force | Out-Null
+          Add-Content $env:GITHUB_ENV "VCPKG_DEFAULT_BINARY_CACHE=$vcpkgBinaryCache"
+          Write-Host "vcpkg binary cache set to: $vcpkgBinaryCache"
+
+      - name: Restore vcpkg binary cache (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\vcpkg\archives
+          key: ${{ runner.os }}-vcpkg-binaries-v2
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-binaries-
+
+      - name: Install libffi via vcpkg (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Write-Host "Installing libffi via vcpkg with binary caching..."
+          $binarySource = "clear;files,$env:VCPKG_DEFAULT_BINARY_CACHE,readwrite"
+          vcpkg install libffi:x64-windows --binarysource="$binarySource"
+          Write-Host "vcpkg libffi installation complete"
+
       - name: Build C library (Unix)
         if: matrix.os != 'windows-latest'
         working-directory: interop/c
         run: |
           make clean || true
           make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+
+      - name: Debug - List vcpkg libffi files (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Write-Host "Checking vcpkg libffi installation:"
+          Get-ChildItem -Recurse C:\vcpkg\installed\x64-windows\lib\*ffi* -ErrorAction SilentlyContinue | Select-Object FullName
+          Get-ChildItem -Recurse C:\vcpkg\installed\x64-windows\bin\*ffi* -ErrorAction SilentlyContinue | Select-Object FullName
+        shell: pwsh
 
       - name: Build C library (Windows)
         if: matrix.os == 'windows-latest'
