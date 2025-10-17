@@ -3,11 +3,14 @@ ifeq ($(OS),Windows_NT)
     # On Windows, use MSVC to match flowbase build
     CC = cl
     CXX = cl
+    # Use full path to MSVC linker to avoid conflict with Unix link command
+    LINKER = "$(VCToolsInstallDir)bin/Hostx64/x64/link.exe"
     BASE_CFLAGS = /nologo /O2 /I../../flowbase/include
     LDFLAGS = /DLL /nologo
 else
     CC = gcc
     CXX = g++
+    LINKER = $(CXX)
     BASE_CFLAGS = -Wall -Wextra -fPIC -O2 -I../../flowbase/include
     LDFLAGS = -shared
 endif
@@ -34,10 +37,11 @@ ifeq ($(UNAME_S),Darwin)
     TARGET = libflow.dylib
 else ifeq ($(OS),Windows_NT)
     # Windows - use vcpkg installed libffi with MSVC syntax
+    # Use VCPKG_ROOT from environment, or default to standard location
     VCPKG_ROOT ?= C:/vcpkg/installed/x64-windows
-    FFI_CFLAGS = /I$(VCPKG_ROOT)/include
-    # MSVC uses .lib files for linking
-    FFI_LDFLAGS = $(VCPKG_ROOT)/lib/ffi.lib
+    FFI_CFLAGS = /I"$(VCPKG_ROOT)/include"
+    # MSVC uses .lib files for linking - quote path due to spaces
+    FFI_LDFLAGS = "$(VCPKG_ROOT)/lib/ffi.lib"
     TARGET = flow.dll
 else
     # Linux
@@ -115,9 +119,9 @@ endif
 
 $(TARGET): $(C_OBJECTS) $(FLOWBASE_OBJECTS)
 ifeq ($(OS),Windows_NT)
-	link $(LDFLAGS) /OUT:$@ $(C_OBJECTS) $(FLOWBASE_OBJECTS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
+	$(LINKER) $(LDFLAGS) /OUT:$@ $(C_OBJECTS) $(FLOWBASE_OBJECTS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
 else
-	$(CXX) $(LDFLAGS) -o $@ $^ $(LLVM_LDFLAGS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
+	$(LINKER) $(LDFLAGS) -o $@ $^ $(LLVM_LDFLAGS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
 endif
 
 %.obj: %.c flow.h
