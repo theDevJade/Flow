@@ -4,8 +4,10 @@ ifeq ($(OS),Windows_NT)
     CC = cl
     CXX = cl
     # Use full path to MSVC linker to avoid conflict with Unix link command
-    LINKER = "$(VCToolsInstallDir)bin/Hostx64/x64/link.exe"
+    # VCToolsInstallDir already has trailing backslash
+    LINKER = $(VCToolsInstallDir)bin\Hostx64\x64\link.exe
     BASE_CFLAGS = /nologo /O2 /I../../flowbase/include
+    # Only linker-specific flags here
     LDFLAGS = /DLL /nologo
 else
     CC = gcc
@@ -119,7 +121,7 @@ endif
 
 $(TARGET): $(C_OBJECTS) $(FLOWBASE_OBJECTS)
 ifeq ($(OS),Windows_NT)
-	$(LINKER) $(LDFLAGS) /OUT:$@ $(C_OBJECTS) $(FLOWBASE_OBJECTS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
+	"$(LINKER)" $(LDFLAGS) /OUT:$@ $(C_OBJECTS) $(FLOWBASE_OBJECTS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
 else
 	$(LINKER) $(LDFLAGS) -o $@ $^ $(LLVM_LDFLAGS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
 endif
