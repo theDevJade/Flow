@@ -111,9 +111,12 @@ namespace flow {
             {"inline", TokenType::KW_INLINE},
             {"import", TokenType::KW_IMPORT},
             {"module", TokenType::KW_MODULE},
-            {"from", TokenType::KW_FROM},
-            {"as", TokenType::KW_AS},
-            {"int", TokenType::TYPE_INT},
+                {"from", TokenType::KW_FROM},
+                {"as", TokenType::KW_AS},
+                {"lambda", TokenType::KW_LAMBDA},
+                {"impl", TokenType::KW_IMPL},
+                {"this", TokenType::KW_THIS},
+                {"int", TokenType::TYPE_INT},
             {"float", TokenType::TYPE_FLOAT},
             {"string", TokenType::TYPE_STRING},
             {"bool", TokenType::TYPE_BOOL},
@@ -233,7 +236,9 @@ namespace flow {
             case '[': return makeToken(TokenType::LBRACKET, "[");
             case ']': return makeToken(TokenType::RBRACKET, "]");
             case ';': return makeToken(TokenType::SEMICOLON, ";");
-            case ':': return makeToken(TokenType::COLON, ":");
+            case ':':
+                if (match(':')) return makeToken(TokenType::DOUBLE_COLON, "::");
+                return makeToken(TokenType::COLON, ":");
             case ',': return makeToken(TokenType::COMMA, ",");
             case '?': return makeToken(TokenType::QUESTION, "?");
             case '%': return makeToken(TokenType::PERCENT, "%");
@@ -244,6 +249,8 @@ namespace flow {
             case '|':
                 if (match('|')) return makeToken(TokenType::OR, "||");
                 return makeToken(TokenType::PIPE, "|");
+            case '^': return makeToken(TokenType::CARET, "^");
+            case '~': return makeToken(TokenType::TILDE, "~");
             case '+': return makeToken(TokenType::PLUS, "+");
             case '*': return makeToken(TokenType::STAR, "*");
             case '/': return makeToken(TokenType::SLASH, "/");
@@ -254,9 +261,11 @@ namespace flow {
                 if (match('=')) return makeToken(TokenType::EQ, "==");
                 return makeToken(TokenType::ASSIGN, "=");
             case '<':
+                if (match('<')) return makeToken(TokenType::LEFT_SHIFT, "<<");
                 if (match('=')) return makeToken(TokenType::LE, "<=");
                 return makeToken(TokenType::LT, "<");
             case '>':
+                if (match('>')) return makeToken(TokenType::RIGHT_SHIFT, ">>");
                 if (match('=')) return makeToken(TokenType::GE, ">=");
                 return makeToken(TokenType::GT, ">");
             case '.':

@@ -1,0 +1,27 @@
+// Struct methods with parameters
+
+struct Calculator {
+    int value;
+}
+
+impl Calculator::add(x: int) -> int {
+    return this.value + x;
+}
+
+impl Calculator::multiply(x: int) -> int {
+    return this.value * x;
+}
+
+impl Calculator::compute(a: int, b: int) -> int {
+    return this.value + a * b;
+}
+
+impl Calculator::sum_three(a: int, b: int, c: int) -> int {
+    return this.value + a + b + c;
+}
+
+func main() -> int {
+    println("Struct methods with parameters compiled!");
+    return 0;
+}
+

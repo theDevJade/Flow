@@ -1,0 +1,15 @@
+// Basic struct method test without struct initialization
+
+struct Counter {
+    int value;
+}
+
+impl Counter::print() {
+    println("Counter value printed");
+}
+
+func main() -> int {
+    println("Struct methods test");
+    return 0;
+}
+

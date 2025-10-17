@@ -1,0 +1,13 @@
+// Simplest lambda test
+func main() -> int {
+    let add = int lambda[a: int, b: int] {
+        return a + b;
+    };
+    
+    let result = add(2, 3);
+    println("Lambda result:");
+    print("Result: ");
+    
+    return result;
+}
+

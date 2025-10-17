@@ -59,6 +59,8 @@ namespace flow {
 
         std::shared_ptr<StructDecl> parseStructDecl();
 
+        std::shared_ptr<ImplDecl> parseImplDecl();
+
         std::shared_ptr<TypeDefDecl> parseTypeDefDecl();
 
         std::shared_ptr<LinkDecl> parseLinkDecl();
@@ -91,9 +93,17 @@ namespace flow {
 
         std::shared_ptr<Expr> parseLogicalAnd();
 
+        std::shared_ptr<Expr> parseBitwiseOr();
+
+        std::shared_ptr<Expr> parseBitwiseXor();
+
+        std::shared_ptr<Expr> parseBitwiseAnd();
+
         std::shared_ptr<Expr> parseEquality();
 
         std::shared_ptr<Expr> parseComparison();
+
+        std::shared_ptr<Expr> parseBitwiseShift();
 
         std::shared_ptr<Expr> parseTerm();
 

@@ -1,0 +1,40 @@
+// Working example: Functions accepting lambdas as parameters
+
+// Function that takes an operation lambda
+func apply_operation(x: int, y: int, operation: int lambda[int, int]) -> int {
+    return operation(x, y);
+}
+
+// Event handler style function
+func add_button(label: string, onClick: void lambda[string, int]) {
+    println("Button:");
+    println(label);
+    onClick("click", 99);
+}
+
+func main() -> int {
+    println("=== Lambda as Parameter Examples ===");
+    
+    // Example 1: Addition lambda
+    let sum = apply_operation(10, 5, int lambda[a: int, b: int] {
+        return a + b;
+    });
+    
+    println("10 + 5 =");
+    
+    // Example 2: Multiplication lambda
+    let product = apply_operation(10, 5, int lambda[x: int, y: int] {
+        return x * y;
+    });
+    
+    println("10 * 5 =");
+    
+    // Example 3: Event handler (your add_button style)
+    add_button("Submit", void lambda[evt: string, num: int] {
+        println("Event:");
+        println(evt);
+    });
+    
+    return sum;
+}
+

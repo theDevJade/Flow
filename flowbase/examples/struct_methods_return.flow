@@ -1,0 +1,27 @@
+// Struct method with return value
+
+struct Rectangle {
+    int width;
+    int height;
+}
+
+impl Rectangle::area() -> int {
+    return this.width * this.height;
+}
+
+impl Rectangle::perimeter() -> int {
+    return 2 * (this.width + this.height);
+}
+
+impl Rectangle::is_square() -> int {
+    if (this.width == this.height) {
+        return 1;
+    }
+    return 0;
+}
+
+func main() -> int {
+    println("Struct methods with return values compiled!");
+    return 0;
+}
+

@@ -31,6 +31,9 @@ namespace flow {
         KW_MODULE,
         KW_FROM,
         KW_AS,
+        KW_LAMBDA,
+        KW_IMPL,
+        KW_THIS,
 
         // Types
         TYPE_INT,
@@ -64,6 +67,10 @@ namespace flow {
         NOT, // !
         AMPERSAND, // &
         PIPE, // |
+        CARET, // ^
+        TILDE, // ~
+        LEFT_SHIFT, // <<
+        RIGHT_SHIFT, // >>
 
         // Delimiters
         LPAREN, // (
@@ -74,6 +81,7 @@ namespace flow {
         RBRACKET, // ]
         SEMICOLON, // ;
         COLON, // :
+        DOUBLE_COLON, // ::
         COMMA, // ,
         QUESTION, // ?
         DOT, // .

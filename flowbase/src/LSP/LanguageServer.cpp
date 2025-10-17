@@ -342,6 +342,8 @@ namespace flow
                 Lexer lexer(doc.text, doc.uri);
                 std::vector<Token> tokens = lexer.tokenize();
 
+                std::cerr << "LSP: Tokenization complete, got " << tokens.size() << " tokens" << std::endl;
+
                 if (tokens.empty() || tokens.back().type == TokenType::INVALID)
                 {
                     Diagnostic diag;
@@ -360,6 +362,8 @@ namespace flow
                 parser.setErrorCollector(&errorCollector);
                 doc.ast = parser.parse();
 
+                std::cerr << "LSP: Parsing complete" << std::endl;
+
                 if (!doc.ast)
                 {
                     Diagnostic diag;
@@ -373,16 +377,20 @@ namespace flow
                     return;
                 }
 
-                // Register module with ReflectionManager for autocomplete/hover
-                auto& reflectionMgr = flow::ReflectionManager::getInstance();
-                reflectionMgr.registerFlowModuleFromAST(doc.uri, doc.ast);
-                
-                // Semantic analysis with error collector
+                std::cerr << "LSP: About to register module with ReflectionManager..." << std::endl;
+                std::cerr << "LSP: AST has " << doc.ast->declarations.size() << " declarations" << std::endl;
+
+                // TODO: Fix ReflectionManager - temporarily disabled due to stack overflow in map insertion
+                std::cerr << "LSP: Skipping ReflectionManager (known issue with std::map causing SIGSEGV)" << std::endl;
+
+                std::cerr << "LSP: Starting semantic analysis..." << std::endl;
                 SemanticAnalyzer analyzer;
                 analyzer.setLibraryPaths(libraryPaths);
                 analyzer.setErrorCollector(&errorCollector);
                 analyzer.setCurrentFile(doc.uri);
+                std::cerr << "LSP: Calling analyzer.analyze()..." << std::endl;
                 analyzer.analyze(doc.ast);
+                std::cerr << "LSP: Semantic analysis complete!" << std::endl;
 
                 // Convert collected errors to diagnostics
                 for (const auto& error : errorCollector.getErrors())
@@ -587,12 +595,11 @@ namespace flow
             ifSnippet.label = "if (if statement)";
             ifSnippet.detail = "if (condition) { body }";
             items.push_back(ifSnippet);
-            
+
             // Add foreign functions from ReflectionManager
             auto& reflectionMgr = flow::ReflectionManager::getInstance();
             auto allForeignFuncs = reflectionMgr.getAllAvailableFunctions();
             for (const auto& sig : allForeignFuncs) {
-                // Only add foreign functions (not Flow functions, as those come from AST)
                 if (sig.sourceLanguage != "flow") {
                     CompletionItem item(sig.name, CompletionItemKind::Function);
                     item.detail = sig.toString();
@@ -673,10 +680,9 @@ namespace flow
                     // Extract foreign functions from link blocks
                     if (auto linkDecl = std::dynamic_pointer_cast<LinkDecl>(decl))
                     {
-                        // DYNAMIC LOADING: Try to load the foreign module if not already loaded
                         auto& moduleLoader = flow::ForeignModuleLoader::getInstance();
                         moduleLoader.loadAndRegisterModule(linkDecl->adapter, linkDecl->module);
-                        
+
                         for (const auto& func : linkDecl->functions)
                         {
                             if (func)

@@ -19,7 +19,12 @@ namespace flow
                 for (size_t i = 0; i < typeParams.size(); i++)
                 {
                     if (i > 0) result += ", ";
-                    result += typeParams[i]->toString();
+                    // Add null check to prevent crash
+                    if (typeParams[i]) {
+                        result += typeParams[i]->toString();
+                    } else {
+                        result += "null";
+                    }
                 }
                 result += ">";
                 return result;
@@ -27,7 +32,7 @@ namespace flow
             return name;
         case TypeKind::FUNCTION: return "function";
         case TypeKind::ARRAY:
-            if (!typeParams.empty())
+            if (!typeParams.empty() && typeParams[0])
             {
                 return typeParams[0]->toString() + "[]";
             }
@@ -43,6 +48,7 @@ namespace flow
     void StringLiteralExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }
     void BoolLiteralExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }
     void IdentifierExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }
+    void ThisExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }
     void BinaryExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }
     void UnaryExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }
     void CallExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }
@@ -50,6 +56,7 @@ namespace flow
     void StructInitExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }
     void ArrayLiteralExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }
     void IndexExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }
+    void LambdaExpr::accept(ASTVisitor& visitor) { visitor.visit(*this); }
 
     void ExprStmt::accept(ASTVisitor& visitor) { visitor.visit(*this); }
     void VarDeclStmt::accept(ASTVisitor& visitor) { visitor.visit(*this); }
@@ -62,6 +69,7 @@ namespace flow
 
     void FunctionDecl::accept(ASTVisitor& visitor) { visitor.visit(*this); }
     void StructDecl::accept(ASTVisitor& visitor) { visitor.visit(*this); }
+    void ImplDecl::accept(ASTVisitor& visitor) { visitor.visit(*this); }
     void TypeDefDecl::accept(ASTVisitor& visitor) { visitor.visit(*this); }
     void LinkDecl::accept(ASTVisitor& visitor) { visitor.visit(*this); }
     void ImportDecl::accept(ASTVisitor& visitor) { visitor.visit(*this); }

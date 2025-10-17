@@ -1,0 +1,49 @@
+// Test bitwise operators with flags pattern
+
+func main() -> int {
+    println("Testing Bitwise Flag Operations");
+    
+    // Flag definitions
+    let FLAG_READ = 1;      // 0001
+    let FLAG_WRITE = 2;     // 0010
+    let FLAG_EXECUTE = 4;   // 0100
+    let FLAG_ADMIN = 8;     // 1000
+    
+    // Combine flags
+    let permissions = FLAG_READ | FLAG_WRITE;
+    println("READ | WRITE = 3 (expected)");
+    
+    // Check if has READ permission
+    let has_read = permissions & FLAG_READ;
+    println("Has READ permission: 1 (expected)");
+    
+    // Check if has EXECUTE permission
+    let has_execute = permissions & FLAG_EXECUTE;
+    println("Has EXECUTE permission: 0 (expected)");
+    
+    // Add ADMIN flag
+    let admin_permissions = permissions | FLAG_ADMIN;
+    println("Add ADMIN: 11 (expected)");
+    
+    // Remove WRITE flag using XOR
+    let removed_write = permissions ^ FLAG_WRITE;
+    println("Remove WRITE: 1 (expected)");
+    
+    // Verify results
+    if (permissions == 3) {
+        if (has_read == 1) {
+            if (has_execute == 0) {
+                if (admin_permissions == 11) {
+                    if (removed_write == 1) {
+                        println("All flag tests passed!");
+                        return 0;
+                    }
+                }
+            }
+        }
+    }
+    
+    println("Some tests failed!");
+    return 1;
+}
+

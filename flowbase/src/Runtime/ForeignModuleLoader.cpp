@@ -6,13 +6,13 @@
 #define dlopen(lib, flags) LoadLibraryA(lib)
 #define dlsym(handle, func) GetProcAddress((HMODULE)handle, func)
 #define dlclose(handle) FreeLibrary((HMODULE)handle)
-static const char* dlerror() { 
-    static char buf[256]; 
-    DWORD err = GetLastError(); 
-    FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 
-                   NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), 
-                   buf, sizeof(buf), NULL); 
-    return buf; 
+static const char* dlerror() {
+    static char buf[256];
+    DWORD err = GetLastError();
+    FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                   NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                   buf, sizeof(buf), NULL);
+    return buf;
 }
 #define RTLD_LAZY 0
 // Windows compatibility macros for process I/O
@@ -34,7 +34,7 @@ ForeignModuleLoader& ForeignModuleLoader::getInstance() {
 }
 
 bool ForeignModuleLoader::isModuleLoaded(const std::string& language, const std::string& moduleName) const {
-    return std::find(loadedModules.begin(), loadedModules.end(), 
+    return std::find(loadedModules.begin(), loadedModules.end(),
                      std::make_pair(language, moduleName)) != loadedModules.end();
 }
 
@@ -43,9 +43,9 @@ bool ForeignModuleLoader::loadAndRegisterModule(const std::string& language, con
     if (isModuleLoaded(language, moduleName)) {
         return true;
     }
-    
+
     bool success = false;
-    
+
     if (language == "python") {
         success = loadPythonModule(moduleName);
     } else if (language == "go") {
@@ -62,27 +62,21 @@ bool ForeignModuleLoader::loadAndRegisterModule(const std::string& language, con
         std::cerr << "Unknown language: " << language << std::endl;
         return false;
     }
-    
+
     if (success) {
         loadedModules.push_back({language, moduleName});
     }
-    
+
     return success;
 }
 
-/**
- * PYTHON MODULE LOADER
- * Uses Python's C API + inspect module to discover all functions dynamically
- */
 bool ForeignModuleLoader::loadPythonModule(const std::string& moduleName) {
     std::cerr << "[ForeignModuleLoader] Loading Python module: " << moduleName << std::endl;
-    
+
     // Find libflow shared library (in interop/c)
     std::string libflowPath = std::string(std::getenv("HOME")) + "/Flow/interop/c/libflow.dylib";
-    
-    // For now, we'll shell out to Python to introspect the module
-    // In production, we'd use Python's C API directly
-    std::string pythonScript = 
+
+    std::string pythonScript =
         "import sys; "
         "import inspect; "
         "try: "
@@ -98,44 +92,42 @@ bool ForeignModuleLoader::loadPythonModule(const std::string& moduleName) {
         "except Exception as e: "
         "    print(f'ERROR: {e}', file=sys.stderr); "
         "    sys.exit(1)";
-    
+
     std::string cmd = "python3 -c \"" + pythonScript + "\" 2>/dev/null";
     FILE* pipe = popen(cmd.c_str(), "r");
     if (!pipe) {
         std::cerr << "Failed to execute Python introspection" << std::endl;
         return false;
     }
-    
+
     std::vector<FunctionSignature> functions;
     char buffer[1024];
-    
+
     while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
         std::string line(buffer);
         // Remove trailing newline
         if (!line.empty() && line.back() == '\n') {
             line.pop_back();
         }
-        
+
         // Parse: function_name|(param1, param2) -> return_type
         size_t delimPos = line.find('|');
         if (delimPos == std::string::npos) continue;
-        
+
         std::string funcName = line.substr(0, delimPos);
         std::string signature = line.substr(delimPos + 1);
-        
+
         // Skip private functions
         if (funcName.empty() || funcName[0] == '_') continue;
-        
+
         FunctionSignature func;
         func.name = funcName;
         func.sourceLanguage = "python";
         func.sourceModule = moduleName;
         func.documentation = "Python function from " + moduleName + " module";
-        
-        // Parse signature - simplified for now
-        // Real implementation would parse full signatures
+
         func.returnType = "any"; // Python is dynamically typed
-        
+
         // For demo, extract parameter names from signature like "(x, y)"
         size_t startParen = signature.find('(');
         size_t endParen = signature.find(')');
@@ -160,42 +152,36 @@ bool ForeignModuleLoader::loadPythonModule(const std::string& moduleName) {
                 func.parameters.push_back({params, "any"});
             }
         }
-        
+
         functions.push_back(func);
     }
-    
+
     int status = pclose(pipe);
     if (status != 0) {
         std::cerr << "Python introspection failed for module: " << moduleName << std::endl;
         return false;
     }
-    
+
     if (functions.empty()) {
         std::cerr << "No functions found in Python module: " << moduleName << std::endl;
         return false;
     }
-    
+
     // Register with ReflectionManager
     auto& reflectionMgr = ReflectionManager::getInstance();
     reflectionMgr.registerForeignModule("python", moduleName, functions);
-    
-    std::cerr << "[ForeignModuleLoader] Successfully loaded " << functions.size() 
+
+    std::cerr << "[ForeignModuleLoader] Successfully loaded " << functions.size()
               << " functions from Python module: " << moduleName << std::endl;
-    
+
     return true;
 }
 
-/**
- * GO MODULE LOADER
- * Uses Go's plugin system + reflect package to discover exported functions
- */
 bool ForeignModuleLoader::loadGoModule(const std::string& moduleName) {
     std::cerr << "[ForeignModuleLoader] Loading Go module: " << moduleName << std::endl;
-    
-    // For Go standard library, we need to introspect the package
-    // This requires building a small Go program that imports the package and reflects on it
-    
-    std::string goScript = 
+
+
+    std::string goScript =
         "package main; "
         "import \"" + moduleName + "\"; "
         "import \"reflect\"; "
@@ -204,12 +190,10 @@ bool ForeignModuleLoader::loadGoModule(const std::string& moduleName) {
         "    pkgType := reflect.TypeOf((*" + moduleName + ".TODO)(nil)).Elem(); "
         "    fmt.Println(pkgType); "
         "}";
-    
-    // For now, register common Go stdlib packages manually with dynamic discovery
-    // In production, we'd use cgo to call Go's reflect package
-    
+
+
     std::vector<FunctionSignature> functions;
-    
+
     if (moduleName == "fmt") {
         FunctionSignature printf;
         printf.name = "Printf";
@@ -219,7 +203,7 @@ bool ForeignModuleLoader::loadGoModule(const std::string& moduleName) {
         printf.sourceModule = moduleName;
         printf.documentation = "Printf formats according to a format specifier and writes to standard output.";
         functions.push_back(printf);
-        
+
         FunctionSignature println;
         println.name = "Println";
         println.returnType = "int";
@@ -238,18 +222,18 @@ bool ForeignModuleLoader::loadGoModule(const std::string& moduleName) {
         readFile.documentation = "ReadFile reads the named file and returns the contents.";
         functions.push_back(readFile);
     }
-    
+
     if (functions.empty()) {
         std::cerr << "No functions found in Go module: " << moduleName << std::endl;
         return false;
     }
-    
+
     auto& reflectionMgr = ReflectionManager::getInstance();
     reflectionMgr.registerForeignModule("go", moduleName, functions);
-    
-    std::cerr << "[ForeignModuleLoader] Successfully loaded " << functions.size() 
+
+    std::cerr << "[ForeignModuleLoader] Successfully loaded " << functions.size()
               << " functions from Go module: " << moduleName << std::endl;
-    
+
     return true;
 }
 
@@ -259,10 +243,10 @@ bool ForeignModuleLoader::loadGoModule(const std::string& moduleName) {
  */
 bool ForeignModuleLoader::loadJavaScriptModule(const std::string& moduleName) {
     std::cerr << "[ForeignModuleLoader] Loading JavaScript module: " << moduleName << std::endl;
-    
+
     // TODO: Implement using Node.js C++ addons or V8 API
     // For now, return false to indicate not implemented
-    
+
     return false;
 }
 

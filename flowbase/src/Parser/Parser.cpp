@@ -149,6 +149,10 @@ namespace flow
             {
                 return parseStructDecl();
             }
+            if (match(TokenType::KW_IMPL))
+            {
+                return parseImplDecl();
+            }
             if (match(TokenType::KW_TYPE))
             {
                 return parseTypeDefDecl();
@@ -241,6 +245,41 @@ namespace flow
         consume(TokenType::RBRACE, "Expected '}' after struct fields");
 
         return std::make_shared<StructDecl>(name.lexeme, fields, name.location);
+    }
+
+    std::shared_ptr<ImplDecl> Parser::parseImplDecl()
+    {
+        // impl StructName::methodName(params) -> returnType { body }
+        Token structName = consume(TokenType::IDENTIFIER, "Expected struct name after 'impl'");
+        consume(TokenType::DOUBLE_COLON, "Expected '::' after struct name");
+        Token methodName = consume(TokenType::IDENTIFIER, "Expected method name after '::'");
+
+        auto implDecl = std::make_shared<ImplDecl>(structName.lexeme, methodName.lexeme, structName.location);
+
+        // Parse parameters
+        consume(TokenType::LPAREN, "Expected '(' after method name");
+        if (!check(TokenType::RPAREN)) {
+            do {
+                implDecl->parameters.push_back(parseParameter());
+            } while (match(TokenType::COMMA));
+        }
+        consume(TokenType::RPAREN, "Expected ')' after parameters");
+
+        // Parse return type (optional)
+        if (match(TokenType::ARROW)) {
+            implDecl->returnType = parseType();
+        } else {
+            implDecl->returnType = std::make_shared<Type>(TypeKind::VOID, "void");
+        }
+
+        // Parse body
+        consume(TokenType::LBRACE, "Expected '{' before method body");
+        while (!check(TokenType::RBRACE) && !isAtEnd()) {
+            implDecl->body.push_back(parseStatement());
+        }
+        consume(TokenType::RBRACE, "Expected '}' after method body");
+
+        return implDecl;
     }
 
     std::shared_ptr<TypeDefDecl> Parser::parseTypeDefDecl()
@@ -679,9 +718,51 @@ namespace flow
 
     std::shared_ptr<Expr> Parser::parseLogicalAnd()
     {
-        auto expr = parseEquality();
+        auto expr = parseBitwiseOr();
 
         while (match(TokenType::AND))
+        {
+            Token op = previous();
+            auto right = parseBitwiseOr();
+            expr = std::make_shared<BinaryExpr>(expr, op.type, right, op.location);
+        }
+
+        return expr;
+    }
+
+    std::shared_ptr<Expr> Parser::parseBitwiseOr()
+    {
+        auto expr = parseBitwiseXor();
+
+        while (match(TokenType::PIPE))
+        {
+            Token op = previous();
+            auto right = parseBitwiseXor();
+            expr = std::make_shared<BinaryExpr>(expr, op.type, right, op.location);
+        }
+
+        return expr;
+    }
+
+    std::shared_ptr<Expr> Parser::parseBitwiseXor()
+    {
+        auto expr = parseBitwiseAnd();
+
+        while (match(TokenType::CARET))
+        {
+            Token op = previous();
+            auto right = parseBitwiseAnd();
+            expr = std::make_shared<BinaryExpr>(expr, op.type, right, op.location);
+        }
+
+        return expr;
+    }
+
+    std::shared_ptr<Expr> Parser::parseBitwiseAnd()
+    {
+        auto expr = parseEquality();
+
+        while (match(TokenType::AMPERSAND))
         {
             Token op = previous();
             auto right = parseEquality();
@@ -707,10 +788,24 @@ namespace flow
 
     std::shared_ptr<Expr> Parser::parseComparison()
     {
-        auto expr = parseTerm();
+        auto expr = parseBitwiseShift();
 
         while (match(TokenType::LT) || match(TokenType::LE) ||
             match(TokenType::GT) || match(TokenType::GE))
+        {
+            Token op = previous();
+            auto right = parseBitwiseShift();
+            expr = std::make_shared<BinaryExpr>(expr, op.type, right, op.location);
+        }
+
+        return expr;
+    }
+
+    std::shared_ptr<Expr> Parser::parseBitwiseShift()
+    {
+        auto expr = parseTerm();
+
+        while (match(TokenType::LEFT_SHIFT) || match(TokenType::RIGHT_SHIFT))
         {
             Token op = previous();
             auto right = parseTerm();
@@ -750,7 +845,7 @@ namespace flow
 
     std::shared_ptr<Expr> Parser::parseUnary()
     {
-        if (match(TokenType::NOT) || match(TokenType::MINUS))
+        if (match(TokenType::NOT) || match(TokenType::MINUS) || match(TokenType::TILDE))
         {
             Token op = previous();
             auto right = parseUnary();
@@ -809,6 +904,13 @@ namespace flow
     {
         Token token = peek();
 
+        // This expression
+        if (token.type == TokenType::KW_THIS)
+        {
+            advance();
+            return std::make_shared<ThisExpr>(token.location);
+        }
+
         // Integer literals
         if (token.type == TokenType::INT_LITERAL)
         {
@@ -840,11 +942,111 @@ namespace flow
             return std::make_shared<BoolLiteralExpr>(value, token.location);
         }
 
-        // Identifiers
-        if (token.type == TokenType::IDENTIFIER)
+        // Lambda expressions with optional return type, or identifiers
+        // Syntax: lambda[params] { body } or returnType lambda[params] { body }
+        if (token.type == TokenType::KW_LAMBDA ||
+            (token.type >= TokenType::TYPE_INT && token.type <= TokenType::TYPE_VOID) ||
+            token.type == TokenType::IDENTIFIER)
         {
-            advance();
-            return std::make_shared<IdentifierExpr>(token.lexeme, token.location);
+            // Check if this might be a lambda with return type
+            std::shared_ptr<Type> returnType = nullptr;
+            SourceLocation lambdaLoc = token.location;
+            
+            // Check if we have "type lambda" pattern
+            if (token.type >= TokenType::TYPE_INT && token.type <= TokenType::TYPE_VOID)
+            {
+                // Consume the type token and create the return type
+                advance(); // consume the type token (int, float, etc.)
+                if (token.type == TokenType::TYPE_INT)
+                {
+                    returnType = std::make_shared<Type>(TypeKind::INT, "int");
+                }
+                else if (token.type == TokenType::TYPE_FLOAT)
+                {
+                    returnType = std::make_shared<Type>(TypeKind::FLOAT, "float");
+                }
+                else if (token.type == TokenType::TYPE_STRING)
+                {
+                    returnType = std::make_shared<Type>(TypeKind::STRING, "string");
+                }
+                else if (token.type == TokenType::TYPE_BOOL)
+                {
+                    returnType = std::make_shared<Type>(TypeKind::BOOL, "bool");
+                }
+                else if (token.type == TokenType::TYPE_VOID)
+                {
+                    returnType = std::make_shared<Type>(TypeKind::VOID, "void");
+                }
+                
+                if (check(TokenType::KW_LAMBDA))
+                {
+                    // Yes, it's a typed lambda!
+                    advance(); // consume 'lambda'
+                    lambdaLoc = previous().location;
+                }
+                else
+                {
+                    // Not a lambda expression, this is an error
+                    throw error(token, "Expected expression");
+                }
+            }
+            else if (token.type == TokenType::IDENTIFIER)
+            {
+                // Could be custom type + lambda, or just identifier
+                int savedPos = current;
+                Token idToken = token;
+                advance();
+                
+                if (check(TokenType::KW_LAMBDA))
+                {
+                    // It's a custom typed lambda: MyType lambda[...]
+                    advance(); // consume 'lambda'
+                    lambdaLoc = previous().location;
+                    returnType = std::make_shared<Type>(TypeKind::STRUCT, idToken.lexeme);
+                }
+                else
+                {
+                    // Just an identifier, backtrack
+                    current = savedPos;
+                    advance();
+                    return std::make_shared<IdentifierExpr>(token.lexeme, token.location);
+                }
+            }
+            else if (token.type == TokenType::KW_LAMBDA)
+            {
+                advance(); // consume 'lambda'
+                lambdaLoc = token.location;
+                returnType = std::make_shared<Type>(TypeKind::VOID, "void");
+            }
+
+            auto lambda = std::make_shared<LambdaExpr>(lambdaLoc);
+            lambda->returnType = returnType ? returnType : std::make_shared<Type>(TypeKind::VOID, "void");
+
+            // Parse parameters in brackets: lambda[param1: type1, param2: type2]
+            consume(TokenType::LBRACKET, "Expected '[' after 'lambda'");
+
+            if (!check(TokenType::RBRACKET))
+            {
+                do
+                {
+                    lambda->parameters.push_back(parseParameter());
+                }
+                while (match(TokenType::COMMA));
+            }
+
+            consume(TokenType::RBRACKET, "Expected ']' after lambda parameters");
+
+            // Parse body
+            consume(TokenType::LBRACE, "Expected '{' before lambda body");
+
+            while (!check(TokenType::RBRACE) && !isAtEnd())
+            {
+                lambda->body.push_back(parseStatement());
+            }
+
+            consume(TokenType::RBRACE, "Expected '}' after lambda body");
+
+            return lambda;
         }
 
         // Parenthesized expressions
@@ -902,31 +1104,74 @@ namespace flow
         Token token = advance();
         std::shared_ptr<Type> baseType;
 
-        // Basic types
-        if (token.type == TokenType::TYPE_INT)
+        // Check for lambda/function types: "return_type lambda[param_types]"
+        // We need to check if this is a type followed by 'lambda' keyword
+        if ((token.type >= TokenType::TYPE_INT && token.type <= TokenType::TYPE_VOID) ||
+            token.type == TokenType::IDENTIFIER)
         {
-            baseType = std::make_shared<Type>(TypeKind::INT, "int");
-        }
-        else if (token.type == TokenType::TYPE_FLOAT)
-        {
-            baseType = std::make_shared<Type>(TypeKind::FLOAT, "float");
-        }
-        else if (token.type == TokenType::TYPE_STRING)
-        {
-            baseType = std::make_shared<Type>(TypeKind::STRING, "string");
-        }
-        else if (token.type == TokenType::TYPE_BOOL)
-        {
-            baseType = std::make_shared<Type>(TypeKind::BOOL, "bool");
-        }
-        else if (token.type == TokenType::TYPE_VOID)
-        {
-            baseType = std::make_shared<Type>(TypeKind::VOID, "void");
-        }
-        // Custom types (structs, etc.)
-        else if (token.type == TokenType::IDENTIFIER)
-        {
-            baseType = std::make_shared<Type>(TypeKind::STRUCT, token.lexeme);
+            // Save current position in case this isn't a lambda type
+            int savedPos = current;
+            
+            // Parse the potential return type
+            std::shared_ptr<Type> returnType;
+            if (token.type == TokenType::TYPE_INT)
+            {
+                returnType = std::make_shared<Type>(TypeKind::INT, "int");
+            }
+            else if (token.type == TokenType::TYPE_FLOAT)
+            {
+                returnType = std::make_shared<Type>(TypeKind::FLOAT, "float");
+            }
+            else if (token.type == TokenType::TYPE_STRING)
+            {
+                returnType = std::make_shared<Type>(TypeKind::STRING, "string");
+            }
+            else if (token.type == TokenType::TYPE_BOOL)
+            {
+                returnType = std::make_shared<Type>(TypeKind::BOOL, "bool");
+            }
+            else if (token.type == TokenType::TYPE_VOID)
+            {
+                returnType = std::make_shared<Type>(TypeKind::VOID, "void");
+            }
+            else if (token.type == TokenType::IDENTIFIER)
+            {
+                returnType = std::make_shared<Type>(TypeKind::STRUCT, token.lexeme);
+            }
+            
+            // Check if next token is 'lambda'
+            if (check(TokenType::KW_LAMBDA))
+            {
+                advance(); // consume 'lambda'
+                
+                // This is a function type!
+                auto funcType = std::make_shared<Type>(TypeKind::FUNCTION, "lambda");
+                
+                // Store return type in typeParams[0]
+                funcType->typeParams.push_back(returnType);
+                
+                // Parse parameter types: lambda[type1, type2, ...]
+                consume(TokenType::LBRACKET, "Expected '[' after 'lambda' in function type");
+                
+                if (!check(TokenType::RBRACKET))
+                {
+                    do
+                    {
+                        auto paramType = parseType();
+                        funcType->typeParams.push_back(paramType);
+                    }
+                    while (match(TokenType::COMMA));
+                }
+                
+                consume(TokenType::RBRACKET, "Expected ']' after lambda parameter types");
+                
+                return funcType;
+            }
+            else
+            {
+                // Not a lambda type, use the return type as base type
+                baseType = returnType;
+            }
         }
         else
         {

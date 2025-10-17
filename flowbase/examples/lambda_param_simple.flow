@@ -1,0 +1,33 @@
+// Simple example: Function that accepts a lambda as parameter
+
+// Function parameter syntax: return_type lambda[param_type1, param_type2]
+func apply_operation(x: int, y: int, operation: int lambda[int, int]) -> int {
+    return operation(x, y);
+}
+
+// Event handler style function
+func add_button(label: string, onClick: void lambda[string, int]) {
+    println("Button created:");
+    println(label);
+    onClick("click_event", 42);
+}
+
+func main() -> int {
+    // Pass lambda with NAMED parameters in the expression
+    let sum = apply_operation(10, 5, int lambda[a: int, b: int] {
+        return a + b;
+    });
+    
+    let product = apply_operation(10, 5, int lambda[x: int, y: int] {
+        return x * y;
+    });
+    
+    // Event handler example (like your original add_button)
+    add_button("Click Me!", lambda[event: string, value: int] {
+        println("Event:");
+        println(event);
+    });
+    
+    return sum;
+}
+

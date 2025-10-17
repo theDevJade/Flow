@@ -1,0 +1,55 @@
+// Comprehensive bitwise operators test
+
+func main() -> int {
+    println("Comprehensive Bitwise Test");
+    
+    // Test all binary bitwise operators
+    let x = 15;  // 1111
+    let y = 7;   // 0111
+    
+    let and_op = x & y;      // 0111 = 7
+    let or_op = x | y;       // 1111 = 15
+    let xor_op = x ^ y;      // 1000 = 8
+    let lshift = y << 1;     // 1110 = 14
+    let rshift = x >> 1;     // 0111 = 7
+    let not_op = ~y;         // ~7 = -8
+    
+    // Test operator precedence
+    let precedence1 = x & y | 1;      // Should be (x & y) | 1 = 7
+    let precedence2 = x | y & 1;      // Should be x | (y & 1) = 15
+    let precedence3 = x ^ y << 1;     // Should be x ^ (y << 1) = 1
+    
+    // Test with negative numbers
+    let neg = -4;
+    let neg_and = neg & 3;   // Should work with two's complement
+    let neg_shift = neg >> 1; // Arithmetic right shift
+    
+    // Verify results
+    let mut all_correct = 0;
+    if (and_op == 7) {
+        if (or_op == 15) {
+            if (xor_op == 8) {
+                if (lshift == 14) {
+                    if (rshift == 7) {
+                        if (precedence1 == 7) {
+                            if (precedence2 == 15) {
+                                if (precedence3 == 1) {
+                                    all_correct = 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    if (all_correct == 1) {
+        println("All comprehensive tests passed!");
+        return 0;
+    }
+    
+    println("Some comprehensive tests failed!");
+    return 1;
+}
+

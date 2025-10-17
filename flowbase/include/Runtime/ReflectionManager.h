@@ -81,10 +81,14 @@ struct ModuleInfo {
     std::string name;
     std::string language; // "flow", "go", "python", etc.
     std::string path;
+    // TEMPORARY: Use vector instead of map to bypass the crash
+    std::vector<std::pair<std::string, FunctionSignature>> functions_vec;
     std::map<std::string, FunctionSignature> functions;
     bool isLoaded;
     
-    ModuleInfo() : language("flow"), isLoaded(false) {}
+    ModuleInfo() : language("flow"), functions(), isLoaded(false) {
+        // Explicitly initialize the map
+    }
 };
 
 // ============================================================================

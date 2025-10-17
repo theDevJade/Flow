@@ -20,6 +20,9 @@ namespace flow {
         std::map<std::string, llvm::Value *> namedValues;
         std::map<std::string, llvm::StructType *> structTypes;
         std::map<std::string, std::map<std::string, int> > structFieldIndices;
+        
+        // Track lambda variables (variable name -> lambda function)
+        std::map<std::string, llvm::Function *> lambdaValues;
 
 
         std::map<std::string, std::shared_ptr<Type> > typeAliases;
@@ -95,6 +98,8 @@ namespace flow {
 
         void visit(IdentifierExpr &node) override;
 
+        void visit(ThisExpr &node) override;
+
         void visit(BinaryExpr &node) override;
 
         void visit(UnaryExpr &node) override;
@@ -108,6 +113,8 @@ namespace flow {
         void visit(ArrayLiteralExpr &node) override;
 
         void visit(IndexExpr &node) override;
+
+        void visit(LambdaExpr &node) override;
 
         // Statement visitors
         void visit(ExprStmt &node) override;
@@ -130,6 +137,8 @@ namespace flow {
         void visit(FunctionDecl &node) override;
 
         void visit(StructDecl &node) override;
+
+        void visit(ImplDecl &node) override;
 
         void visit(TypeDefDecl &node) override;
 

@@ -9,6 +9,8 @@
 namespace flow {
     // Forward declarations
     class ASTVisitor;
+    class Stmt;
+    class Parameter;
 
 
     // ============================================================
@@ -113,6 +115,14 @@ namespace flow {
         std::string name;
 
         IdentifierExpr(const std::string &n, const SourceLocation &loc) : Expr(loc), name(n) {
+        }
+
+        void accept(ASTVisitor &visitor) override;
+    };
+
+    class ThisExpr : public Expr {
+    public:
+        ThisExpr(const SourceLocation &loc) : Expr(loc) {
         }
 
         void accept(ASTVisitor &visitor) override;
@@ -334,6 +344,19 @@ namespace flow {
         }
     };
 
+    // Lambda expression - defined here after Stmt and Parameter are available
+    class LambdaExpr : public Expr {
+    public:
+        std::vector<Parameter> parameters;
+        std::shared_ptr<Type> returnType;
+        std::vector<std::shared_ptr<Stmt> > body;
+
+        LambdaExpr(const SourceLocation &loc) : Expr(loc), returnType(nullptr) {
+        }
+
+        void accept(ASTVisitor &visitor) override;
+    };
+
     class FunctionDecl : public Decl {
     public:
         std::vector<Parameter> parameters;
@@ -365,6 +388,21 @@ namespace flow {
 
         StructDecl(const std::string &n, std::vector<StructField> f, const SourceLocation &loc)
             : Decl(n, loc), fields(f) {
+        }
+
+        void accept(ASTVisitor &visitor) override;
+    };
+
+    class ImplDecl : public Decl {
+    public:
+        std::string structName;
+        std::string methodName;
+        std::vector<Parameter> parameters;
+        std::shared_ptr<Type> returnType;
+        std::vector<std::shared_ptr<Stmt> > body;
+
+        ImplDecl(const std::string &sName, const std::string &mName, const SourceLocation &loc)
+            : Decl(sName + "::" + mName, loc), structName(sName), methodName(mName), returnType(nullptr) {
         }
 
         void accept(ASTVisitor &visitor) override;
@@ -453,6 +491,8 @@ namespace flow {
 
         virtual void visit(IdentifierExpr &node) = 0;
 
+        virtual void visit(ThisExpr &node) = 0;
+
         virtual void visit(BinaryExpr &node) = 0;
 
         virtual void visit(UnaryExpr &node) = 0;
@@ -466,6 +506,8 @@ namespace flow {
         virtual void visit(ArrayLiteralExpr &node) = 0;
 
         virtual void visit(IndexExpr &node) = 0;
+
+        virtual void visit(LambdaExpr &node) = 0;
 
         // Statements
         virtual void visit(ExprStmt &node) = 0;
@@ -488,6 +530,8 @@ namespace flow {
         virtual void visit(FunctionDecl &node) = 0;
 
         virtual void visit(StructDecl &node) = 0;
+
+        virtual void visit(ImplDecl &node) = 0;
 
         virtual void visit(TypeDefDecl &node) = 0;
 

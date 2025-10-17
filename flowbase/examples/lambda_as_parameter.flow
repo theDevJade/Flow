@@ -1,0 +1,67 @@
+// Example: Functions that accept lambdas as parameters
+
+// Function that takes a callback lambda with no return value
+func execute_callback(callback: void lambda[string]) {
+    callback("Hello from callback!");
+}
+
+// Function that takes a lambda that returns a value
+func apply_operation(x: int, y: int, operation: int lambda[int, int]) -> int {
+    return operation(x, y);
+}
+
+// Function that simulates an event handler (like add_button)
+func add_button(label: string, onClick: void lambda[string, int]) {
+    println("Button created with label:");
+    println(label);
+    println("Triggering click event...");
+    
+    // Simulate a click event
+    onClick("button_click", 42);
+}
+
+// Function that takes a lambda and applies it to each element
+func map_numbers(start: int, end: int, transformer: int lambda[int]) -> int {
+    let result = 0;
+    let i = start;
+    while (i < end) {
+        result = result + transformer(i);
+        i = i + 1;
+    }
+    return result;
+}
+
+func main() -> int {
+    // Example 1: Simple callback
+    execute_callback(lambda[msg: string] {
+        println("Received message:");
+        println(msg);
+    });
+    
+    // Example 2: Lambda that returns a value
+    let sum = apply_operation(10, 5, int lambda[a: int, b: int] {
+        return a + b;
+    });
+    
+    let product = apply_operation(10, 5, int lambda[a: int, b: int] {
+        return a * b;
+    });
+    
+    println("Sum: ");
+    println("Product: ");
+    
+    // Example 3: Event handler style (like your original example)
+    add_button("Click Me", lambda[event: string, value: int] {
+        println("Event triggered:");
+        println(event);
+        println("Value: ");
+    });
+    
+    // Example 4: Transformer function
+    let doubled = map_numbers(1, 5, int lambda[x: int] {
+        return x * 2;
+    });
+    
+    return 0;
+}
+

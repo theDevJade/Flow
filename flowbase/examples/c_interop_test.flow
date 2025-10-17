@@ -32,7 +32,7 @@ func main() {
     print("╚═══════════════════════════╝");
     print("");
     
-    // Test C math functions
+    // Test C math functionss
     testMath();
     
     // Test exported Flow functions

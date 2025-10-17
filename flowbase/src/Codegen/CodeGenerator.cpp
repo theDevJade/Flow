@@ -506,6 +506,17 @@ namespace flow {
         }
     }
 
+    void CodeGenerator::visit(ThisExpr &node) {
+        // 'this' is already a pointer to the struct, so just load it
+        auto it = namedValues.find("this");
+        if (it != namedValues.end()) {
+            currentValue = it->second;
+        } else {
+            std::cerr << "'this' not found in current context" << std::endl;
+            currentValue = nullptr;
+        }
+    }
+
     void CodeGenerator::visit(BinaryExpr &node) {
         // Handle string concatenation specially
         if (node.op == TokenType::PLUS) {
@@ -662,6 +673,22 @@ namespace flow {
                 }
                 currentValue = builder->CreateOr(L, R, "ortmp");
                 break;
+            // Bitwise operators
+            case TokenType::AMPERSAND:
+                currentValue = builder->CreateAnd(L, R, "bitand");
+                break;
+            case TokenType::PIPE:
+                currentValue = builder->CreateOr(L, R, "bitor");
+                break;
+            case TokenType::CARET:
+                currentValue = builder->CreateXor(L, R, "bitxor");
+                break;
+            case TokenType::LEFT_SHIFT:
+                currentValue = builder->CreateShl(L, R, "shl");
+                break;
+            case TokenType::RIGHT_SHIFT:
+                currentValue = builder->CreateAShr(L, R, "ashr");
+                break;
             default:
                 std::cerr << "Unknown binary operator" << std::endl;
                 currentValue = nullptr;
@@ -707,6 +734,15 @@ namespace flow {
                     currentValue = nullptr;
                 }
                 break;
+            case TokenType::TILDE:
+                // Bitwise NOT
+                if (operand->getType()->isIntegerTy()) {
+                    currentValue = builder->CreateNot(operand, "bitnot");
+                } else {
+                    std::cerr << "Cannot apply bitwise NOT to non-integer type" << std::endl;
+                    currentValue = nullptr;
+                }
+                break;
             default:
                 std::cerr << "Unknown unary operator" << std::endl;
                 currentValue = nullptr;
@@ -714,7 +750,34 @@ namespace flow {
     }
 
     void CodeGenerator::visit(CallExpr &node) {
-        // Get function name
+        // Check if this is a lambda call (calling a function pointer stored in a variable)
+        if (auto *idExpr = dynamic_cast<IdentifierExpr *>(node.callee.get())) {
+            // Check if this identifier is a tracked lambda
+            auto lambdaIt = lambdaValues.find(idExpr->name);
+            if (lambdaIt != lambdaValues.end()) {
+                // This is a lambda call!
+                llvm::Function *lambdaFunc = lambdaIt->second;
+                
+                // Evaluate arguments
+                std::vector<llvm::Value *> args;
+                for (auto &arg: node.arguments) {
+                    arg->accept(*this);
+                    if (currentValue) {
+                        args.push_back(currentValue);
+                    }
+                }
+                
+                // Call the lambda directly
+                if (lambdaFunc->getReturnType()->isVoidTy()) {
+                    currentValue = builder->CreateCall(lambdaFunc, args);
+                } else {
+                    currentValue = builder->CreateCall(lambdaFunc, args, "lambda_result");
+                }
+                return;
+            }
+        }
+        
+        // Get function name for regular function calls
         std::string funcName;
         if (auto *idExpr = dynamic_cast<IdentifierExpr *>(node.callee.get())) {
             funcName = idExpr->name;
@@ -1044,6 +1107,92 @@ namespace flow {
         currentValue = builder->CreateLoad(elemType, elemPtr, "indexval");
     }
 
+    void CodeGenerator::visit(LambdaExpr &node) {
+        // Generate a unique name for the lambda function
+        static int lambdaCounter = 0;
+        std::string lambdaName = "__lambda_" + std::to_string(lambdaCounter++);
+
+        // Build parameter types
+        std::vector<llvm::Type *> paramTypes;
+        for (const auto &param : node.parameters) {
+            paramTypes.push_back(getLLVMType(param.type));
+        }
+
+        // Determine return type
+        llvm::Type *returnType = node.returnType ? getLLVMType(node.returnType) : llvm::Type::getVoidTy(*context);
+
+        // Create function type
+        llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, paramTypes, false);
+
+        // Create the lambda function in the current module
+        llvm::Function *lambdaFunc = llvm::Function::Create(
+            funcType,
+            llvm::Function::InternalLinkage,
+            lambdaName,
+            module.get()
+        );
+
+        // Save current insertion point, named values, and lambda values
+        llvm::BasicBlock *savedInsertBlock = builder->GetInsertBlock();
+        auto savedNamedValues = namedValues;
+        auto savedLambdaValues = lambdaValues;
+
+        // Create entry block for the lambda
+        llvm::BasicBlock *entryBlock = llvm::BasicBlock::Create(*context, "entry", lambdaFunc);
+        builder->SetInsertPoint(entryBlock);
+
+        // Clear named values and lambda values for the lambda's scope
+        namedValues.clear();
+        lambdaValues.clear();
+
+        // Set up parameters
+        unsigned idx = 0;
+        for (auto &arg : lambdaFunc->args()) {
+            const auto &param = node.parameters[idx];
+            arg.setName(param.name);
+            
+            // Create alloca for the parameter
+            llvm::AllocaInst *alloca = builder->CreateAlloca(arg.getType(), nullptr, param.name);
+            builder->CreateStore(&arg, alloca);
+            namedValues[param.name] = alloca;
+            
+            idx++;
+        }
+
+        // Generate code for the lambda body
+        for (auto &stmt : node.body) {
+            if (stmt) {
+                stmt->accept(*this);
+            }
+        }
+
+        // If there's no explicit return and return type is void, add a void return
+        if (!builder->GetInsertBlock()->getTerminator()) {
+            if (returnType->isVoidTy()) {
+                builder->CreateRetVoid();
+            } else {
+                // Return a default value
+                if (returnType->isIntegerTy()) {
+                    builder->CreateRet(llvm::ConstantInt::get(returnType, 0));
+                } else if (returnType->isFloatingPointTy()) {
+                    builder->CreateRet(llvm::ConstantFP::get(returnType, 0.0));
+                } else {
+                    builder->CreateRet(llvm::Constant::getNullValue(returnType));
+                }
+            }
+        }
+
+        // Restore previous context
+        namedValues = savedNamedValues;
+        lambdaValues = savedLambdaValues;
+        if (savedInsertBlock) {
+            builder->SetInsertPoint(savedInsertBlock);
+        }
+
+        // The lambda expression evaluates to a function pointer
+        currentValue = lambdaFunc;
+    }
+
     void CodeGenerator::visit(ExprStmt &node) {
         if (node.expression) {
             node.expression->accept(*this);
@@ -1081,6 +1230,12 @@ namespace flow {
                 initValue = currentValue;
             }
             if (initValue) {
+                // Check if this is a lambda (function pointer)
+                if (auto *lambdaFunc = llvm::dyn_cast<llvm::Function>(initValue)) {
+                    // Track this as a lambda variable
+                    lambdaValues[node.name] = lambdaFunc;
+                }
+                
                 builder->CreateStore(initValue, alloca);
 
                 // If the initializer was an array, track its length for this variable
@@ -1382,6 +1537,88 @@ namespace flow {
         llvm::StructType *structType = llvm::StructType::create(*context, fieldTypes, node.name);
         structTypes[node.name] = structType;
         structFieldIndices[node.name] = fieldIndices;
+    }
+
+    void CodeGenerator::visit(ImplDecl &node) {
+        // Create function for the method (StructName_methodName)
+        std::string mangledName = node.structName + "_" + node.methodName;
+
+        // Build parameter types (first parameter is 'this' pointer to struct)
+        std::vector<llvm::Type *> paramTypes;
+        
+        // Add 'this' parameter (pointer to struct)
+        if (structTypes.find(node.structName) != structTypes.end()) {
+            paramTypes.push_back(llvm::PointerType::get(*context, 0));
+        } else {
+            std::cerr << "Struct type not found: " << node.structName << std::endl;
+            return;
+        }
+
+        // Add other parameters
+        for (const auto &param : node.parameters) {
+            paramTypes.push_back(getLLVMType(param.type));
+        }
+
+        // Determine return type
+        llvm::Type *returnType = getLLVMType(node.returnType);
+
+        // Create function type and function
+        llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, paramTypes, false);
+        llvm::Function *func = llvm::Function::Create(
+            funcType,
+            llvm::Function::ExternalLinkage,
+            mangledName,
+            module.get()
+        );
+
+        // Create entry block
+        llvm::BasicBlock *entry = llvm::BasicBlock::Create(*context, "entry", func);
+        builder->SetInsertPoint(entry);
+
+        // Save previous context
+        auto savedNamedValues = namedValues;
+        auto savedLambdaValues = lambdaValues;
+
+        // Clear for method scope
+        namedValues.clear();
+        lambdaValues.clear();
+
+        // Set up 'this' parameter
+        llvm::Argument *thisArg = func->arg_begin();
+        thisArg->setName("this");
+        namedValues["this"] = thisArg;
+
+        // Set up other parameters
+        int argIdx = 1;
+        for (const auto &param : node.parameters) {
+            llvm::Argument *arg = func->arg_begin() + argIdx;
+            arg->setName(param.name);
+
+            // Create alloca for parameter
+            llvm::AllocaInst *alloca = builder->CreateAlloca(getLLVMType(param.type), nullptr, param.name);
+            builder->CreateStore(arg, alloca);
+            namedValues[param.name] = alloca;
+            argIdx++;
+        }
+
+        // Generate method body
+        for (auto &stmt : node.body) {
+            if (stmt) {
+                stmt->accept(*this);
+            }
+        }
+
+        // Add return if void and no explicit return
+        if (returnType->isVoidTy() && (!builder->GetInsertBlock()->getTerminator())) {
+            builder->CreateRetVoid();
+        } else if (!builder->GetInsertBlock()->getTerminator()) {
+            // Add default return value if missing
+            builder->CreateRet(llvm::Constant::getNullValue(returnType));
+        }
+
+        // Restore context
+        namedValues = savedNamedValues;
+        lambdaValues = savedLambdaValues;
     }
 
     void CodeGenerator::visit(TypeDefDecl &node) {

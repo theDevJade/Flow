@@ -1,0 +1,39 @@
+// Lambda callback test
+
+func process_numbers(callback: int lambda[int, int]) -> int {
+    let x = 10;
+    let y = 20;
+    return callback(x, y);
+}
+
+func apply_operation(a: int, b: int, op: int lambda[int, int]) -> int {
+    return op(a, b);
+}
+
+func main() -> int {
+    // Pass lambda as callback
+    let multiply_result = process_numbers(int lambda[x: int, y: int] {
+        return x * y;
+    });
+    
+    println("10 * 20 = ");
+    println(multiply_result);
+    
+    // Use apply_operation with different lambdas
+    let sum = apply_operation(5, 3, int lambda[a: int, b: int] {
+        return a + b;
+    });
+    
+    println("5 + 3 = ");
+    println(sum);
+    
+    let diff = apply_operation(10, 4, int lambda[a: int, b: int] {
+        return a - b;
+    });
+    
+    println("10 - 4 = ");
+    println(diff);
+    
+    return 0;
+}
+

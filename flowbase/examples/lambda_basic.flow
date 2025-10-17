@@ -1,0 +1,23 @@
+// Basic lambda test
+func main() -> int {
+    // Simple lambda with no return value
+    let greet = lambda[name: string] {
+        println("Hello, ");
+        println(name);
+    };
+    
+    // Lambda with return value
+    let add = int lambda[a: int, b: int] {
+        return a + b;
+    };
+    
+    // Call the lambdas
+    greet("World");
+    
+    let result = add(5, 3);
+    println("5 + 3 = ");
+    println(result);
+    
+    return 0;
+}
+

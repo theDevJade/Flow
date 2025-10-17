@@ -289,9 +289,6 @@ namespace flow
 #endif
     }
 
-    // ============================================================
-    // SUBPROCESS ADAPTER - Generic for any language
-    // ============================================================
 
 #ifndef _WIN32
     SubprocessAdapter::SubprocessAdapter(const std::string& lang, const std::string& exec)

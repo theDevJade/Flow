@@ -1,0 +1,53 @@
+// Test bitwise operators in Flow
+
+func main() -> int {
+    println("Testing Bitwise Operators");
+    
+    // Bitwise AND
+    let a = 12;      // 1100 in binary
+    let b = 10;      // 1010 in binary
+    let and_result = a & b;  // 1000 = 8
+    println("12 & 10 = 8 (expected)");
+    
+    // Bitwise OR
+    let or_result = a | b;   // 1110 = 14
+    println("12 | 10 = 14 (expected)");
+    
+    // Bitwise XOR
+    let xor_result = a ^ b;  // 0110 = 6
+    println("12 ^ 10 = 6 (expected)");
+    
+    // Bitwise NOT
+    let not_result = ~a;     // ~12 = -13 (two's complement)
+    println("~12 = -13 (expected)");
+    
+    // Left shift
+    let left_shift = a << 2; // 48
+    println("12 << 2 = 48 (expected)");
+    
+    // Right shift
+    let right_shift = a >> 2; // 3
+    println("12 >> 2 = 3 (expected)");
+    
+    // Complex expression
+    let complex = (a & b) | (a ^ b);
+    println("(12 & 10) | (12 ^ 10) = 14 (expected)");
+    
+    // Return 1 if basic tests look correct
+    if (and_result == 8) {
+        if (or_result == 14) {
+            if (xor_result == 6) {
+                if (left_shift == 48) {
+                    if (right_shift == 3) {
+                        println("All tests passed!");
+                        return 0;
+                    }
+                }
+            }
+        }
+    }
+    
+    println("Some tests failed!");
+    return 1;
+}
+

@@ -223,6 +223,19 @@ namespace flow
         }
     }
 
+    void SemanticAnalyzer::visit(ThisExpr& node)
+    {
+        if (currentStructContext.empty())
+        {
+            reportError("'this' can only be used inside a method", node.location);
+            node.type = std::make_shared<Type>(TypeKind::UNKNOWN);
+        }
+        else
+        {
+            node.type = std::make_shared<Type>(TypeKind::STRUCT, currentStructContext);
+        }
+    }
+
     void SemanticAnalyzer::visit(BinaryExpr& node)
     {
         // Type check operands
@@ -282,9 +295,39 @@ namespace flow
         if (auto* idExpr = dynamic_cast<IdentifierExpr*>(node.callee.get()))
         {
             auto* symbol = symbolTable.lookup(idExpr->name);
-            if (symbol && symbol->isFunction)
+            if (symbol)
             {
-                node.type = symbol->type;
+                if (symbol->isFunction)
+                {
+                    // Regular function call
+                    node.type = symbol->type;
+                }
+                else if (symbol->type && symbol->type->kind == TypeKind::FUNCTION)
+                {
+                    // Lambda/function pointer call
+                    // The return type is stored in typeParams[0]
+                    if (!symbol->type->typeParams.empty())
+                    {
+                        node.type = symbol->type->typeParams[0];
+                    }
+                    else
+                    {
+                        node.type = std::make_shared<Type>(TypeKind::VOID, "void");
+                    }
+                }
+            }
+        }
+        else if (node.callee->type && node.callee->type->kind == TypeKind::FUNCTION)
+        {
+            // Direct lambda expression call
+            // The return type is stored in typeParams[0]
+            if (!node.callee->type->typeParams.empty())
+            {
+                node.type = node.callee->type->typeParams[0];
+            }
+            else
+            {
+                node.type = std::make_shared<Type>(TypeKind::VOID, "void");
             }
         }
     }
@@ -443,6 +486,60 @@ namespace flow
                 reportError("Array index must be an integer", node.location);
             }
         }
+    }
+
+    void SemanticAnalyzer::visit(LambdaExpr& node)
+    {
+        // Create a function type for the lambda that includes return type info
+        auto funcType = std::make_shared<Type>(TypeKind::FUNCTION, "lambda");
+        
+        // Store the return type in the function type's typeParams
+        // typeParams[0] = return type, typeParams[1..n] = parameter types
+        if (node.returnType)
+        {
+            funcType->typeParams.push_back(node.returnType);
+        }
+        else
+        {
+            funcType->typeParams.push_back(std::make_shared<Type>(TypeKind::VOID, "void"));
+        }
+        
+        // Add parameter types to the function type
+        for (const auto& param : node.parameters)
+        {
+            funcType->typeParams.push_back(param.type);
+        }
+        
+        // Enter a new scope for lambda parameters
+        symbolTable.enterScope();
+        
+        // Register parameters in the lambda's scope
+        for (const auto& param : node.parameters)
+        {
+            symbolTable.define(param.name, param.type, false, false);
+        }
+        
+        // Save current function return type and set it to lambda's return type
+        auto savedReturnType = currentFunctionReturnType;
+        currentFunctionReturnType = node.returnType;
+        
+        // Type check the lambda body
+        for (auto& stmt : node.body)
+        {
+            if (stmt)
+            {
+                stmt->accept(*this);
+            }
+        }
+        
+        // Restore previous function return type
+        currentFunctionReturnType = savedReturnType;
+        
+        // Exit the lambda's scope
+        symbolTable.exitScope();
+        
+        // Set the lambda's type to the function type with full signature
+        node.type = funcType;
     }
 
     void SemanticAnalyzer::visit(ExprStmt& node)
@@ -691,6 +788,54 @@ namespace flow
         structFields[node.name] = fields;
     }
 
+    void SemanticAnalyzer::visit(ImplDecl& node)
+    {
+        // Check that the struct exists
+        if (structFields.find(node.structName) == structFields.end())
+        {
+            errors.push_back("Cannot implement method for undefined struct: " + node.structName);
+            return;
+        }
+
+        // Enter new scope for method
+        symbolTable.enterScope();
+
+        // Set current struct context for 'this' keyword
+        std::string savedContext = currentStructContext;
+        currentStructContext = node.structName;
+
+        // Define 'this' variable with struct type
+        auto thisType = std::make_shared<Type>(TypeKind::STRUCT, node.structName);
+        symbolTable.define("this", thisType, false, false);
+
+        // Define parameters
+        for (const auto& param : node.parameters)
+        {
+            symbolTable.define(param.name, param.type, false, false);
+        }
+
+        // Check body statements
+        auto savedReturnType = currentFunctionReturnType;
+        currentFunctionReturnType = node.returnType;
+        for (auto& stmt : node.body)
+        {
+            if (stmt)
+            {
+                stmt->accept(*this);
+            }
+        }
+        currentFunctionReturnType = savedReturnType;
+
+        // Restore context and exit scope
+        currentStructContext = savedContext;
+        symbolTable.exitScope();
+
+        // Register the method in the symbol table
+        // Store it as StructName::methodName
+        auto methodType = node.returnType ? node.returnType : std::make_shared<Type>(TypeKind::VOID, "void");
+        symbolTable.define(node.name, methodType, false, true);
+    }
+
     void SemanticAnalyzer::visit(TypeDefDecl& node)
     {
         // Register type alias
@@ -786,7 +931,7 @@ namespace flow
                 if (param.type)
                 {
                     auto paramType = resolveTypeAlias(param.type);
-                    if (paramType->kind == TypeKind::UNKNOWN)
+                    if (paramType && paramType->kind == TypeKind::UNKNOWN)
                     {
                         reportError("Foreign function '" + func->name + "' parameter '" +
                                     param.name + "' has unknown type", func->location);
@@ -794,7 +939,17 @@ namespace flow
                 }
             }
 
-            symbolTable.define(func->name, func->returnType, false, true);
+            // Ensure returnType is not null before registering
+            if (func->returnType)
+            {
+                symbolTable.define(func->name, func->returnType, false, true);
+            }
+            else
+            {
+                // Default to void if no return type specified
+                auto voidType = std::make_shared<Type>(TypeKind::VOID, "void");
+                symbolTable.define(func->name, voidType, false, true);
+            }
         }
     }
 
@@ -983,12 +1138,18 @@ namespace flow
 
     void SemanticAnalyzer::visit(Program& node)
     {
+        std::cerr << "SemanticAnalyzer::visit(Program) - " << node.declarations.size() << " declarations" << std::endl;
+        int i = 0;
         for (auto& decl : node.declarations)
         {
             if (decl)
             {
+                std::cerr << "  Processing declaration " << i << ": " << decl->name << std::endl;
                 decl->accept(*this);
+                std::cerr << "  Declaration " << i << " processed successfully" << std::endl;
             }
+            i++;
         }
+        std::cerr << "SemanticAnalyzer::visit(Program) - all declarations processed" << std::endl;
     }
 } // namespace flow

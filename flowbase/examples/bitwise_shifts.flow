@@ -1,0 +1,54 @@
+// Test shift operators for multiplication/division
+
+func main() -> int {
+    println("Testing Shift Operators");
+    
+    let num = 5;
+    
+    // Multiply by 2 using left shift
+    println("5 << 1 = 10 (expected)");
+    let shift1 = num << 1;  // 10
+    
+    println("5 << 2 = 20 (expected)");
+    let shift2 = num << 2;  // 20
+    
+    println("5 << 3 = 40 (expected)");
+    let shift3 = num << 3;  // 40
+    
+    // Divide by 2 using right shift
+    let num2 = 32;
+    println("32 >> 1 = 16 (expected)");
+    let rshift1 = num2 >> 1; // 16
+    
+    println("32 >> 2 = 8 (expected)");
+    let rshift2 = num2 >> 2; // 8
+    
+    println("32 >> 3 = 4 (expected)");
+    let rshift3 = num2 >> 3; // 4
+    
+    // Power of 2 check using bitwise AND
+    let power_check = num2 & (num2 - 1);
+    println("32 & 31 = 0 (power of 2 check)");
+    
+    // Verify results
+    if (shift1 == 10) {
+        if (shift2 == 20) {
+            if (shift3 == 40) {
+                if (rshift1 == 16) {
+                    if (rshift2 == 8) {
+                        if (rshift3 == 4) {
+                            if (power_check == 0) {
+                                println("All shift tests passed!");
+                                return 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    println("Some tests failed!");
+    return 1;
+}
+

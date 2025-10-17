@@ -1,0 +1,21 @@
+// Simple struct method test
+
+struct Person {
+    string name;
+    int age;
+}
+
+impl Person::greet() {
+    print("Hello from ");
+    println(this.name);
+}
+
+impl Person::get_age() -> int {
+    return this.age;
+}
+
+func main() -> int {
+    println("Struct methods compiled successfully!");
+    return 0;
+}
+
