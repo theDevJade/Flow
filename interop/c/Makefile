@@ -20,28 +20,10 @@ else
 endif
 
 # Get LLVM libraries and flags
-ifeq ($(OS),Windows_NT)
-    # On Windows, manually specify LLVM libraries (llvm-config doesn't work well on Windows)
-    LLVM_LIB_DIR = C:/llvm/lib
-    LLVM_LIBS_WIN = $(LLVM_LIB_DIR)/LLVMCore.lib $(LLVM_LIB_DIR)/LLVMSupport.lib \
-                    $(LLVM_LIB_DIR)/LLVMIRReader.lib $(LLVM_LIB_DIR)/LLVMExecutionEngine.lib \
-                    $(LLVM_LIB_DIR)/LLVMMCJIT.lib $(LLVM_LIB_DIR)/LLVMInterpreter.lib \
-                    $(LLVM_LIB_DIR)/LLVMTarget.lib $(LLVM_LIB_DIR)/LLVMAnalysis.lib \
-                    $(LLVM_LIB_DIR)/LLVMX86CodeGen.lib $(LLVM_LIB_DIR)/LLVMX86AsmParser.lib \
-                    $(LLVM_LIB_DIR)/LLVMX86Desc.lib $(LLVM_LIB_DIR)/LLVMX86Info.lib \
-                    $(LLVM_LIB_DIR)/LLVMBitReader.lib $(LLVM_LIB_DIR)/LLVMAsmParser.lib \
-                    $(LLVM_LIB_DIR)/LLVMBinaryFormat.lib $(LLVM_LIB_DIR)/LLVMRemarks.lib \
-                    $(LLVM_LIB_DIR)/LLVMBitstreamReader.lib $(LLVM_LIB_DIR)/LLVMMC.lib \
-                    $(LLVM_LIB_DIR)/LLVMMCParser.lib $(LLVM_LIB_DIR)/LLVMTextAPI.lib \
-                    $(LLVM_LIB_DIR)/LLVMProfileData.lib $(LLVM_LIB_DIR)/LLVMDemangle.lib
-    # Windows system libraries needed by LLVM
-    LLVM_SYSTEM_LIBS_WIN = shell32.lib ole32.lib uuid.lib advapi32.lib
-else
-    LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags 2>/dev/null || echo "")
-    LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags 2>/dev/null || echo "")
-    LLVM_LIBS = $(shell $(LLVM_CONFIG) --libs core support irreader executionengine mcjit interpreter native aarch64codegen aarch64asmparser aarch64desc aarch64info aarch64utils x86codegen x86asmparser x86desc x86info 2>/dev/null || echo "")
-    LLVM_SYSTEM_LIBS = $(shell $(LLVM_CONFIG) --system-libs 2>/dev/null || echo "")
-endif
+LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags 2>/dev/null || echo "")
+LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags 2>/dev/null || echo "")
+LLVM_LIBS = $(shell $(LLVM_CONFIG) --libs core support irreader executionengine mcjit interpreter native aarch64codegen aarch64asmparser aarch64desc aarch64info aarch64utils x86codegen x86asmparser x86desc x86info 2>/dev/null || echo "")
+LLVM_SYSTEM_LIBS = $(shell $(LLVM_CONFIG) --system-libs 2>/dev/null || echo "")
 
 # Find libffi and determine target platform
 UNAME_S := $(shell uname -s)
@@ -70,7 +52,8 @@ CFLAGS = $(BASE_CFLAGS) $(FFI_CFLAGS)
 # Use pre-compiled object files from flowbase build
 # Object file paths differ between Unix (nested) and Windows (flat)
 ifeq ($(OS),Windows_NT)
-    # Windows MSBuild: flat structure in flowjni.dir/Release/
+    # Windows MSBuild: artifacts downloaded to CMakeFiles/flowjni.dir/ from flowjni.dir/Release/
+    # Files are placed directly in the download location (no Release subdirectory)
     FLOWBASE_BUILD = ../../flowbase/build/CMakeFiles/flowjni.dir
     OBJ_EXT = .obj
     FLOWBASE_OBJECTS = \
@@ -119,22 +102,20 @@ all: check_flowbase $(TARGET)
 check_flowbase:
 ifeq ($(OS),Windows_NT)
 	@echo "Checking for flowbase objects on Windows..."
-	@if [ ! -f $(FLOWBASE_BUILD)/FlowAPI$(OBJ_EXT) ]; then \
-		echo "ERROR: flowbase objects not found. Please run:"; \
-		echo "  cd ../../flowbase/build && cmake .. && cmake --build ."; \
-		exit 1; \
-	fi
+	@test -f $(FLOWBASE_BUILD)/FlowAPI$(OBJ_EXT) || \
+		(echo "ERROR: flowbase objects not found. Please run:" && \
+		 echo "  cd ../../flowbase/build && cmake .. && cmake --build . --config Release" && \
+		 exit 1)
 else
-	@if [ ! -f $(FLOWBASE_BUILD)/src/Embedding/FlowAPI.cpp$(OBJ_EXT) ]; then \
-		echo "ERROR: flowbase not built. Please run:"; \
-		echo "  cd ../../flowbase/build && cmake .. && cmake --build ."; \
-		exit 1; \
-	fi
+	@test -f $(FLOWBASE_BUILD)/src/Embedding/FlowAPI.cpp$(OBJ_EXT) || \
+		(echo "ERROR: flowbase not built. Please run:" && \
+		 echo "  cd ../../flowbase/build && cmake .. && cmake --build ." && \
+		 exit 1)
 endif
 
 $(TARGET): $(C_OBJECTS) $(FLOWBASE_OBJECTS)
 ifeq ($(OS),Windows_NT)
-	link $(LDFLAGS) /OUT:$@ $(C_OBJECTS) $(FLOWBASE_OBJECTS) $(LLVM_LIBS_WIN) $(LLVM_SYSTEM_LIBS_WIN) $(FFI_LDFLAGS)
+	link $(LDFLAGS) /OUT:$@ $(C_OBJECTS) $(FLOWBASE_OBJECTS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
 else
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LLVM_LDFLAGS) $(LLVM_LIBS) $(LLVM_SYSTEM_LIBS) $(FFI_LDFLAGS)
 endif
@@ -146,12 +127,7 @@ endif
 	$(CC) $(CFLAGS) $(FFI_CFLAGS) -c -o $@ $<
 
 clean:
-ifeq ($(OS),Windows_NT)
-	if exist *.obj del /Q *.obj
-	if exist $(TARGET) del /Q $(TARGET)
-else
-	rm -f $(C_OBJECTS) $(TARGET) test_flow
-endif
+	rm -f $(C_OBJECTS) $(TARGET) test_flow *.obj *.o
 
 install: $(TARGET)
 	cp $(TARGET) /usr/local/lib/
