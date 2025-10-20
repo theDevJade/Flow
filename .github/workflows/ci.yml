@@ -595,6 +595,10 @@ jobs:
           $binarySource = "clear;files,$env:VCPKG_DEFAULT_BINARY_CACHE,readwrite"
           vcpkg install libffi:x64-windows --binarysource="$binarySource"
           Write-Host "vcpkg libffi installation complete"
+          
+          # Set VCPKG_ROOT for build step
+          Add-Content $env:GITHUB_ENV "VCPKG_ROOT=C:/vcpkg/installed/x64-windows"
+          Write-Host "VCPKG_ROOT set to: C:/vcpkg/installed/x64-windows"
 
       - name: Build C library (Unix)
         if: matrix.os != 'windows-latest'
@@ -618,10 +622,48 @@ jobs:
       - name: Build C library (Windows)
         if: matrix.os == 'windows-latest'
         working-directory: interop/c
-        shell: bash
+        shell: pwsh
         run: |
-          make clean
-          make
+          Remove-Item -Path *.obj,*.o,flow.dll,test_flow -ErrorAction SilentlyContinue
+          
+          Write-Host "Checking for flowbase objects on Windows..."
+          if (-not (Test-Path "../../flowbase/build/CMakeFiles/flowjni.dir/FlowAPI.obj")) {
+            Write-Error "ERROR: flowbase objects not found"
+            exit 1
+          }
+          
+          Write-Host "Compiling flow.c..."
+          cl /nologo /O2 /I"../../flowbase/include" /I"$env:VCPKG_ROOT/include" /c /Foflow.obj flow.c
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          
+          Write-Host "Compiling flow_reflect.c..."
+          cl /nologo /O2 /I"../../flowbase/include" /I"$env:VCPKG_ROOT/include" /c /Foflow_reflect.obj flow_reflect.c
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          
+          Write-Host "Linking flow.dll..."
+          $flowbaseObjs = @(
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\FlowAPI.obj",
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\Lexer.obj",
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\Token.obj",
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\Parser.obj",
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\AST.obj",
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\SemanticAnalyzer.obj",
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\CodeGenerator.obj",
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\FFIBridge.obj",
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\Interop.obj",
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\IPC.obj",
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\JVMInterop.obj",
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\ErrorReporter.obj",
+            "..\..\flowbase\build\CMakeFiles\flowjni.dir\Builtins.obj"
+          )
+          
+          $vcpkgRoot = if ($env:VCPKG_ROOT) { $env:VCPKG_ROOT } else { "C:/vcpkg/installed/x64-windows" }
+          $ffiLib = "$vcpkgRoot/lib/ffi.lib"
+          
+          & "$env:VCToolsInstallDir\bin\Hostx64\x64\link.exe" /DLL /nologo /OUT:flow.dll flow.obj flow_reflect.obj $flowbaseObjs $ffiLib
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          
+          Write-Host "Build complete: flow.dll"
 
       - name: Upload C library artifact
         uses: actions/upload-artifact@v4
