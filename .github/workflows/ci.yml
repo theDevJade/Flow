@@ -596,9 +596,21 @@ jobs:
           vcpkg install libffi:x64-windows --binarysource="$binarySource"
           Write-Host "vcpkg libffi installation complete"
           
-          # Set VCPKG_ROOT for build step
-          Add-Content $env:GITHUB_ENV "VCPKG_ROOT=C:/vcpkg/installed/x64-windows"
-          Write-Host "VCPKG_ROOT set to: C:/vcpkg/installed/x64-windows"
+          # Set VCPKG_ROOT to the vcpkg installation directory
+          $vcpkgInstallRoot = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows"
+          Add-Content $env:GITHUB_ENV "VCPKG_ROOT=$vcpkgInstallRoot"
+          Write-Host "VCPKG_ROOT set to: $vcpkgInstallRoot"
+          
+          # Verify ffi.lib exists
+          $ffiLibPath = "$vcpkgInstallRoot\lib\ffi.lib"
+          if (Test-Path $ffiLibPath) {
+            Write-Host "✓ Found ffi.lib at: $ffiLibPath"
+          } else {
+            Write-Host "✗ ERROR: ffi.lib not found at expected path: $ffiLibPath"
+            Write-Host "Listing vcpkg lib directory contents:"
+            Get-ChildItem "$vcpkgInstallRoot\lib" -ErrorAction SilentlyContinue | Select-Object Name
+            exit 1
+          }
 
       - name: Build C library (Unix)
         if: matrix.os != 'windows-latest'
@@ -611,8 +623,10 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           Write-Host "Checking vcpkg libffi installation:"
-          Get-ChildItem -Recurse C:\vcpkg\installed\x64-windows\lib\*ffi* -ErrorAction SilentlyContinue | Select-Object FullName
-          Get-ChildItem -Recurse C:\vcpkg\installed\x64-windows\bin\*ffi* -ErrorAction SilentlyContinue | Select-Object FullName
+          $vcpkgInstallRoot = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows"
+          Write-Host "Searching in: $vcpkgInstallRoot"
+          Get-ChildItem -Recurse "$vcpkgInstallRoot\lib\*ffi*" -ErrorAction SilentlyContinue | Select-Object FullName
+          Get-ChildItem -Recurse "$vcpkgInstallRoot\bin\*ffi*" -ErrorAction SilentlyContinue | Select-Object FullName
         shell: pwsh
 
       - name: Setup MSVC environment (Windows)
@@ -657,8 +671,15 @@ jobs:
             "..\..\flowbase\build\CMakeFiles\flowjni.dir\Builtins.obj"
           )
           
-          $vcpkgRoot = if ($env:VCPKG_ROOT) { $env:VCPKG_ROOT } else { "C:/vcpkg/installed/x64-windows" }
-          $ffiLib = "$vcpkgRoot/lib/ffi.lib"
+          # Use VCPKG_ROOT from environment (set in previous step)
+          $ffiLib = "$env:VCPKG_ROOT\lib\ffi.lib"
+          
+          Write-Host "Using ffi.lib from: $ffiLib"
+          if (-not (Test-Path $ffiLib)) {
+            Write-Host "✗ ERROR: ffi.lib not found at: $ffiLib"
+            exit 1
+          }
+          Write-Host "✓ Found ffi.lib"
           
           & "$env:VCToolsInstallDir\bin\Hostx64\x64\link.exe" /DLL /nologo /OUT:flow.dll flow.obj flow_reflect.obj $flowbaseObjs $ffiLib
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
