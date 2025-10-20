@@ -17,7 +17,7 @@ jobs:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Remove man-db to speed up apt (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -260,7 +260,7 @@ jobs:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install LLVM Runtime Dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -348,7 +348,7 @@ jobs:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -384,7 +384,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -423,7 +423,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -458,7 +458,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -501,7 +501,7 @@ jobs:
             lib_name: flow.dll
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Remove man-db to speed up apt (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -636,7 +636,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Remove man-db to speed up apt
         run: sudo apt-get remove --purge -y man-db
@@ -675,7 +675,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Remove man-db to speed up apt
         run: sudo apt-get remove --purge -y man-db
@@ -719,7 +719,7 @@ jobs:
         language: [ python, javascript, ruby, php, go, c ]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Remove man-db to speed up apt (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -814,7 +814,7 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Remove man-db to speed up apt
         run: sudo apt-get remove --purge -y man-db
@@ -862,7 +862,7 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Remove man-db to speed up apt
         run: sudo apt-get remove --purge -y man-db
@@ -910,7 +910,7 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Remove man-db to speed up apt
         run: sudo apt-get remove --purge -y man-db
@@ -943,7 +943,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Remove man-db to speed up apt
         run: sudo apt-get remove --purge -y man-db
