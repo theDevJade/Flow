@@ -632,6 +632,14 @@ jobs:
       - name: Setup MSVC environment (Windows)
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Restore VCPKG_ROOT after MSVC setup (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          # The MSVC setup overwrites VCPKG_ROOT, so we need to set it back
+          $vcpkgInstallRoot = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows"
+          Add-Content $env:GITHUB_ENV "VCPKG_ROOT=$vcpkgInstallRoot"
+          Write-Host "VCPKG_ROOT restored to: $vcpkgInstallRoot"
         
       - name: Build C library (Windows)
         if: matrix.os == 'windows-latest'
