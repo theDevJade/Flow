@@ -1,7 +1,7 @@
 // Basic struct method test without struct initialization
 
 struct Counter {
-    int value;
+    int val;
 }
 
 impl Counter::print() {

@@ -104,3 +104,4 @@ River.lock
 !LICENSE
 !.gitignore
 
+interop/python/flow/__pycache__/__init__.cpython-313.pyc

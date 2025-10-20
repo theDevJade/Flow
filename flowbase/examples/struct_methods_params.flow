@@ -1,23 +1,23 @@
 // Struct methods with parameters
 
 struct Calculator {
-    int value;
+    int val;
 }
 
 impl Calculator::add(x: int) -> int {
-    return this.value + x;
+    return this.val + x;
 }
 
 impl Calculator::multiply(x: int) -> int {
-    return this.value * x;
+    return this.val * x;
 }
 
 impl Calculator::compute(a: int, b: int) -> int {
-    return this.value + a * b;
+    return this.val + a * b;
 }
 
 impl Calculator::sum_three(a: int, b: int, c: int) -> int {
-    return this.value + a + b + c;
+    return this.val + a + b + c;
 }
 
 func main() -> int {

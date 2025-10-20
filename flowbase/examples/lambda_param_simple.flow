@@ -23,7 +23,7 @@ func main() -> int {
     });
     
     // Event handler example (like your original add_button)
-    add_button("Click Me!", lambda[event: string, value: int] {
+    add_button("Click Me!", lambda[event: string, val: int] {
         println("Event:");
         println(event);
     });

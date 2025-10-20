@@ -22,8 +22,8 @@ func add_button(label: string, onClick: void lambda[string, int]) {
 
 // Function that takes a lambda and applies it to each element
 func map_numbers(start: int, end: int, transformer: int lambda[int]) -> int {
-    let result = 0;
-    let i = start;
+    let mut result = 0;
+    let mut i = start;
     while (i < end) {
         result = result + transformer(i);
         i = i + 1;
@@ -50,11 +50,11 @@ func main() -> int {
     println("Sum: ");
     println("Product: ");
     
-    // Example 3: Event handler style (like your original example)
-    add_button("Click Me", lambda[event: string, value: int] {
+
+    add_button("Click Me", void lambda[event: string, val: int] {
         println("Event triggered:");
         println(event);
-        println("Value: ");
+        println("Value: " + val);
     });
     
     // Example 4: Transformer function
