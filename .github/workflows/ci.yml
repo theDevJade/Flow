@@ -689,8 +689,99 @@ jobs:
           }
           Write-Host "✓ Found ffi.lib"
           
-          & "$env:VCToolsInstallDir\bin\Hostx64\x64\link.exe" /DLL /nologo /OUT:flow.dll flow.obj flow_reflect.obj $flowbaseObjs $ffiLib
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Get LLVM libraries from the LLVM installation
+          $llvmLibDir = "C:\llvm\lib"
+          Write-Host "Looking for LLVM libraries in: $llvmLibDir"
+          
+          # Core LLVM libraries needed for code generation
+          # Based on the components: core support irreader executionengine mcjit interpreter native x86codegen
+          $llvmLibs = @(
+            # Core components
+            "LLVMCore.lib",
+            "LLVMSupport.lib",
+            "LLVMIRReader.lib",
+            "LLVMExecutionEngine.lib",
+            "LLVMMCJIT.lib",
+            "LLVMInterpreter.lib",
+            "LLVMOrcJIT.lib",
+            "LLVMRuntimeDyld.lib",
+            
+            # X86 target (native on Windows x64)
+            "LLVMX86CodeGen.lib",
+            "LLVMX86AsmParser.lib",
+            "LLVMX86Desc.lib",
+            "LLVMX86Info.lib",
+            "LLVMX86Disassembler.lib",
+            
+            # Supporting libraries
+            "LLVMObject.lib",
+            "LLVMBitReader.lib",
+            "LLVMBitWriter.lib",
+            "LLVMAsmParser.lib",
+            "LLVMTransformUtils.lib",
+            "LLVMScalarOpts.lib",
+            "LLVMInstCombine.lib",
+            "LLVMAggressiveInstCombine.lib",
+            "LLVMAnalysis.lib",
+            "LLVMTarget.lib",
+            "LLVMMCParser.lib",
+            "LLVMMC.lib",
+            "LLVMMCDisassembler.lib",
+            "LLVMBinaryFormat.lib",
+            "LLVMDebugInfoCodeView.lib",
+            "LLVMDebugInfoDWARF.lib",
+            "LLVMDebugInfoMSF.lib",
+            "LLVMTextAPI.lib",
+            "LLVMRemarks.lib",
+            "LLVMBitstreamReader.lib",
+            "LLVMTargetParser.lib",
+            "LLVMProfileData.lib",
+            "LLVMSymbolize.lib",
+            "LLVMDebugInfoPDB.lib",
+            "LLVMDemangle.lib"
+          )
+          
+          # Add LLVM library paths
+          $llvmLibPaths = @()
+          foreach ($lib in $llvmLibs) {
+            $libPath = Join-Path $llvmLibDir $lib
+            if (Test-Path $libPath) {
+              $llvmLibPaths += $libPath
+            } else {
+              Write-Host "Warning: LLVM library not found: $libPath"
+            }
+          }
+          
+          Write-Host "Found $($llvmLibPaths.Count) LLVM libraries"
+          
+          # Verify we found at least the core LLVM libraries
+          if ($llvmLibPaths.Count -lt 10) {
+            Write-Host "✗ ERROR: Too few LLVM libraries found ($($llvmLibPaths.Count)). Expected at least 10."
+            Write-Host "LLVM library directory contents:"
+            Get-ChildItem "$llvmLibDir\LLVM*.lib" -ErrorAction SilentlyContinue | Select-Object Name
+            exit 1
+          }
+          Write-Host "✓ Found sufficient LLVM libraries"
+          
+          # System libraries required on Windows
+          $systemLibs = @(
+            "advapi32.lib",
+            "shell32.lib",
+            "ole32.lib",
+            "uuid.lib"
+          )
+          
+          # Build the link command with all required libraries
+          # Add /LIBPATH for LLVM lib directory to help linker find dependencies
+          $linkArgs = @("/DLL", "/nologo", "/OUT:flow.dll", "/LIBPATH:$llvmLibDir", "flow.obj", "flow_reflect.obj") + $flowbaseObjs + $llvmLibPaths + $systemLibs + @($ffiLib)
+          
+          Write-Host "Linking with LLVM libraries..."
+          Write-Host "Link command: $env:VCToolsInstallDir\bin\Hostx64\x64\link.exe with $($linkArgs.Count) arguments"
+          & "$env:VCToolsInstallDir\bin\Hostx64\x64\link.exe" $linkArgs
+          if ($LASTEXITCODE -ne 0) { 
+            Write-Host "✗ ERROR: Linking failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE 
+          }
           
           Write-Host "Build complete: flow.dll"
 
