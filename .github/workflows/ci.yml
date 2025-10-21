@@ -696,15 +696,26 @@ jobs:
           # Core LLVM libraries needed for code generation
           # Based on the components: core support irreader executionengine mcjit interpreter native x86codegen
           $llvmLibs = @(
-            # Core components
+            # Core components (order matters - fundamental libs first)
             "LLVMCore.lib",
             "LLVMSupport.lib",
-            "LLVMIRReader.lib",
+            "LLVMDemangle.lib",
+            
+            # Code generation infrastructure (critical for resolving CodeGen symbols)
+            "LLVMCodeGen.lib",
+            "LLVMGlobalISel.lib",
+            "LLVMSelectionDAG.lib",
+            "LLVMAsmPrinter.lib",
+            
+            # Execution engine and JIT
             "LLVMExecutionEngine.lib",
             "LLVMMCJIT.lib",
             "LLVMInterpreter.lib",
             "LLVMOrcJIT.lib",
+            "LLVMOrcTargetProcess.lib",
+            "LLVMOrcShared.lib",
             "LLVMRuntimeDyld.lib",
+            "LLVMJITLink.lib",
             
             # X86 target (native on Windows x64)
             "LLVMX86CodeGen.lib",
@@ -713,32 +724,48 @@ jobs:
             "LLVMX86Info.lib",
             "LLVMX86Disassembler.lib",
             
-            # Supporting libraries
-            "LLVMObject.lib",
+            # IR and bitcode handling
+            "LLVMIRReader.lib",
             "LLVMBitReader.lib",
             "LLVMBitWriter.lib",
             "LLVMAsmParser.lib",
+            "LLVMBitstreamReader.lib",
+            
+            # Transformations
             "LLVMTransformUtils.lib",
             "LLVMScalarOpts.lib",
             "LLVMInstCombine.lib",
             "LLVMAggressiveInstCombine.lib",
+            "LLVMInstrumentation.lib",
+            "LLVMVectorize.lib",
+            "LLVMipo.lib",
+            
+            # Analysis
             "LLVMAnalysis.lib",
+            "LLVMProfileData.lib",
+            
+            # Target and MC (Machine Code)
             "LLVMTarget.lib",
-            "LLVMMCParser.lib",
             "LLVMMC.lib",
+            "LLVMMCParser.lib",
             "LLVMMCDisassembler.lib",
+            "LLVMMCAnalysis.lib",
+            
+            # Object file handling
+            "LLVMObject.lib",
             "LLVMBinaryFormat.lib",
+            
+            # Debug info
             "LLVMDebugInfoCodeView.lib",
             "LLVMDebugInfoDWARF.lib",
             "LLVMDebugInfoMSF.lib",
+            "LLVMDebugInfoPDB.lib",
+            
+            # Other supporting libraries
             "LLVMTextAPI.lib",
             "LLVMRemarks.lib",
-            "LLVMBitstreamReader.lib",
             "LLVMTargetParser.lib",
-            "LLVMProfileData.lib",
-            "LLVMSymbolize.lib",
-            "LLVMDebugInfoPDB.lib",
-            "LLVMDemangle.lib"
+            "LLVMSymbolize.lib"
           )
           
           # Add LLVM library paths
